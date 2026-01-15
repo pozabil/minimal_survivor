@@ -161,10 +161,22 @@
       background:rgba(255,255,255,.06);
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.10);
       padding:12px;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
     }
     .box h3{ margin:0 0 8px; font-size:14px; opacity:.95; }
     .small{ font-size:13px; opacity:.9; }
-    .list{ display:flex; flex-direction:column; gap:6px; max-height: 320px; overflow:auto; padding-right:6px; }
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      overflow:auto;
+      padding-right:6px;
+      flex:1;
+      min-height:0;
+      max-height:none;
+    }
     .item{
       display:flex; justify-content:space-between; gap:10px;
       padding:8px 10px; border-radius:12px;
@@ -217,7 +229,7 @@
       .choices{grid-template-columns:1fr;}
       .grid2{grid-template-columns: 1fr;}
       .bar{width:180px;}
-      .list{max-height: 240px;}
+      .list{max-height: 45vh;}
       .totemTimer{ top:20vh; font-size:56px; }
       .totemWarning{ font-size:28px; padding:12vh 18px 0; }
     }
@@ -491,6 +503,11 @@
     const TOTEM_DPS_BASE = 1;
     const TOTEM_DPS_RAMP = 2;
     const TOTEM_EFFECT_MAX = 90;
+    const LOW_HP_SLOW_THRESHOLD = 0.08;
+    const LOW_HP_SLOW_RESET = 0.12;
+    const LOW_HP_SLOW_DURATION = 4.0;
+    const LOW_HP_SLOW_SCALE = 0.75;
+    const LOW_HP_SLOW_COOLDOWN = 16.0;
     const enemyGrid = new Map();
 
     function gridKey(cx, cy){ return cx + "," + cy; }
@@ -720,6 +737,9 @@ btnPause.addEventListener("click", (e)=>{
       healQueue: [],
       healActive: null,
       xpEnemyBonus: 0,
+      slowMoT: 0,
+      slowMoCd: 0,
+      slowMoLocked: false,
     };
 
     // UI state
@@ -770,7 +790,7 @@ btnPause.addEventListener("click", (e)=>{
       orbitalHitCD: 0.22,
 
       aura: false,
-      auraRadius: 64,
+      auraRadius: 72,
       auraDps: 14,
 
       auraSlow: 0.0,
@@ -784,7 +804,7 @@ btnPause.addEventListener("click", (e)=>{
 
       u: {},
       rerolls: 2,
-      rerollCap: 10,
+      rerollCap: 4,
 
       xpGainMult: 1.0,
       shieldAfterHit: 0.0,
@@ -2103,7 +2123,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       ricochetBounces:{ title:"Рикошет: отскоки", max: 5, desc:(lv)=>`+1 отскок (ур. ${lv+1}/5)`, apply:()=>{ player.ricochetBounces = Math.min(5, (player.ricochetBounces||0) + 1); } },
 
       armor:    { title:"Броня",         max: 8,  desc:(lv)=>`-6% входящий урон (ур. ${lv+1}/8)`, apply:()=>{ player.armor = clamp((player.armor||0) + 0.06, 0, 0.60); } },
-      dodge:    { title:"Уклонение",     max: 7,  desc:(lv)=>`+5% шанс не получить урон (ур. ${lv+1}/7)`, apply:()=>{ player.dodge = clamp((player.dodge||0) + 0.05, 0, 0.35); } },
+      dodge:    { title:"Уклонение",     max: 6,  desc:(lv)=>`+5% шанс не получить урон (ур. ${lv+1}/6)`, apply:()=>{ player.dodge = clamp((player.dodge||0) + 0.05, 0, 0.35); } },
       lifesteal:{ title:"Лайфстил",      max: 8,  desc:(lv)=>`+2% шанс отхилить 1% HP (ур. ${lv+1}/8) · килл: 2% на 2% HP`, apply:()=>{ player.lifeSteal = Math.min(8, (player.lifeSteal||0) + 1); } },
 
       xpGain:   { title:"Опыт",          max: 8,  desc:(lv)=>`+10% XP (ур. ${lv+1}/8)`, apply:()=>{ player.xpGainMult = (player.xpGainMult || 1) * 1.10; } },
@@ -2133,7 +2153,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if (!enabled) return 0;
       const novaLv = getLevel("nova");
       const dmgLv = getLevel("novaDamage");
-      return 70 + novaLv * 22 + dmgLv * 3;
+      return 82 + 2 * novaLv + dmgLv * 4;
     }
 
     function isEligible(id){
@@ -2181,6 +2201,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         const lvl = getLevel(id);
         w *= 1 / (1 + lvl * 0.36);
         if (id === "lifesteal" && lvl > 0) w *= 1 / (1 + lvl * 0.25);
+        if (id === "dodge" && lvl > 0) w *= 1 / (1 + lvl * 0.2);
+        if (id === "multishot" && lvl > 0) w *= 1 / (1 + lvl * 0.25);
         pool.push([id, w]);
       }
       return pool;
@@ -2329,6 +2351,98 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     btnRestart2.addEventListener("click", ()=>resetGame());
     btnCopy.addEventListener("click", ()=>copyStats());
 
+    function fmtPct(v){
+      if (!Number.isFinite(v)) return "--";
+      return `${Math.round(v * 100)}%`;
+    }
+    function fmtNum(v, digits=0){
+      if (!Number.isFinite(v)) return "--";
+      return digits ? v.toFixed(digits) : String(Math.round(v));
+    }
+    function fmtSignedPct(v){
+      if (!Number.isFinite(v)) return "--";
+      const pct = Math.round(v * 100);
+      return `${pct >= 0 ? "+" : ""}${pct}%`;
+    }
+    function getBuildEffectText(id){
+      switch (id){
+        case "fireRate":
+          return `Скорость атаки: ${fmtNum(player.fireRate, 2)}/с`;
+        case "damage":
+          return `Урон пули: ${fmtNum(player.damage)}`;
+        case "pierce":
+          return `Пробитий: ${player.pierce}`;
+        case "multishot":
+          return `Снарядов за выстрел: ${player.multishot}`;
+        case "nova":
+          return `Нова: ${player.novaCount * 3} снарядов`;
+        case "novaDamage":
+          return `Нова: урон ${fmtNum(player.novaDamage)}`;
+        case "novaRate":
+          return `Нова: ${fmtNum(player.novaRate, 2)}/с`;
+        case "novaSpeed":
+          return `Нова: скорость ${fmtNum(player.novaSpeed)}`;
+        case "novaMagnet":
+          return `Нова: радиус магнита ${fmtNum(getNovaMagnetRadius())}`;
+        case "turret":
+          return `Турели: ${fmtPct(getTurretChance())} шанс · макс ${getTurretMax()} · агро ${fmtNum(getTurretAggroRadius())}`;
+        case "turretLevel":
+          return `Турели: урон ${fmtNum(getTurretDamage())} · скоростр. ${fmtNum(getTurretFireRate(), 2)}/с · HP ${fmtNum(getTurretHpMax())}`;
+        case "turretHeal":
+          return `Турели: притягивают XP (радиус ${fmtNum(getTurretAggroRadius())})`;
+        case "bulletSpeed":
+          return `Скорость пули: ${fmtNum(player.bulletSpeed)}`;
+        case "crit":
+          return `Крит шанс: ${fmtPct(player.critChance)}`;
+        case "bulletSize":
+          return `Размер пули: ${fmtNum(player.bulletSize, 1)}`;
+        case "critMultUp":
+          return `Крит множ.: x${fmtNum(player.critMult, 2)}`;
+        case "ricochetChance":
+          return `Рикошет: шанс ${fmtPct(player.ricochetChance || 0)}`;
+        case "ricochetBounces":
+          return `Рикошет: отскоков ${player.ricochetBounces || 0}`;
+        case "armor":
+          return `Броня: ${fmtPct(player.armor || 0)}`;
+        case "dodge":
+          return `Уклонение: ${fmtPct(player.dodge || 0)}`;
+        case "lifesteal":
+          return `Лайфстил: ${fmtPct((player.lifeSteal || 0) * 0.02)} шанс на 1% HP при попадании`;
+        case "xpGain": {
+          const bonus = (player.xpGainMult || 1) - 1;
+          return `Опыт: x${fmtNum(player.xpGainMult || 1, 2)} (${fmtSignedPct(bonus)})`;
+        }
+        case "rerollCap":
+          return `Лимит reroll: ${player.rerollCap}`;
+        case "orbitalSpeedUp":
+          return `Орбиталки: скорость ${fmtNum(player.orbitalSpeed, 2)}`;
+        case "auraSlow":
+          return `Аура: замедление ${fmtPct(player.auraSlow || 0)}`;
+        case "speed":
+          return `Скорость: ${fmtNum(player.speed)}`;
+        case "hp":
+          return `HP max: ${fmtNum(player.hpMax)}`;
+        case "regen":
+          return `Реген: ${fmtNum(player.regen, 1)} HP/с`;
+        case "magnet":
+          return `Магнит: ${fmtNum(player.magnet)}`;
+        case "orbital":
+          return `Орбиталок: ${player.orbitals}`;
+        case "orbitalDmg":
+          return `Орбиталки: урон ${fmtNum(player.orbitalDamage)}`;
+        case "orbitalRadius":
+          return `Орбиталки: радиус ${fmtNum(player.orbitalRadius)}`;
+        case "aura":
+          return "Аура: активна";
+        case "auraRadius":
+          return `Аура: радиус ${fmtNum(player.auraRadius)}`;
+        case "auraDps":
+          return `Аура: DPS ${fmtNum(player.auraDps)}`;
+        default:
+          return "";
+      }
+    }
+
     function updateBuildUI(){
       const entries = Object.keys(player.u)
         .map(id => ({ id, lv: player.u[id] }))
@@ -2365,10 +2479,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
           head.style.gap = "10px";
           head.innerHTML = `<div class="k">${title}</div><div class="v">Lv ${e.lv}/${max}</div>`;
 
-          const u = U[e.id];
-          const lv = getLevel(e.id);
-          const descLv = Math.max(0, lv - 1);
-          const desc = typeof u?.desc === "function" ? u.desc(descLv) : "";
+          const desc = getBuildEffectText(e.id);
           const descEl = document.createElement("div");
           descEl.className = "small";
           descEl.style.display = "none";
@@ -2479,7 +2590,27 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
     function step(now){
       const dtRaw = (now-last)/1000;
       last = now;
-      const dt = clamp(dtRaw, 0, 0.05);
+      const dtBase = clamp(dtRaw, 0, 0.05);
+
+      if (!state.paused && !state.dead){
+        const hpRatio = player.hpMax > 0 ? (player.hp / player.hpMax) : 1;
+        if (!state.slowMoLocked && state.slowMoCd <= 0 && hpRatio > 0 && hpRatio <= LOW_HP_SLOW_THRESHOLD){
+          state.slowMoT = LOW_HP_SLOW_DURATION;
+          state.slowMoCd = LOW_HP_SLOW_COOLDOWN;
+          state.slowMoLocked = true;
+        } else if (state.slowMoLocked && hpRatio >= LOW_HP_SLOW_RESET){
+          state.slowMoLocked = false;
+        }
+        if (state.slowMoT > 0){
+          state.slowMoT = Math.max(0, state.slowMoT - dtRaw);
+        }
+        if (state.slowMoCd > 0){
+          state.slowMoCd = Math.max(0, state.slowMoCd - dtRaw);
+        }
+      }
+
+      const slowScale = state.slowMoT > 0 ? LOW_HP_SLOW_SCALE : 1;
+      const dt = dtBase * slowScale;
 
       fpsAcc += (dtRaw>0?1/dtRaw:0);
       fpsN++;
