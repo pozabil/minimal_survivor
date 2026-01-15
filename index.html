@@ -1404,7 +1404,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       dropXp(e.x,e.y, e.xp);
 
       if (e.elite){
-        const bonus = e.eliteReward ? Math.round(e.xp * 1.2) : Math.round(e.xp * 0.35);
+        const bonus = e.eliteReward ? Math.round(e.xp * 1.2) : Math.round(e.xp * 0.4);
         dropXp(e.x, e.y, bonus);
         if (e.eliteReward && Math.random() < 0.35){
           player.rerolls = Math.min(player.rerollCap, player.rerolls + 1);
@@ -2082,7 +2082,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         if (dist < player.r + g.r + 6) {
           gainXp(g.v);
           drops.splice(i, 1);
-        } else if (g.t > 24) {
+        } else if (g.t > 36) {
           drops.splice(i, 1);
         }
       }
