@@ -87,7 +87,7 @@
       top: 10px;
       z-index: 7;
       display:none;
-      padding:10px 12px;
+      padding:12px 14px;
       border-radius:12px;
       font-weight:800;
       line-height:1;
@@ -803,7 +803,7 @@ btnPause.addEventListener("click", (e)=>{
       while(player.xp >= player.xpNeed && !state.dead){
         player.xp -= player.xpNeed;
         player.lvl += 1;
-        player.xpNeed = Math.floor(player.xpNeed * 1.22 + 8);
+        player.xpNeed = Math.floor(player.xpNeed * 1.176 + 8);
         state.chestTimer = Math.min(state.chestTimer, getChestInterval());
         openUpgradePicker("level");
       }
@@ -823,6 +823,7 @@ btnPause.addEventListener("click", (e)=>{
         spitter:  { r:13, hp:62,  spd:98,  dmg:8,  xp:16, shotRate:1.05, shotSpeed:250, shotDmg:9 }, // тройной залп
         dasher:   { r:13, hp:44,  spd:150, dmg:14, xp:14 }, // рывки к игроку
         shield:   { r:16, hp:95,  spd:110, dmg:13, xp:18 }, // снижает урон от пуль
+        burst:    { r:14, hp:60,  spd:112, dmg:11, xp:17, burstN:6, burstSpeed:270, burstDmg:9 }, // при смерти выпускает пули
         splitter: { r:15, hp:78,  spd:118, dmg:12, xp:18 }, // при смерти делится на миньонов
         minion:   { r:10, hp:26,  spd:170, dmg:9,  xp:6  }, // спавнится от splitter
 
@@ -853,6 +854,7 @@ btnPause.addEventListener("click", (e)=>{
         const pDasher   = (diff > 2.0) ? (0.03 + Math.min(0.08, (diff-2)*0.015)) : 0.0;
         const pSpitter  = (diff > 2.5) ? (0.03 + Math.min(0.09, (diff-2.5)*0.015)) : 0.0;
         const pShield   = (diff > 3.0) ? (0.03 + Math.min(0.08, (diff-3)*0.013)) : 0.0;
+        const pBurst    = (diff > 3.0) ? (0.02 + Math.min(0.07, (diff-3)*0.012)) : 0.0;
         const pSplitter = (diff > 3.5) ? (0.02 + Math.min(0.07, (diff-3.5)*0.012)) : 0.0;
         const pBrute    = (diff > 4.0) ? (0.02 + Math.min(0.06, (diff-4)*0.010)) : 0.0;
 
@@ -867,6 +869,7 @@ btnPause.addEventListener("click", (e)=>{
             || pick(pDasher, "dasher")
             || pick(pSpitter, "spitter")
             || pick(pShield, "shield")
+            || pick(pBurst, "burst")
             || pick(pSplitter, "splitter")
             || pick(pBrute, "brute")
             || "grunt";
@@ -896,6 +899,9 @@ btnPause.addEventListener("click", (e)=>{
         shotDmg: b.shotDmg || 0,
         explodeR: b.explodeR || 0,
         explodeDmg: b.explodeDmg || 0,
+        burstN: b.burstN || 0,
+        burstSpeed: b.burstSpeed || 0,
+        burstDmg: b.burstDmg || 0,
         _oh: null,
 
         bossKind: extra?.bossKind || null,
@@ -1330,6 +1336,27 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       state.kills += 1;
       burst(e.x,e.y, randi(10,16), 220, 0.35);
       dropXp(e.x,e.y, e.xp);
+
+      if (e.type === "burst"){
+        const n = Math.max(1, e.burstN || 6);
+        const spd = e.burstSpeed || 260;
+        const dmg = e.burstDmg || 9;
+        const offset = randf(0, TAU);
+        for (let k=0; k<n; k++){
+          const ang = offset + k*(TAU/n);
+          enemyBullets.push({
+            x: e.x, y: e.y,
+            vx: Math.cos(ang)*spd,
+            vy: Math.sin(ang)*spd,
+            r: 4,
+            dmg,
+            t: 0,
+            life: 2.8,
+            srcType: e.type,
+            srcBossKind: null,
+          });
+        }
+      }
 
       // splitter spawns minions
       if (e.type === "splitter"){
@@ -2136,8 +2163,9 @@ if (!onScreen){
           const py = ux;
           const w0 = Math.max(3, b.r * 0.9);
           const w1 = Math.max(0.8, b.r * 0.2);
+          ctx.save();
           ctx.beginPath();
-          ctx.fillStyle="rgba(120,220,255,0.35)";
+          ctx.fillStyle="rgba(190,140,255,0.35)";
           ctx.moveTo(sx + px * w0, sy + py * w0);
           ctx.lineTo(sx - px * w0, sy - py * w0);
           ctx.lineTo(tx - px * w1, ty - py * w1);
@@ -2145,10 +2173,13 @@ if (!onScreen){
           ctx.closePath();
           ctx.fill();
 
+          ctx.shadowColor = "rgba(190,140,255,0.8)";
+          ctx.shadowBlur = 14;
           ctx.beginPath();
-          ctx.fillStyle="rgba(200,245,255,0.95)";
+          ctx.fillStyle="rgba(220,190,255,0.95)";
           ctx.arc(sx,sy,b.r,0,TAU);
           ctx.fill();
+          ctx.restore();
         } else {
           ctx.beginPath();
           ctx.fillStyle="rgba(255,245,210,0.95)";
@@ -2165,6 +2196,7 @@ if (!onScreen){
         if (e.type==="runner") baseCol="rgba(255,160,90,0.95)";
         if (e.type==="shooter") baseCol="rgba(120,255,190,0.92)";
         if (e.type==="bomber") baseCol="rgba(255,220,120,0.92)";
+        if (e.type==="burst") baseCol="rgba(180,200,255,0.95)";
         if (e.type==="boss"){
           if (e.bossKind==="sniper") baseCol = "rgba(120,220,255,0.95)";
           if (e.bossKind==="charger") baseCol = "rgba(255,180,120,0.95)";
