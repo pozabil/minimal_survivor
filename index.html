@@ -169,7 +169,8 @@
       <span id="fps">FPS --</span><span>·</span>
       <span id="wep">W: Bullets</span><span>·</span>
       <span id="chest">Chest 35s</span><span>·</span>
-      <span id="rerolls">Reroll 2</span>
+      <span id="rerolls">Reroll 2</span><span>·</span>
+      <span id="threat">Threat 1.0</span>
     </div>
   </div>
 
@@ -295,6 +296,7 @@
     const elWep  = document.getElementById("wep");
     const elChest= document.getElementById("chest");
     const elRerolls = document.getElementById("rerolls");
+    const elThreat = document.getElementById("threat");
     const elChestRespawn = document.getElementById("chestRespawn");
 
     const hpbar  = document.getElementById("hpbar");
@@ -359,13 +361,14 @@
     const randi = (a,b)=>(a+Math.random()*(b-a+1))|0;
     const ENEMY_MAX_R = 30;
     const GRID_SIZE = 140;
+    const BURST_TELEGRAPH = 0.25;
     const enemyGrid = new Map();
 
     function gridKey(cx, cy){ return cx + "," + cy; }
     function gridBuild(){
       enemyGrid.clear();
       for (const e of enemies){
-        if (e.dead) continue;
+        if (e.dead || e.dying) continue;
         const cx = Math.floor(e.x / GRID_SIZE);
         const cy = Math.floor(e.y / GRID_SIZE);
         const key = gridKey(cx, cy);
@@ -556,6 +559,7 @@ btnPause.addEventListener("click", (e)=>{
     const ui = { buildFromPicker: false };
 
     // Player
+    const BASE_HP = 50;
     const player = {
       heroId: "scout",
       heroName: "Скаут",
@@ -563,8 +567,8 @@ btnPause.addEventListener("click", (e)=>{
       x:0, y:0, r:14,
       vx:0, vy:0,
       speed:260,
-      hpMax:50,
-      hp:50,
+      hpMax: BASE_HP,
+      hp: BASE_HP,
       regen:0,
       invuln:0,
       magnet:120,
@@ -607,6 +611,7 @@ btnPause.addEventListener("click", (e)=>{
       novaRate: 0.60,
       novaSpeed: 460,
       novaTimer: 0,
+      novaMagnet: 0,
 
       u: {},
       rerolls: 2,
@@ -678,8 +683,8 @@ btnPause.addEventListener("click", (e)=>{
           player.heroId="scout"; player.heroName="Скаут"; player.heroPerkText=this.perk;
           player.speed = 295;
           player.magnet = 150;
-          player.hpMax = 95;
-          player.hp = 95;
+          player.hpMax = BASE_HP * 0.9;
+          player.hp = player.hpMax;
           player.fireRate = 4.6;
           player.damage = 15;
 
@@ -696,8 +701,8 @@ btnPause.addEventListener("click", (e)=>{
         perk:"Перки: после попадания +0.35с доп. неуязвимости.",
         apply(){
           player.heroId="tank"; player.heroName="Танк"; player.heroPerkText=this.perk;
-          player.hpMax = 140;
-          player.hp = 140;
+          player.hpMax = BASE_HP * 1.4;
+          player.hp = player.hpMax;
           player.regen = 0.8;
           player.speed = 240;
           player.damage = 16;
@@ -720,8 +725,8 @@ btnPause.addEventListener("click", (e)=>{
           player.orbitalDamage = 12;
           player.damage = 18;
           player.fireRate = 4.0;
-          player.hpMax = 100;
-          player.hp = 100;
+          player.hpMax = BASE_HP * 1.0;
+          player.hp = player.hpMax;
           player.speed = 255;
 
           player.xpGainMult = 1.10;
@@ -944,6 +949,8 @@ btnPause.addEventListener("click", (e)=>{
         eliteReward: false,
         eliteMod: null,
         eliteColor: null,
+        dying: false,
+        deathT: 0,
 
         bossKind: extra?.bossKind || null,
         bossTier: tier,
@@ -1057,14 +1064,14 @@ btnPause.addEventListener("click", (e)=>{
     function findNearestEnemy(){
       let best = null, bestD = Infinity;
       for (const e of enemies){
-        if (e.dead) continue;
+        if (e.dead || e.dying) continue;
         if (e.type==="boss"){
           const d = (e.x-player.x)**2 + (e.y-player.y)**2;
           if (d < bestD*1.1){ bestD = d; best = e; }
         }
       }
       for (const e of enemies){
-        if (e.dead) continue;
+        if (e.dead || e.dying) continue;
         if (e.type==="boss") continue;
         const d = (e.x-player.x)**2 + (e.y-player.y)**2;
         if (d < bestD){ bestD = d; best = e; }
@@ -1077,7 +1084,7 @@ btnPause.addEventListener("click", (e)=>{
       let best = null;
       let bestD = Infinity;
       for (const e of candidates){
-        if (e.dead) continue;
+        if (e.dead || e.dying) continue;
         if (e.id === excludeId || e.id === excludeId2) continue;
         const d = (e.x - x) ** 2 + (e.y - y) ** 2;
         if (d < bestD){ bestD = d; best = e; }
@@ -1158,7 +1165,7 @@ btnPause.addEventListener("click", (e)=>{
         gridQueryCircle(ox, oy, 7 + ENEMY_MAX_R, candidates);
         for (let i=candidates.length-1; i>=0; i--){
           const e = candidates[i];
-          if (e.dead) continue;
+          if (e.dead || e.dying) continue;
           if (!e._oh) e._oh = new Float32Array(24);
           e._oh[k] = Math.max(0, (e._oh[k]||0) - dt);
           if (e._oh[k] > 0) continue;
@@ -1186,7 +1193,7 @@ btnPause.addEventListener("click", (e)=>{
       gridQueryCircle(player.x, player.y, player.auraRadius + ENEMY_MAX_R, candidates);
       for (let i=candidates.length-1; i>=0; i--){
         const e = candidates[i];
-        if (e.dead) continue;
+        if (e.dead || e.dying) continue;
         const dx = e.x-player.x, dy = e.y-player.y;
         const d = Math.hypot(dx,dy);
         if (d <= player.auraRadius + e.r){
@@ -1396,8 +1403,18 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       killEnemy(e);
     }
 
-    function killEnemy(e){
+    function killEnemy(e, immediate=false){
       if (!e || e.dead) return;
+      if (e.type === "burst" && !immediate){
+        if (!e.dying){
+          e.dying = true;
+          e.deathT = BURST_TELEGRAPH;
+          e.hitFlash = Math.max(e.hitFlash, 0.12);
+          e.vx = 0;
+          e.vy = 0;
+        }
+        return;
+      }
       e.dead = true;
       state.kills += 1;
       burst(e.x,e.y, randi(10,16), 220, 0.35);
@@ -1495,6 +1512,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       novaDamage:{title:"Нова: урон",     max: 10, desc:(lv)=>`+18% урон новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaDamage *= 1.18; } },
       novaRate: { title:"Нова: скор. атаки", max: 10, desc:(lv)=>`+15% скорость атаки новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaRate *= 1.15; } },
       novaSpeed:{ title:"Нова: скорость", max: 10, desc:(lv)=>`+15% скорость снаряда новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaSpeed *= 1.15; } },
+      novaMagnet:{ title:"Нова: притяжение", max: 6, desc:(lv)=>`+16 радиус притяжения (ур. ${lv+1}/6, бонус за урон)`, apply:()=>{ player.novaMagnet = Math.min(6, player.novaMagnet + 1); } },
       bulletSpeed:{ title:"Скорость пули",max: 10, desc:(lv)=>`+15% bullet speed (ур. ${lv+1}/10)`, apply:()=>{ player.bulletSpeed *= 1.15; } },
       crit:     { title:"Криты",          max: 10, desc:(lv)=>`+5% crit chance (ур. ${lv+1}/10)`, apply:()=>{ player.critChance = Math.min(0.85, player.critChance + 0.05); } },
 
@@ -1530,12 +1548,18 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     const upgradeList = Object.keys(U);
     const getLevel = (id)=>player.u[id]||0;
     const atMax = (id)=>getLevel(id)>=U[id].max;
+    function getNovaMagnetRadius(){
+      const lv = getLevel("novaMagnet");
+      if (lv <= 0) return 0;
+      const dmgLv = getLevel("novaDamage");
+      return 60 + lv * 16 + dmgLv * 4;
+    }
 
     function isEligible(id){
       if (atMax(id)) return false;
       if ((id === "auraRadius" || id === "auraDps" || id === "auraSlow") && !player.aura) return false;
       if ((id === "orbitalDmg" || id === "orbitalRadius" || id === "orbitalSpeedUp") && player.orbitals <= 0) return false;
-      if ((id === "novaDamage" || id === "novaRate" || id === "novaSpeed") && player.novaCount <= 0) return false;
+      if ((id === "novaDamage" || id === "novaRate" || id === "novaSpeed" || id === "novaMagnet") && player.novaCount <= 0) return false;
       if (id === "ricochetBounces" && (player.ricochetChance || 0) <= 0) return false;
       return true;
     }
@@ -1556,13 +1580,13 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         if (!isEligible(id)) continue;
 
         let w = 1;
-        const weaponish = (id==="fireRate"||id==="damage"||id==="pierce"||id==="multishot"||id==="crit"||id==="critMultUp"||id==="bulletSize"||id==="orbital"||id==="orbitalDmg"||id==="orbitalSpeedUp"||id==="aura"||id==="auraDps"||id==="auraSlow"||id==="nova"||id==="novaDamage"||id==="novaRate"||id==="novaSpeed"||id==="ricochetChance"||id==="ricochetBounces");
+        const weaponish = (id==="fireRate"||id==="damage"||id==="pierce"||id==="multishot"||id==="crit"||id==="critMultUp"||id==="bulletSize"||id==="orbital"||id==="orbitalDmg"||id==="orbitalSpeedUp"||id==="aura"||id==="auraDps"||id==="auraSlow"||id==="nova"||id==="novaDamage"||id==="novaRate"||id==="novaSpeed"||id==="novaMagnet"||id==="ricochetChance"||id==="ricochetBounces");
         const survival = (id==="hp"||id==="regen"||id==="speed"||id==="magnet"||id==="armor"||id==="dodge"||id==="lifesteal"||id==="xpGain"||id==="rerollCap"||id==="auraRadius"||id==="orbitalRadius"||id==="bulletSpeed");
 
         if (rarity === "rare"){
           w *= weaponish ? 2.2 : (survival ? 1.3 : 1.0);
         } else if (rarity === "epic"){
-          w *= (id==="multishot"||id==="pierce"||id==="orbital"||id==="aura"||id==="damage"||id==="fireRate"||id==="critMultUp"||id==="lifesteal"||id==="nova"||id==="novaDamage"||id==="ricochetChance"||id==="ricochetBounces") ? 3.0 : 1.1;
+          w *= (id==="multishot"||id==="pierce"||id==="orbital"||id==="aura"||id==="damage"||id==="fireRate"||id==="critMultUp"||id==="lifesteal"||id==="nova"||id==="novaDamage"||id==="novaMagnet"||id==="ricochetChance"||id==="ricochetBounces") ? 3.0 : 1.1;
         } else {
           w *= (id==="speed"||id==="fireRate"||id==="damage"||id==="hp"||id==="magnet") ? 1.3 : 1.0;
         }
@@ -1585,6 +1609,10 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
     let currentChoices = [];
     let pickerSource = "level";
+
+    function updateRerollsUI(){
+      elRerolls.textContent = `Reroll ${player.rerolls}`;
+    }
 
     function buildChoices(source){
       pickerSource = source;
@@ -1622,6 +1650,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       buildChoices(source);
       renderChoices();
       btnReroll.disabled = player.rerolls <= 0;
+      updateRerollsUI();
     }
 
     function renderChoices(){
@@ -1666,6 +1695,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       buildChoices(pickerSource);
       renderChoices();
       btnReroll.disabled = player.rerolls <= 0;
+      updateRerollsUI();
     }
 
     function doSkip(){
@@ -1810,7 +1840,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         spawn.nextBossAt = state.t + spawn.bossEvery;
       }
 
-      state.difficulty = 1 + (lvl - 1) * 0.35;
+      state.difficulty = 1 + (lvl - 1) * 0.35 + (state.t / 60) * 0.1;
       spawn.interval = clamp(0.85 - (lvl - 1) * 0.02, 0.22, 0.85);
       spawn.packChance = clamp(0.10 + (lvl - 1) * 0.01, 0.10, 0.35);
 
@@ -1897,7 +1927,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         gridQueryCircle(b.x, b.y, b.r + ENEMY_MAX_R, candidates);
         for (let j=candidates.length-1;j>=0;j--){
           const e=candidates[j];
-          if (e.dead) continue;
+          if (e.dead || e.dying) continue;
           if (b.lastHitId && e.id === b.lastHitId) continue;
           if (!circleHit(b.x,b.y,b.r, e.x,e.y,e.r)) continue;
 
@@ -1966,6 +1996,11 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       for (let i=enemies.length-1;i>=0;i--){
         const e=enemies[i];
         if (e.dead) continue;
+        if (e.dying){
+          e.deathT = Math.max(0, e.deathT - dt);
+          if (e.deathT <= 0) killEnemy(e, true);
+          continue;
+        }
         e.hitFlash = Math.max(0, e.hitFlash - dt);
 
         const dx = player.x - e.x, dy = player.y - e.y;
@@ -2058,6 +2093,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       pruneDeadEnemies();
 
       // XP drops update + pickup
+      const novaMagnetR = getNovaMagnetRadius();
+      const novaBullets = (novaMagnetR > 0) ? bullets.filter(b => b.isNova) : [];
       for (let i = drops.length - 1; i >= 0; i--) {
         const g = drops[i];
         g.t += dt;
@@ -2068,13 +2105,40 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         g.x += g.vx * dt;
         g.y += g.vy * dt;
 
-        const dx = player.x - g.x;
-        const dy = player.y - g.y;
-        const dist = Math.hypot(dx, dy) || 1;
+        let dx = player.x - g.x;
+        let dy = player.y - g.y;
+        let dist = Math.hypot(dx, dy) || 1;
 
-        if (dist < player.magnet) {
-          const pull = (1 - dist / player.magnet);
-          const speed = 240 + 520 * pull;
+        let targetX = player.x;
+        let targetY = player.y;
+        let targetMagnet = player.magnet;
+        let useNova = false;
+        if (novaBullets.length){
+          let best = null;
+          let bestD = Infinity;
+          for (const b of novaBullets){
+            const ndx = b.x - g.x;
+            const ndy = b.y - g.y;
+            const d = ndx*ndx + ndy*ndy;
+            if (d < bestD){
+              bestD = d;
+              best = b;
+            }
+          }
+          if (best && bestD <= novaMagnetR * novaMagnetR){
+            targetX = best.x;
+            targetY = best.y;
+            targetMagnet = novaMagnetR;
+            dx = targetX - g.x;
+            dy = targetY - g.y;
+            dist = Math.hypot(dx, dy) || 1;
+            useNova = true;
+          }
+        }
+
+        if (dist < targetMagnet) {
+          const pull = (1 - dist / targetMagnet);
+          const speed = (useNova ? 340 : 240) + (useNova ? 680 : 520) * pull;
           g.x += (dx / dist) * speed * dt;
           g.y += (dy / dist) * speed * dt;
         }
@@ -2129,6 +2193,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       else elChest.textContent = `Chest ${Math.max(0, Math.ceil(state.chestTimer))}s`;
 
       elRerolls.textContent = `Reroll ${player.rerolls}`;
+      if (elThreat) elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;
     }
 
     function render(){
@@ -2317,12 +2382,24 @@ if (!onScreen){
         ctx.arc(sx,sy,e.r,0,TAU);
         ctx.fill();
 
+        if (e.dying){
+          const p = clamp(1 - (e.deathT / BURST_TELEGRAPH), 0, 1);
+          ctx.globalAlpha = 0.9;
+          ctx.lineWidth = 2 + p * 3;
+          ctx.strokeStyle = "rgba(255,230,150,0.95)";
+          ctx.beginPath();
+          ctx.arc(sx,sy,e.r + 6 + p * 6,0,TAU);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+
         if (e.elite){
-          ctx.globalAlpha = 0.7;
+          const pulse = 0.5 + 0.5 * Math.sin(state.t * 5 + e.id * 0.7);
+          ctx.globalAlpha = 0.55 + pulse * 0.25;
           ctx.lineWidth = 3;
           ctx.strokeStyle = e.eliteColor || "rgba(255,220,120,0.9)";
           ctx.beginPath();
-          ctx.arc(sx,sy,e.r+6,0,TAU);
+          ctx.arc(sx,sy,e.r + 5 + pulse * 4,0,TAU);
           ctx.stroke();
           ctx.globalAlpha = 1;
         }
