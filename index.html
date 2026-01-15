@@ -389,6 +389,7 @@
     const XP_BONUS_NORMAL = 0.0005;
     const XP_BONUS_ELITE = 0.002;
     const XP_BONUS_BOSS = 0.01;
+    const BOSS_HP_EXTRA = 1.05;
     const TURRET_AGGRO_BASE = 220;
     const TURRET_RANGE = 520;
     const TURRET_FIRE_RATE = 1.8;
@@ -723,14 +724,19 @@ btnPause.addEventListener("click", (e)=>{
       return base * (1 + TURRET_SIZE_LV_BONUS * (lvl - 1));
     }
     function getTurretDamage(){
-      const lv = getLevel("turretDamage");
-      return TURRET_DAMAGE * Math.pow(1.18, lv);
+      const lv = getLevel("turretLevel");
+      return TURRET_DAMAGE * Math.pow(1.12, lv);
+    }
+    function getTurretFireRate(){
+      const lv = getLevel("turretLevel");
+      return TURRET_FIRE_RATE * Math.pow(1.12, lv);
     }
     function getOrbitalSize(){
       return ORBITAL_BASE_SIZE * (player.orbitalRadius / ORBITAL_BASE_DISTANCE);
     }
     function getTurretHpMax(){
-      return player.hpMax * 1.25;
+      const lv = getLevel("turretLevel");
+      return player.hpMax * 1.4 * Math.pow(1.12, lv);
     }
     function hasTurretHeal(){
       return getLevel("turretHeal") > 0;
@@ -1000,7 +1006,7 @@ btnPause.addEventListener("click", (e)=>{
         dasher:   { r:13, hp:44,  spd:150, dmg:14, xp:14 }, // рывки к игроку
         shield:   { r:16, hp:95,  spd:110, dmg:13, xp:18 }, // снижает урон от пуль
         triad:    { r:15, hp:70,  spd:112, dmg:14, xp:20, triRad:24, triSpin:4.6, triShotRate:0.85, triShotSpeed:280, triShotDmg:9 }, // вращающийся треугольник + залп
-        blaster:  { r:14, hp:78,  spd:106, dmg:12, xp:22, shotRate:1.0, shotSpeed:300, shotDmg:12, shotSize:5, shotLife:3.0, explodeR:44, explodePush:18, burstGap:0.12, burstCooldown:1.2, bulletColor:"rgba(255,235,120,0.98)", bulletGlow:"rgba(255,230,140,0.95)" }, // желтые взрывные снаряды очередями
+        blaster:  { r:14, hp:78,  spd:106, dmg:12, xp:22, shotRate:1.0, shotSpeed:300, shotDmg:12, shotSize:5, shotLife:3.0, explodeR:44, explodePush:18, burstGap:0.12, burstCooldown:2.4, bulletColor:"rgba(255,235,120,0.98)", bulletGlow:"rgba(255,230,140,0.95)" }, // желтые взрывные снаряды очередями
         burst:    { r:14, hp:60,  spd:112, dmg:11, xp:17, burstN:6, burstSpeed:270, burstDmg:9 }, // при смерти выпускает пули
         splitter: { r:15, hp:78,  spd:118, dmg:12, xp:18 }, // при смерти делится на миньонов
         minion:   { r:10, hp:26,  spd:170, dmg:9,  xp:6  }, // спавнится от splitter
@@ -1033,8 +1039,19 @@ btnPause.addEventListener("click", (e)=>{
         const pSpitter  = (diff > 2.5) ? (0.03 + Math.min(0.09, (diff-2.5)*0.015)) : 0.0;
         const pShield   = (diff > 3.0) ? (0.03 + Math.min(0.08, (diff-3)*0.013)) : 0.0;
         const pTriad    = (player.lvl >= 15) ? (0.02 + Math.min(0.07, (player.lvl-15)*0.006)) : 0.0;
-        const unlockBlaster = (player.lvl >= 20 || state.t >= 12*60);
-        const pBlaster  = unlockBlaster ? (0.02 + Math.min(0.07, diff*0.010)) : 0.0;
+        const unlockBlaster = (player.lvl >= 20 || state.t >= 10*60);
+        let blasterCount = 0;
+        if (unlockBlaster){
+          for (const ee of enemies){
+            if (ee.type === "blaster" && !ee.dead && !ee.dying) blasterCount += 1;
+          }
+        }
+        let pBlaster = unlockBlaster ? (0.01 + Math.min(0.035, diff*0.005)) : 0.0;
+        if (unlockBlaster && blasterCount >= 12){
+          const t = clamp((24 - blasterCount) / 12, 0, 1);
+          pBlaster *= t;
+        }
+        if (blasterCount >= 24) pBlaster = 0;
         const pBurst    = (diff > 3.0) ? (0.02 + Math.min(0.07, (diff-3)*0.012)) : 0.0;
         const pSplitter = (diff > 3.5) ? (0.02 + Math.min(0.07, (diff-3.5)*0.012)) : 0.0;
         const pBrute    = (diff > 4.0) ? (0.02 + Math.min(0.06, (diff-4)*0.010)) : 0.0;
@@ -1061,6 +1078,7 @@ btnPause.addEventListener("click", (e)=>{
           if (roll < acc){ type = p.t; break; }
         }
         if (!type) type = "grunt";
+        if (type === "blaster" && blasterCount >= 25) type = "grunt";
       }
 
       const b = enemyBase(type);
@@ -1082,12 +1100,13 @@ btnPause.addEventListener("click", (e)=>{
         if (makeElite) eliteMod = ELITE_MODS[randi(0, ELITE_MODS.length - 1)];
       }
 
+      const hpMult = (type === "boss" ? BOSS_HP_EXTRA : 1);
       const baseEnemy = {
         type,
         x: ex, y: ey,
         r: b.r,
-        hpMax: b.hp * scale,
-        hp: b.hp * scale,
+        hpMax: b.hp * scale * hpMult,
+        hp: b.hp * scale * hpMult,
         spd: b.spd * (0.9 + Math.min(0.35, state.difficulty*0.03)),
         dmg: b.dmg * (0.9 + Math.min(0.6, state.difficulty*0.03)),
         xp: b.xp,
@@ -1400,8 +1419,14 @@ btnPause.addEventListener("click", (e)=>{
       for (let i=turrets.length-1; i>=0; i--){
         const t = turrets[i];
         const size = getTurretSize();
+        const hpMax = getTurretHpMax();
         t.size = size;
         t.r = size * 0.5;
+        if (t.hpMax !== hpMax){
+          const delta = hpMax - t.hpMax;
+          t.hpMax = hpMax;
+          t.hp = Math.min(hpMax, t.hp + delta);
+        }
         t.hitCd = Math.max(0, t.hitCd - dt);
         if (t.hp <= 0){ turrets.splice(i,1); continue; }
 
@@ -1424,7 +1449,7 @@ btnPause.addEventListener("click", (e)=>{
               lastHitId: null,
             });
           }
-          t.shotTimer = 1 / TURRET_FIRE_RATE;
+          t.shotTimer = 1 / getTurretFireRate();
         }
       }
     }
@@ -1901,7 +1926,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         const aggroText = lvl === 1 ? "малое агро" : "агро больше";
         return `${chance}% шанс · макс ${maxT} · ${aggroText} (ур. ${lvl}/4)`;
       }, apply:()=>{} },
-      turretDamage:{ title:"Турель: урон", max: 6, desc:(lv)=>`+18% урон турели (ур. ${lv+1}/6)`, apply:()=>{} },
+      turretLevel:{ title:"Турель: усиление", max: 6, desc:(lv)=>`+12% урон/скорость/HP турели (ур. ${lv+1}/6)`, apply:()=>{} },
       turretHeal:{ title:"Турель: сбор XP", max: 1, desc:()=>`Турель притягивает XP-шарики к игроку`, apply:()=>{} },
       bulletSpeed:{ title:"Скорость пули",max: 10, desc:(lv)=>`+15% bullet speed (ур. ${lv+1}/10)`, apply:()=>{ player.bulletSpeed *= 1.15; } },
       crit:     { title:"Криты",          max: 10, desc:(lv)=>`+5% crit chance (ур. ${lv+1}/10)`, apply:()=>{ player.critChance = Math.min(0.85, player.critChance + 0.05); } },
@@ -1952,7 +1977,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if ((id === "orbitalDmg" || id === "orbitalRadius" || id === "orbitalSpeedUp") && player.orbitals <= 0) return false;
       if ((id === "novaDamage" || id === "novaRate" || id === "novaSpeed" || id === "novaMagnet") && player.novaCount <= 0) return false;
       if (id === "ricochetBounces" && (player.ricochetChance || 0) <= 0) return false;
-      if ((id === "turretDamage" || id === "turretHeal") && getTurretLevel() <= 0) return false;
+      if ((id === "turretLevel" || id === "turretHeal") && getTurretLevel() <= 0) return false;
       return true;
     }
 
@@ -1972,13 +1997,13 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         if (!isEligible(id)) continue;
 
         let w = 1;
-        const weaponish = (id==="fireRate"||id==="damage"||id==="pierce"||id==="multishot"||id==="crit"||id==="critMultUp"||id==="bulletSize"||id==="orbital"||id==="orbitalDmg"||id==="orbitalSpeedUp"||id==="aura"||id==="auraDps"||id==="auraSlow"||id==="nova"||id==="novaDamage"||id==="novaRate"||id==="novaSpeed"||id==="novaMagnet"||id==="turret"||id==="turretDamage"||id==="turretHeal"||id==="ricochetChance"||id==="ricochetBounces");
+        const weaponish = (id==="fireRate"||id==="damage"||id==="pierce"||id==="multishot"||id==="crit"||id==="critMultUp"||id==="bulletSize"||id==="orbital"||id==="orbitalDmg"||id==="orbitalSpeedUp"||id==="aura"||id==="auraDps"||id==="auraSlow"||id==="nova"||id==="novaDamage"||id==="novaRate"||id==="novaSpeed"||id==="novaMagnet"||id==="turret"||id==="turretLevel"||id==="turretHeal"||id==="ricochetChance"||id==="ricochetBounces");
         const survival = (id==="hp"||id==="regen"||id==="speed"||id==="magnet"||id==="armor"||id==="dodge"||id==="lifesteal"||id==="xpGain"||id==="rerollCap"||id==="auraRadius"||id==="orbitalRadius"||id==="bulletSpeed");
 
         if (rarity === "rare"){
           w *= weaponish ? 2.2 : (survival ? 1.3 : 1.0);
         } else if (rarity === "epic"){
-          w *= (id==="multishot"||id==="pierce"||id==="orbital"||id==="aura"||id==="damage"||id==="fireRate"||id==="critMultUp"||id==="lifesteal"||id==="nova"||id==="novaDamage"||id==="novaMagnet"||id==="turret"||id==="turretDamage"||id==="turretHeal"||id==="ricochetChance"||id==="ricochetBounces") ? 3.0 : 1.1;
+          w *= (id==="multishot"||id==="pierce"||id==="orbital"||id==="aura"||id==="damage"||id==="fireRate"||id==="critMultUp"||id==="lifesteal"||id==="nova"||id==="novaDamage"||id==="novaMagnet"||id==="turret"||id==="turretLevel"||id==="turretHeal"||id==="ricochetChance"||id==="ricochetBounces") ? 3.0 : 1.1;
         } else {
           w *= (id==="speed"||id==="fireRate"||id==="damage"||id==="hp"||id==="magnet") ? 1.3 : 1.0;
         }
