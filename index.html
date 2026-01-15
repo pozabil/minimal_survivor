@@ -563,8 +563,8 @@ btnPause.addEventListener("click", (e)=>{
       x:0, y:0, r:14,
       vx:0, vy:0,
       speed:260,
-      hpMax:100,
-      hp:100,
+      hpMax:50,
+      hp:50,
       regen:0,
       invuln:0,
       magnet:120,
@@ -661,7 +661,8 @@ btnPause.addEventListener("click", (e)=>{
       packChance: 0.12,
       bossEvery: 120,
       nextBossAt: 120,
-      bossAlive: false,
+      bossActive: 0,
+      maxBosses: 1,
       bossCount: 0,
       bossTier: 0,
     };
@@ -1015,8 +1016,8 @@ btnPause.addEventListener("click", (e)=>{
       return available[randi(0, available.length-1)];
     }
     function spawnBoss(){
-      if (spawn.bossAlive) return;
-      spawn.bossAlive = true;
+      if (spawn.bossActive >= spawn.maxBosses) return;
+      spawn.bossActive += 1;
       spawn.bossCount += 1;
       spawn.bossTier = Math.max(spawn.bossTier, spawn.bossCount - 1);
       const kind = pickBossKind();
@@ -1470,8 +1471,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
 
       if (e.type==="boss"){
-        spawn.bossAlive = false;
-        bossWrap.style.display = "none";
+        spawn.bossActive = Math.max(0, spawn.bossActive - 1);
+        if (spawn.bossActive <= 0) bossWrap.style.display = "none";
         player.hp = Math.min(player.hpMax, player.hp + 30);
         for(let i=0;i<8;i++) dropXp(e.x+randf(-20,20), e.y+randf(-20,20), 14);
       }
@@ -1801,11 +1802,19 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
     function update(dt){
       state.t += dt;
 
-      state.difficulty = 1 + state.t/30;
-      spawn.interval = clamp(0.85 - state.t/180, 0.22, 0.85);
-      spawn.packChance = clamp(0.10 + state.t/240, 0.10, 0.35);
+      const lvl = player.lvl;
+      const bossReduce = Math.floor((lvl - 1) / 5);
+      spawn.bossEvery = Math.max(60, 120 - bossReduce * 5);
+      spawn.maxBosses = (lvl >= 20) ? (2 + Math.floor((lvl - 20) / 10)) : 1;
+      if (spawn.nextBossAt > state.t + spawn.bossEvery){
+        spawn.nextBossAt = state.t + spawn.bossEvery;
+      }
 
-      if (!spawn.bossAlive && state.t >= spawn.nextBossAt){
+      state.difficulty = 1 + (lvl - 1) * 0.35;
+      spawn.interval = clamp(0.85 - (lvl - 1) * 0.02, 0.22, 0.85);
+      spawn.packChance = clamp(0.10 + (lvl - 1) * 0.01, 0.10, 0.35);
+
+      if (state.t >= spawn.nextBossAt && spawn.bossActive < spawn.maxBosses){
         spawn.nextBossAt += spawn.bossEvery;
         spawnBoss();
       }
@@ -1850,11 +1859,15 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
       // spawns
       spawn.timer -= dt;
+      const extraSpawns = Math.max(0, Math.min(5, Math.floor((lvl - 10) / 5)));
+      const spawnCount = 1 + extraSpawns;
       while(spawn.timer <= 0){
         spawn.timer += spawn.interval;
-        const pack = Math.random() < spawn.packChance;
-        if (spawn.bossAlive && Math.random() < 0.55) continue;
+        for (let s=0; s<spawnCount; s++){
+          const pack = Math.random() < spawn.packChance;
+        if (spawn.bossActive > 0 && Math.random() < 0.55) continue;
         spawnEnemy(pack);
+      }
       }
 
       // chest pickup
