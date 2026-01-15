@@ -44,7 +44,10 @@
       100%{ opacity:.35; }
     }
     .bossWrap{ margin-top:10px; display:none; }
+    .bossList{ display:flex; flex-direction:column; gap:8px; }
+    .bossRow{ display:flex; flex-direction:column; }
     .bossName{ opacity:.9; margin-bottom:6px; }
+    .bossRow .bossName{ margin-bottom:4px; }
     .hint{opacity:.85; font-size:13px; margin-top:10px;}
 
     .overlay{
@@ -180,6 +183,8 @@
       <span id="time">00:00</span><span>·</span>
       <span id="lvl">Lv 1</span><span>·</span>
       <span id="kills">Kills 0</span><span>·</span>
+      <span id="enemiesCount">Enemies 0</span><span>·</span>
+      <span id="shots">Shots 0</span><span>·</span>
       <span id="dps">Dmg 0</span><span>·</span>
       <span id="fps">FPS --</span><span>·</span>
       <span id="wep">W: Bullets</span><span>·</span>
@@ -201,8 +206,7 @@
   </div>
 
   <div class="bossWrap" id="bossWrap">
-    <div class="bossName" id="bossName">BOSS</div>
-    <div class="bar"><div id="bossbar" class="fill"></div></div>
+    <div class="bossList" id="bossList"></div>
   </div>
 
   <div class="hint">
@@ -306,6 +310,8 @@
     const elTime = document.getElementById("time");
     const elLvl  = document.getElementById("lvl");
     const elKills= document.getElementById("kills");
+    const elEnemiesCount = document.getElementById("enemiesCount");
+    const elShots = document.getElementById("shots");
     const elDps  = document.getElementById("dps");
     const elFps  = document.getElementById("fps");
     const elWep  = document.getElementById("wep");
@@ -321,8 +327,7 @@
     const xptext = document.getElementById("xptext");
 
     const bossWrap = document.getElementById("bossWrap");
-    const bossName = document.getElementById("bossName");
-    const bossbar  = document.getElementById("bossbar");
+    const bossList = document.getElementById("bossList");
 
     // Overlays
     const startOverlay = document.getElementById("start");
@@ -673,7 +678,7 @@ btnPause.addEventListener("click", (e)=>{
       orbitalHitCD: 0.22,
 
       aura: false,
-      auraRadius: 58,
+      auraRadius: 64,
       auraDps: 14,
 
       auraSlow: 0.0,
@@ -1084,9 +1089,10 @@ btnPause.addEventListener("click", (e)=>{
       const b = enemyBase(type);
       const tier = extra?.bossTier || 0;
 
+      const normalHpBoost = 0.09 + (player.lvl - 1) * 0.032 + (state.t / 60) * 0.0095;
       const scale = (type==="boss")
         ? (1 + Math.min(3.2, state.difficulty*0.08) + tier*0.35)
-        : (1 + Math.min(2.1, state.difficulty*0.09));
+        : (1 + Math.min(3.2, normalHpBoost));
 
       let eliteMod = null;
       let makeElite = false;
@@ -1229,6 +1235,7 @@ btnPause.addEventListener("click", (e)=>{
       { id:"warden",   name:"Warden",     unlock:6 },
       { id:"vortex",   name:"Vortex",     unlock:7 },
     ];
+    const BOSS_NAME = Object.fromEntries(BOSS_KINDS.map((b)=>[b.id, b.name]));
     function pickBossKind(){
       const maxUnlock = Math.min(7, spawn.bossTier);
       const available = BOSS_KINDS.filter(b => b.unlock <= maxUnlock);
@@ -1242,7 +1249,6 @@ btnPause.addEventListener("click", (e)=>{
       const kind = pickBossKind();
       spawnEnemy(false, "boss", { bossKind: kind.id, bossTier: spawn.bossTier });
       bossWrap.style.display = "block";
-      bossName.textContent = `BOSS: ${kind.name} (T${spawn.bossTier+1})`;
     }
 
     // Chest
@@ -1545,7 +1551,7 @@ btnPause.addEventListener("click", (e)=>{
                 e.shotSpeed, e.shotDmg,
                 e.shotSize || 4,
                 e.shotLife || 3.0,
-                { color: e.bulletColor, glow: e.bulletGlow, explodeR: e.explodeR, explodePush: e.explodePush }
+                { color: e.bulletColor, explodeR: e.explodeR, explodePush: e.explodePush }
               );
             }
             e.burstCd = e.burstCooldown || 1.0;
@@ -1574,7 +1580,7 @@ btnPause.addEventListener("click", (e)=>{
           e.shotSpeed, e.shotDmg,
           e.shotSize || 4,
           e.shotLife || 3.0,
-          { color: e.bulletColor, glow: e.bulletGlow, explodeR: e.explodeR, explodePush: e.explodePush }
+          { color: e.bulletColor, explodeR: e.explodeR, explodePush: e.explodePush }
         );
         e.burstLeft -= 1;
         e.shotTimer = e.burstGap || 0.12;
@@ -2013,7 +2019,9 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
           if (id === "regen" || id === "lifesteal") w *= 2.8;
         }
         if (hpRatio < 0.10 && id === "hp") w *= 2.6;
-        w *= 1 / (1 + getLevel(id) * 0.45);
+        const lvl = getLevel(id);
+        w *= 1 / (1 + lvl * 0.36);
+        if (id === "lifesteal" && lvl > 0) w *= 1 / (1 + lvl * 0.25);
         pool.push([id, w]);
       }
       return pool;
@@ -2289,7 +2297,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       }
 
       state.difficulty = 1 + (lvl - 1) * 0.35 + (state.t / 60) * 0.1;
-      spawn.interval = clamp(0.85 - (lvl - 1) * 0.02, 0.22, 0.85);
+      spawn.interval = clamp(0.85 - (lvl - 1) * 0.02, 0.28, 0.85);
       spawn.packChance = clamp(0.10 + (lvl - 1) * 0.01, 0.10, 0.35);
 
       if (state.t >= spawn.nextBossAt && spawn.bossActive < spawn.maxBosses){
@@ -2739,16 +2747,34 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       }
 
       // boss ui
-      let boss = null;
-      for (const ee of enemies) if (ee.type==="boss") { boss = ee; break; }
-      if (boss){
+      const bosses = [];
+      for (const ee of enemies){
+        if (ee.type === "boss" && !ee.dead) bosses.push(ee);
+      }
+      if (bosses.length){
         bossWrap.style.display = "block";
-        bossbar.style.width = `${clamp(boss.hp/boss.hpMax,0,1)*100}%`;
-      } else bossWrap.style.display = "none";
+        let html = "";
+        for (const b of bosses){
+          const name = BOSS_NAME[b.bossKind] || "Boss";
+          const tier = (b.bossTier || 0) + 1;
+          const hpPct = clamp(b.hp / b.hpMax, 0, 1);
+          html += `<div class="bossRow"><div class="bossName">BOSS: ${name} (T${tier})</div><div class="bar"><div class="fill" style="width:${(hpPct*100).toFixed(2)}%"></div></div></div>`;
+        }
+        bossList.innerHTML = html;
+      } else {
+        bossWrap.style.display = "none";
+        bossList.innerHTML = "";
+      }
 
       // HUD
       elLvl.textContent = `Lv ${player.lvl}`;
       elKills.textContent = `Kills ${state.kills}`;
+      if (elEnemiesCount){
+        let alive = 0;
+        for (const e of enemies) if (!e.dead) alive += 1;
+        elEnemiesCount.textContent = `Enemies ${alive}`;
+      }
+      if (elShots) elShots.textContent = `Shots ${bullets.length + enemyBullets.length}`;
       elDps.textContent = `Dmg ${getDps()}`;
       elTime.textContent = fmtTime(state.t);
 
@@ -3166,8 +3192,19 @@ if (!onScreen){
 
       // vignette
       const grd = ctx.createRadialGradient(w*0.5,h*0.5, Math.min(w,h)*0.15, w*0.5,h*0.5, Math.max(w,h)*0.75);
+      const hpRatio = player.hpMax > 0 ? player.hp / player.hpMax : 1;
+      const low = clamp((0.5 - hpRatio) / 0.5, 0, 1);
+      let edgeColor = "rgba(0,0,0,0.55)";
+      if (low > 0){
+        const pulse = 0.6 + 0.4 * Math.sin(state.t * 6);
+        const r = Math.round(255 + (200 - 255) * low);
+        const g = Math.round(140 + (20 - 140) * low);
+        const b = Math.round(60 + (20 - 60) * low);
+        const alpha = (0.45 + 0.25 * low) * pulse;
+        edgeColor = `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+      }
       grd.addColorStop(0,"rgba(0,0,0,0)");
-      grd.addColorStop(1,"rgba(0,0,0,0.55)");
+      grd.addColorStop(1, edgeColor);
       ctx.fillStyle=grd;
       ctx.fillRect(0,0,w,h);
     }
