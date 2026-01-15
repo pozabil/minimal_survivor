@@ -1,0 +1,2108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Top-Down Survivor</title>
+  <style>
+    html, body { margin:0; padding:0; background:#0b0e14; overflow:hidden; }
+    canvas { display:block; width:100vw; height:100vh; image-rendering: pixelated; touch-action:none; }
+
+    .hud{
+      position:fixed; left:12px; top:10px; right:12px;
+      font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:#e8eefc; pointer-events:none;
+      text-shadow:0 1px 0 rgba(0,0,0,.35);
+      z-index: 2;
+    }
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .badge{
+      display:inline-flex; gap:10px; align-items:center; flex-wrap:wrap;
+      padding:6px 10px; border-radius:10px;
+      background:rgba(255,255,255,.06); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+    }
+    .barWrap{display:flex; gap:10px; align-items:center; margin-top:8px;}
+    .bar{
+      width:240px; height:10px; border-radius:999px;
+      background:rgba(255,255,255,.12); overflow:hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+    }
+    .bar > div{height:100%; width:50%; background:rgba(255,255,255,.65);}
+    .bossWrap{ margin-top:10px; display:none; }
+    .bossName{ opacity:.9; margin-bottom:6px; }
+    .hint{opacity:.85; font-size:13px; margin-top:10px;}
+
+    .overlay{
+      position:fixed; inset:0; display:none; place-items:center;
+      background:rgba(0,0,0,.55);
+      font:16px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:#fff;
+      z-index: 5;
+    }
+    .panel{
+      width:min(920px, calc(100vw - 24px));
+      border-radius:18px;
+      background:rgba(15,18,28,.92);
+      box-shadow:0 12px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.10);
+      padding:18px;
+    }
+    .panel h2{margin:0 0 10px; font-size:18px;}
+    .choices{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+    .choice{
+      text-align:left; border-radius:14px; padding:12px;
+      background:rgba(255,255,255,.06);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);
+      cursor:pointer; user-select:none;
+    }
+    .choice:hover{background:rgba(255,255,255,.10);}
+    .choice .t{font-weight:800; margin-bottom:6px; display:flex; gap:8px; align-items:baseline; flex-wrap:wrap;}
+    .choice .d{opacity:.85; font-size:13px;}
+    .pill{
+      font-size:11px; padding:2px 8px; border-radius:999px;
+      background: rgba(255,255,255,.10);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+      opacity:.95;
+    }
+    .pill.common{ background: rgba(255,255,255,.10); }
+    .pill.rare{ background: rgba(120,220,255,.14); }
+    .pill.epic{ background: rgba(210,120,255,.16); }
+
+    .toolbar{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .btn{
+      pointer-events:auto;
+      border:0; cursor:pointer;
+      padding:10px 12px;
+      border-radius:12px;
+      background:rgba(255,255,255,.10);
+      color:#fff;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+    .btn:hover{ background:rgba(255,255,255,.14); }
+    .btn:disabled{ opacity:.45; cursor:not-allowed; }
+
+
+    .pauseBtn{
+      position: fixed;
+      right: 12px;
+      top: 10px;
+      z-index: 7;
+      display:none;
+      padding:10px 12px;
+      border-radius:12px;
+      font-weight:800;
+      line-height:1;
+    }
+    @media (min-width:901px){
+      .pauseBtn{ display:none !important; }
+    }
+
+    .grid2{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap:14px; margin-top:10px; }
+    .box{
+      border-radius:14px;
+      background:rgba(255,255,255,.06);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.10);
+      padding:12px;
+    }
+    .box h3{ margin:0 0 8px; font-size:14px; opacity:.95; }
+    .small{ font-size:13px; opacity:.9; }
+    .list{ display:flex; flex-direction:column; gap:6px; max-height: 320px; overflow:auto; padding-right:6px; }
+    .item{
+      display:flex; justify-content:space-between; gap:10px;
+      padding:8px 10px; border-radius:12px;
+      background:rgba(255,255,255,.05);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+      font-size:13px; opacity:.95;
+    }
+    .k{ opacity:.95; }
+    .v{ opacity:.75; white-space:nowrap; }
+
+    .joyWrap{
+      position: fixed; left: 0; top: 0;
+      width: 160px; height: 160px;
+      z-index: 6; pointer-events: none; touch-action: none;
+      transform: translate(-50%,-50%);
+      display:none;
+    }
+    .joyBase{
+      position:absolute; inset:0; border-radius: 999px;
+      background: rgba(255,255,255,.03);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.10);
+      backdrop-filter: blur(6px);
+    }
+    .joyKnob{
+      position:absolute; left:50%; top:50%;
+      width: 64px; height: 64px;
+      transform: translate(-50%,-50%);
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+
+    /* аварийный экран */
+    #fatal {
+      position:fixed; inset:0; display:none; place-items:center;
+      background:#0b0e14; color:#fff; z-index: 999;
+      font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      padding:18px;
+    }
+    #fatal .panel { max-width: 920px; }
+    @media (max-width:900px){
+      .choices{grid-template-columns:1fr;}
+      .grid2{grid-template-columns: 1fr;}
+      .bar{width:180px;}
+      .list{max-height: 240px;}
+    }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<button class="btn pauseBtn" id="btnPause" aria-label="Pause">⏸</button>
+
+<div class="hud">
+  <div class="row">
+    <div class="badge">
+      <span id="time">00:00</span><span>·</span>
+      <span id="lvl">Lv 1</span><span>·</span>
+      <span id="kills">Kills 0</span><span>·</span>
+      <span id="dps">Dmg 0</span><span>·</span>
+      <span id="fps">FPS --</span><span>·</span>
+      <span id="wep">W: Bullets</span><span>·</span>
+      <span id="chest">Chest 35s</span><span>·</span>
+      <span id="rerolls">Reroll 2</span>
+    </div>
+  </div>
+
+  <div class="barWrap">
+    <span style="width:52px; opacity:.9">HP</span>
+    <div class="bar"><div id="hpbar"></div></div>
+    <span id="hptext" style="opacity:.9"></span>
+  </div>
+  <div class="barWrap">
+    <span style="width:52px; opacity:.9">XP</span>
+    <div class="bar"><div id="xpbar"></div></div>
+    <span id="xptext" style="opacity:.9"></span>
+  </div>
+
+  <div class="bossWrap" id="bossWrap">
+    <div class="bossName" id="bossName">BOSS</div>
+    <div class="bar"><div id="bossbar"></div></div>
+  </div>
+
+  <div class="hint">
+    PC: WASD/стрелки · Esc — билд/пауза · Авто-стрельба · Босс каждые 2 минуты · Сундук ~каждые 35 секунд<br/>
+    Mobile: джойстик слева
+  </div>
+</div>
+
+<div class="overlay" id="start">
+  <div class="panel">
+    <h2>Выбери персонажа</h2>
+    <div class="choices" id="chars"></div>
+    <div class="hint">Скаут — усиленные сундуки, Танк — щит после попаданий, Маг — больше XP и стартовая орбиталка.</div>
+  </div>
+</div>
+
+<div class="overlay" id="picker">
+  <div class="panel">
+    <h2 id="pickerTitle">Выбери улучшение</h2>
+    <div class="choices" id="choices"></div>
+    <div class="toolbar">
+      <button class="btn" id="btnReroll">Reroll (R)</button>
+      <button class="btn" id="btnSkip">Skip (S)</button>
+      <button class="btn" id="btnShowBuild">Build</button>
+    </div>
+    <div class="hint" id="pickerHint">Клик по карточке или 1/2/3.</div>
+  </div>
+</div>
+
+<div class="overlay" id="pauseMenu">
+  <div class="panel">
+    <h2>Пауза — билд</h2>
+
+    <div class="grid2">
+      <div class="box">
+        <h3>Апгрейды</h3>
+        <div class="list" id="buildList"></div>
+      </div>
+
+      <div class="box">
+        <h3>Статы</h3>
+        <div class="small" id="buildStats"></div>
+
+        <div class="toolbar" style="margin-top:12px;">
+          <button class="btn" id="btnResume">Resume</button>
+          <button class="btn" id="btnRestart2">Restart</button>
+          <button class="btn" id="btnCopy">Copy stats</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="gameover">
+  <div class="panel">
+    <h2>Game Over</h2>
+    <div id="summary" style="opacity:.9; margin:8px 0 14px;"></div>
+    <div class="toolbar">
+      <button class="btn" id="restart">Restart</button>
+      <button class="btn" id="copyStats">Copy stats</button>
+    </div>
+  </div>
+</div>
+
+<div class="joyWrap" id="joy">
+  <div class="joyBase"></div>
+  <div class="joyKnob" id="knob"></div>
+</div>
+
+<div id="fatal">
+  <div class="panel">
+    <h2 style="margin:0 0 10px;">Ошибка запуска</h2>
+    <div id="fatalText" style="white-space:pre-wrap; opacity:.9"></div>
+    <div style="margin-top:12px; opacity:.75">
+      Если видишь это — скинь мне этот текст, и я починю под твой браузер.
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const fatal = document.getElementById("fatal");
+  const fatalText = document.getElementById("fatalText");
+
+  function crash(err){
+    console.error(err);
+    fatalText.textContent = String(err && err.stack ? err.stack : err);
+    fatal.style.display = "grid";
+  }
+
+  try {
+    const canvas = document.getElementById("c");
+
+    // SAFE getContext
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas 2D context is not available (canvas.getContext('2d') returned null).");
+
+    // HUD
+    const elTime = document.getElementById("time");
+    const elLvl  = document.getElementById("lvl");
+    const elKills= document.getElementById("kills");
+    const elDps  = document.getElementById("dps");
+    const elFps  = document.getElementById("fps");
+    const elWep  = document.getElementById("wep");
+    const elChest= document.getElementById("chest");
+    const elRerolls = document.getElementById("rerolls");
+
+    const hpbar  = document.getElementById("hpbar");
+    const xpbar  = document.getElementById("xpbar");
+    const hptext = document.getElementById("hptext");
+    const xptext = document.getElementById("xptext");
+
+    const bossWrap = document.getElementById("bossWrap");
+    const bossName = document.getElementById("bossName");
+    const bossbar  = document.getElementById("bossbar");
+
+    // Overlays
+    const startOverlay = document.getElementById("start");
+    const charsWrap = document.getElementById("chars");
+
+    const pickerOverlay = document.getElementById("picker");
+    const pickerTitle = document.getElementById("pickerTitle");
+    const pickerHint = document.getElementById("pickerHint");
+    const choicesWrap = document.getElementById("choices");
+    const btnReroll = document.getElementById("btnReroll");
+    const btnSkip = document.getElementById("btnSkip");
+    const btnShowBuild = document.getElementById("btnShowBuild");
+
+    const pauseMenu = document.getElementById("pauseMenu");
+    const buildListEl = document.getElementById("buildList");
+    const buildStatsEl = document.getElementById("buildStats");
+    const btnResume = document.getElementById("btnResume");
+    const btnRestart2 = document.getElementById("btnRestart2");
+    const btnCopy = document.getElementById("btnCopy");
+
+    const gameoverOverlay = document.getElementById("gameover");
+    const summaryEl = document.getElementById("summary");
+    const restartBtn = document.getElementById("restart");
+    const copyBtn = document.getElementById("copyStats");
+
+    const btnPause = document.getElementById("btnPause");
+
+    // Mobile joystick
+    const joy = document.getElementById("joy");
+    const knob = document.getElementById("knob");
+    const isTouch = (window.matchMedia && matchMedia("(pointer: coarse)").matches) || ("ontouchstart" in window);
+    if (isTouch) { joy.style.display = "none"; btnPause.style.display = "block"; }
+    const GAME_SCALE = isTouch ? 0.5 : 1;
+    const SPAWN_SCALE = 1 / GAME_SCALE;
+
+    // Resize
+    function resize(){
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      canvas.width = Math.floor(innerWidth * dpr);
+      canvas.height= Math.floor(innerHeight * dpr);
+      // dpr * GAME_SCALE — это zoom-out без потери "CSS fullscreen"
+      ctx.setTransform(dpr * GAME_SCALE, 0, 0, dpr * GAME_SCALE, 0, 0);
+    }
+    addEventListener("resize", resize, { passive:true });
+    resize();
+
+    // Utils
+    const TAU = Math.PI*2;
+    const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+    const lerp  = (a,b,t)=>a+(b-a)*t;
+    const randf = (a,b)=>a+Math.random()*(b-a);
+    const randi = (a,b)=>(a+Math.random()*(b-a+1))|0;
+
+    function circleHit(ax,ay,ar,bx,by,br){
+      const dx=ax-bx, dy=ay-by;
+      return dx*dx + dy*dy <= (ar+br)*(ar+br);
+    }
+
+    // anti-sticky push vector from B -> A
+    function pushAway(ax, ay, bx, by, strength){
+      const dx = ax - bx;
+      const dy = ay - by;
+      const d = Math.hypot(dx,dy) || 1;
+      return { x: (dx/d)*strength, y: (dy/d)*strength };
+    }
+
+    function fmtTime(t){
+      const mm = Math.floor(t/60);
+      const ss = Math.floor(t%60);
+      return String(mm).padStart(2,"0")+":"+String(ss).padStart(2,"0");
+    }
+
+    // roundRect polyfill
+    if (!CanvasRenderingContext2D.prototype.roundRect){
+      CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+        const rr = Math.min(r, w/2, h/2);
+        this.beginPath();
+        this.moveTo(x+rr,y);
+        this.arcTo(x+w,y, x+w,y+h, rr);
+        this.arcTo(x+w,y+h, x,y+h, rr);
+        this.arcTo(x,y+h, x,y, rr);
+        this.arcTo(x,y, x+w,y, rr);
+        this.closePath();
+        return this;
+      };
+    }
+
+    // Input
+    const keys = new Set();
+    addEventListener("keydown",(e)=>{
+      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+
+      if (e.code==="Escape"){
+        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid") return;
+        togglePauseMenu();
+        return;
+      }
+
+      if (pickerOverlay.style.display==="grid"){
+        if (e.key==="1") pickChoice(0);
+        if (e.key==="2") pickChoice(1);
+        if (e.key==="3") pickChoice(2);
+        if (e.key.toLowerCase()==="r") doReroll();
+        if (e.key.toLowerCase()==="s") doSkip();
+      }
+
+      keys.add(e.code);
+    }, { passive:false });
+    addEventListener("keyup",(e)=>keys.delete(e.code), { passive:true });
+
+    // Mobile joystick
+    let joyActive = false;
+    let joyVec = { x: 0, y: 0 };
+    let joyCenter = { x: 0, y: 0 };
+    const joyRadius = 70;
+
+    if (isTouch){
+
+// virtual joystick appears where you touch (left side)
+const JOY_SIZE = 160;
+const JOY_HALF = JOY_SIZE / 2;
+const JOY_MARGIN = 10;
+let joyPointerId = null;
+
+const overlaysBlockInput = () =>
+  (pickerOverlay.style.display === "grid") ||
+  (startOverlay.style.display === "grid") ||
+  (gameoverOverlay.style.display === "grid") ||
+  (pauseMenu.style.display === "grid");
+
+function placeJoystick(cx, cy){
+  // keep fully on-screen
+  const x = clamp(cx, JOY_HALF + JOY_MARGIN, innerWidth - JOY_HALF - JOY_MARGIN);
+  const y = clamp(cy, JOY_HALF + JOY_MARGIN, innerHeight - JOY_HALF - JOY_MARGIN);
+  joy.style.left = `${x}px`;
+  joy.style.top  = `${y}px`;
+}
+
+function joyMove(px, py){
+  const dx = px - joyCenter.x;
+  const dy = py - joyCenter.y;
+  const d = Math.hypot(dx,dy) || 1;
+  const m = Math.min(1, d / joyRadius);
+  joyVec.x = (dx / d) * m;
+  joyVec.y = (dy / d) * m;
+
+  const ox = joyVec.x * (joyRadius*0.70);
+  const oy = joyVec.y * (joyRadius*0.70);
+  knob.style.transform = `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px))`;
+}
+
+function joyReset(){
+  joyActive = false;
+  joyPointerId = null;
+  joyVec.x = 0; joyVec.y = 0;
+  knob.style.transform = `translate(-50%, -50%)`;
+  joy.style.display = "none";
+}
+
+canvas.addEventListener("pointerdown", (e)=>{
+  // only for touch/pen
+  if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+  if (overlaysBlockInput()) return;
+
+  // не давать стартовать джойстик при тапе по кнопке паузы (и другим UI при желании)
+  if (e.target.closest("#btnPause")) return;
+
+  joyPointerId = e.pointerId;
+  canvas.setPointerCapture(e.pointerId);
+
+  // joystick center = initial touch point
+  joyCenter.x = e.clientX;
+  joyCenter.y = e.clientY;
+
+  placeJoystick(e.clientX, e.clientY);
+  joy.style.display = "block";
+  joyActive = true;
+  joyMove(e.clientX, e.clientY);
+}, { passive:true });
+
+canvas.addEventListener("pointermove", (e)=>{
+  if (!joyActive || joyPointerId !== e.pointerId) return;
+  joyMove(e.clientX, e.clientY);
+}, { passive:true });
+
+canvas.addEventListener("pointerup", (e)=>{
+  if (joyPointerId !== e.pointerId) return;
+  joyReset();
+}, { passive:true });
+
+canvas.addEventListener("pointercancel", (e)=>{
+  if (joyPointerId !== e.pointerId) return;
+  joyReset();
+}, { passive:true });
+
+// Pause button (mobile)
+btnPause.addEventListener("click", (e)=>{
+  e.preventDefault();
+  if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid") return;
+  togglePauseMenu();
+});
+    }
+
+    // State
+    const state = {
+      t: 0,
+      paused: true,
+      dead: false,
+      kills: 0,
+      dmgDone: 0,
+      lastDmgWindow: [],
+      difficulty: 1,
+      chestTimer: 35,
+      chestAlive: false,
+    };
+
+    // UI state
+    const ui = { buildFromPicker: false };
+
+    // Player
+    const player = {
+      heroId: "scout",
+      heroName: "Скаут",
+      heroPerkText: "",
+      x:0, y:0, r:14,
+      vx:0, vy:0,
+      speed:260,
+      hpMax:100,
+      hp:100,
+      regen:0,
+      invuln:0,
+      magnet:120,
+
+      lvl:1,
+      xp:0,
+      xpNeed:40,
+
+      fireRate: 4.2,
+      shotTimer: 0,
+      bulletSpeed: 520,
+      bulletSize: 5,
+      damage: 16,
+      pierce: 1,
+      spread: 0.0,
+      multishot: 1,
+      critChance: 0.05,
+      critMult: 1.8,
+
+      armor: 0.0,      // до 60% снижения входящего урона
+      dodge: 0.0,      // шанс уклониться (0..0.35)
+      lifeSteal: 0.0,  // доля лечения от нанесённого урона (0..0.12)
+
+      orbitals: 0,
+      orbitalRadius: 48,
+      orbitalSpeed: 2.4,
+      orbitalDamage: 10,
+      orbitalHitCD: 0.22,
+
+      aura: false,
+      auraRadius: 58,
+      auraDps: 14,
+
+      auraSlow: 0.0,
+
+      u: {},
+      rerolls: 2,
+      rerollCap: 10,
+
+      xpGainMult: 1.0,
+      shieldAfterHit: 0.0,
+      chestBonusReroll: 0,
+      chestBonusRare: 0.0,
+    };
+
+    Object.defineProperty(player, "xGainMultSafe", { get(){ return player.xpGainMult || 1; } });
+
+    const bullets = [];
+    const enemyBullets = [];
+    const enemies = [];
+    const drops = [];
+    const particles = [];
+    const chests = [];
+
+    const spawn = {
+      timer: 0,
+      interval: 0.75,
+      packChance: 0.12,
+      bossEvery: 120,
+      nextBossAt: 120,
+      bossAlive: false,
+      bossCount: 0,
+      bossTier: 0,
+    };
+
+    // Characters
+    const characters = [
+      {
+        id:"scout",
+        name:"Скаут",
+        desc:"Скорость + магнит. Сундуки сильнее.",
+        perk:"Перки: сундук даёт +1 reroll (до лимита) и чаще rare.",
+        apply(){
+          player.heroId="scout"; player.heroName="Скаут"; player.heroPerkText=this.perk;
+          player.speed = 295;
+          player.magnet = 150;
+          player.hpMax = 95;
+          player.hp = 95;
+          player.fireRate = 4.6;
+          player.damage = 15;
+
+          player.xpGainMult = 1.0;
+          player.shieldAfterHit = 0.0;
+          player.chestBonusReroll = 1;
+          player.chestBonusRare = 0.10;
+        }
+      },
+      {
+        id:"tank",
+        name:"Танк",
+        desc:"HP + реген. “щит” после урона.",
+        perk:"Перки: после попадания +0.35с доп. неуязвимости.",
+        apply(){
+          player.heroId="tank"; player.heroName="Танк"; player.heroPerkText=this.perk;
+          player.hpMax = 140;
+          player.hp = 140;
+          player.regen = 0.8;
+          player.speed = 240;
+          player.damage = 16;
+          player.fireRate = 4.1;
+
+          player.xpGainMult = 1.0;
+          player.shieldAfterHit = 0.35;
+          player.chestBonusReroll = 0;
+          player.chestBonusRare = 0.0;
+        }
+      },
+      {
+        id:"mage",
+        name:"Маг",
+        desc:"Стартовая орбиталка + урон. Больше XP.",
+        perk:"Перки: +10% XP, орбиталки быстрее на 20%.",
+        apply(){
+          player.heroId="mage"; player.heroName="Маг"; player.heroPerkText=this.perk;
+          player.orbitals = 1;
+          player.orbitalDamage = 12;
+          player.damage = 18;
+          player.fireRate = 4.0;
+          player.hpMax = 100;
+          player.hp = 100;
+          player.speed = 255;
+
+          player.xpGainMult = 1.10;
+          player.orbitalSpeed = 2.4 * 1.20;
+          player.shieldAfterHit = 0.0;
+          player.chestBonusReroll = 0;
+          player.chestBonusRare = 0.0;
+        }
+      },
+    ];
+
+    function openStart(){
+      state.paused = true;
+      startOverlay.style.display = "grid";
+      charsWrap.innerHTML = "";
+      characters.forEach((c)=>{
+        const div = document.createElement("div");
+        div.className = "choice";
+        div.innerHTML = `<div class="t">${c.name}</div><div class="d">${c.desc}</div><div class="d" style="margin-top:8px; opacity:.75">${c.perk}</div>`;
+        div.addEventListener("click", ()=>{
+          c.apply();
+          startOverlay.style.display = "none";
+          state.paused = false;
+        });
+        charsWrap.appendChild(div);
+      });
+    }
+
+    // Drops/particles
+    function dropXp(x,y,amount){
+      const n = Math.max(1, Math.round(amount/10));
+      for(let i=0;i<n;i++){
+        drops.push({
+          x: x + randf(-10,10),
+          y: y + randf(-10,10),
+          r: 6,
+          v: (amount / n) * player.xGainMultSafe,
+          vx: randf(-60,60),
+          vy: randf(-60,60),
+          t: 0,
+        });
+      }
+    }
+    function burst(x,y,count,spd,life){
+      for(let i=0;i<count;i++){
+        const a = randf(0,TAU);
+        particles.push({
+          x,y,
+          vx: Math.cos(a)*randf(spd*0.4, spd),
+          vy: Math.sin(a)*randf(spd*0.4, spd),
+          r: randf(1.5,3.5),
+          life: randf(life*0.6, life),
+          t: 0,
+        });
+      }
+    }
+
+    function recordDamage(amount){
+      state.dmgDone += amount;
+      // lifesteal
+      if (player.lifeSteal > 0 && amount > 0){
+        player.hp = Math.min(player.hpMax, player.hp + amount * player.lifeSteal);
+      }
+      state.lastDmgWindow.push([state.t, amount]);
+      const cutoff = state.t - 2;
+      while(state.lastDmgWindow.length && state.lastDmgWindow[0][0] < cutoff) state.lastDmgWindow.shift();
+    }
+    function getDps(){
+      const cutoff = state.t - 2;
+      let sum = 0;
+      for(const [t,a] of state.lastDmgWindow) if (t >= cutoff) sum += a;
+      return Math.round(sum / 2);
+    }
+    function applyDamageToPlayer(raw){
+      if (raw <= 0) return 0;
+      if (state.dead) return 0;
+
+      // на всякий случай (у тебя обычно проверка invuln снаружи)
+      if (player.invuln > 0) return 0;
+
+      // dodge
+      if (player.dodge > 0 && Math.random() < player.dodge) return 0;
+
+      // armor cap 60%
+      const arm = clamp(player.armor || 0, 0, 0.60);
+      const dmg = raw * (1 - arm);
+
+      player.hp -= dmg;
+      if (player.hp < 0) player.hp = 0;
+
+      return dmg;
+    }
+
+
+    function gainXp(v){
+      player.xp += v;
+      while(player.xp >= player.xpNeed && !state.dead){
+        player.xp -= player.xpNeed;
+        player.lvl += 1;
+        player.xpNeed = Math.floor(player.xpNeed * 1.22 + 8);
+        openUpgradePicker("level");
+      }
+    }
+
+    // Enemies
+    function enemyBase(type){
+            const base = {
+        grunt:    { r:14, hp:45,  spd:120, dmg:10, xp:10 },
+        runner:   { r:12, hp:32,  spd:195, dmg:12, xp:11 },
+        tank:     { r:18, hp:120, spd:80,  dmg:16, xp:18 },
+        shooter:  { r:13, hp:55,  spd:105, dmg:9,  xp:14, shotRate:0.9, shotSpeed:260, shotDmg:10 },
+        bomber:   { r:14, hp:58,  spd:135, dmg:0,  xp:16, explodeR:70, explodeDmg:28 },
+
+        // новые типы врагов
+        brute:    { r:20, hp:180, spd:72,  dmg:22, xp:26 }, // медленный "мясной" удар
+        spitter:  { r:13, hp:62,  spd:98,  dmg:8,  xp:16, shotRate:1.05, shotSpeed:250, shotDmg:9 }, // тройной залп
+        dasher:   { r:13, hp:44,  spd:150, dmg:14, xp:14 }, // рывки к игроку
+        shield:   { r:16, hp:95,  spd:110, dmg:13, xp:18 }, // снижает урон от пуль
+        splitter: { r:15, hp:78,  spd:118, dmg:12, xp:18 }, // при смерти делится на миньонов
+        minion:   { r:10, hp:26,  spd:170, dmg:9,  xp:6  }, // спавнится от splitter
+
+        boss:     { r:30, hp:1200,spd:85,  dmg:26, xp:180, shotRate:0.45, shotSpeed:320, shotDmg:14 },
+      };
+      return base[type];
+    }
+
+    function spawnEnemy(pack=false, forcedType=null, extra=null){
+      const w = innerWidth, h = innerHeight;
+      const margin = 120;
+      const ring = (Math.max(w,h)*0.6 + margin)*SPAWN_SCALE;
+      const a = randf(0,TAU);
+      const ex = player.x + Math.cos(a)*ring;
+      const ey = player.y + Math.sin(a)*ring;
+
+            let type = forcedType || "grunt";
+      if (!forcedType){
+        const roll = Math.random();
+        const diff = state.difficulty;
+
+        // чем дольше живём — тем больше "экзотики"
+        const pRunner   = 0.07 + Math.min(0.12, diff*0.020);
+        const pTank     = 0.04 + Math.min(0.11, diff*0.015);
+        const pShooter  = 0.06 + Math.min(0.14, diff*0.020);
+        const pBomber   = 0.04 + Math.min(0.12, diff*0.018);
+
+        const pDasher   = (diff > 2.0) ? (0.03 + Math.min(0.08, (diff-2)*0.015)) : 0.0;
+        const pSpitter  = (diff > 2.5) ? (0.03 + Math.min(0.09, (diff-2.5)*0.015)) : 0.0;
+        const pShield   = (diff > 3.0) ? (0.03 + Math.min(0.08, (diff-3)*0.013)) : 0.0;
+        const pSplitter = (diff > 3.5) ? (0.02 + Math.min(0.07, (diff-3.5)*0.012)) : 0.0;
+        const pBrute    = (diff > 4.0) ? (0.02 + Math.min(0.06, (diff-4)*0.010)) : 0.0;
+
+        // нормализуем "верх" так, чтобы остался baseline на grunt
+        let acc = 0;
+        const pick = (p, t)=>{ acc += p; return roll < acc ? t : null; };
+
+        type = pick(pRunner, "runner")
+            || pick(pTank, "tank")
+            || pick(pShooter, "shooter")
+            || pick(pBomber, "bomber")
+            || pick(pDasher, "dasher")
+            || pick(pSpitter, "spitter")
+            || pick(pShield, "shield")
+            || pick(pSplitter, "splitter")
+            || pick(pBrute, "brute")
+            || "grunt";
+      }
+
+      const b = enemyBase(type);
+      const tier = extra?.bossTier || 0;
+
+      const scale = (type==="boss")
+        ? (1 + Math.min(3.2, state.difficulty*0.08) + tier*0.35)
+        : (1 + Math.min(2.1, state.difficulty*0.09));
+
+      const e = {
+        type,
+        x: ex, y: ey,
+        r: b.r,
+        hpMax: b.hp * scale,
+        hp: b.hp * scale,
+        spd: b.spd * (0.9 + Math.min(0.35, state.difficulty*0.03)),
+        dmg: b.dmg * (0.9 + Math.min(0.6, state.difficulty*0.03)),
+        xp: b.xp,
+        vx: 0, vy: 0,
+        hitFlash: 0,
+        shotTimer: randf(0, 0.6),
+        shotRate: b.shotRate || 0,
+        shotSpeed: b.shotSpeed || 0,
+        shotDmg: b.shotDmg || 0,
+        explodeR: b.explodeR || 0,
+        explodeDmg: b.explodeDmg || 0,
+        _oh: null,
+
+        bossKind: extra?.bossKind || null,
+        bossTier: tier,
+        bossDashCd: 0,
+        bossDashT: 0,
+        bossDashVx: 0,
+        bossDashVy: 0,
+        bossPhase: 0,
+      };
+
+      if (type === "boss") {
+        e.spd *= (1 + tier*0.05);
+        e.shotRate = (e.shotRate || 0.45) * (1 + tier*0.06);
+        e.shotDmg *= (1 + tier*0.10);
+        e.r = Math.max(e.r, 30 + tier*1.2);
+      }
+
+      enemies.push(e);
+
+      if (pack && type!=="boss"){
+        const n = randi(2,5);
+        for(let i=0;i<n;i++){
+          const aa = a + randf(-0.35,0.35);
+          const rr = ring + randf(-40,40);
+          enemies.push({
+            ...e,
+            type,
+            x: player.x + Math.cos(aa)*rr + randf(-22,22),
+            y: player.y + Math.sin(aa)*rr + randf(-22,22),
+            hpMax: e.hpMax*0.78,
+            hp: e.hpMax*0.78,
+            spd: e.spd*(1.0+randf(-0.08,0.12)),
+            r: e.r*(0.92+randf(-0.05,0.08)),
+            hitFlash: 0,
+            shotTimer: randf(0, 0.6),
+            _oh: null,
+            bossKind: null,
+            bossTier: 0,
+            bossDashCd: 0,
+            bossDashT: 0,
+            bossDashVx: 0,
+            bossDashVy: 0,
+            bossPhase: 0,
+          });
+        }
+      }
+    }
+
+    const BOSS_KINDS = [
+      { id:"beholder", name:"Beholder",   unlock:0 },
+      { id:"charger",  name:"Charger",    unlock:1 },
+      { id:"sniper",   name:"Sniper",     unlock:2 },
+      { id:"spiral",   name:"Spiral Eye", unlock:3 },
+      { id:"summoner", name:"Summoner",   unlock:4 },
+
+      // новые боссы
+      { id:"mortar",   name:"Mortar",     unlock:5 },
+      { id:"warden",   name:"Warden",     unlock:6 },
+      { id:"vortex",   name:"Vortex",     unlock:7 },
+    ];
+    function pickBossKind(){
+      const maxUnlock = Math.min(7, spawn.bossTier);
+      const available = BOSS_KINDS.filter(b => b.unlock <= maxUnlock);
+      return available[randi(0, available.length-1)];
+    }
+    function spawnBoss(){
+      if (spawn.bossAlive) return;
+      spawn.bossAlive = true;
+      spawn.bossCount += 1;
+      spawn.bossTier = Math.max(spawn.bossTier, spawn.bossCount - 1);
+      const kind = pickBossKind();
+      spawnEnemy(false, "boss", { bossKind: kind.id, bossTier: spawn.bossTier });
+      bossWrap.style.display = "block";
+      bossName.textContent = `BOSS: ${kind.name} (T${spawn.bossTier+1})`;
+    }
+
+    // Chest
+    function spawnChest(){
+      if (state.chestAlive) return;
+      if (chests.length > 0) { state.chestAlive = true; return; }
+      state.chestAlive = true;
+
+      for (let tries = 0; tries < 20; tries++){
+        const a = randf(0, TAU);
+        const d = randf(320, 620);
+        const x = player.x + Math.cos(a)*d;
+        const y = player.y + Math.sin(a)*d;
+        if (Math.hypot(x - player.x, y - player.y) < 260) continue;
+        chests.push({ x, y, r: 14, t: 0, bob: randf(0, TAU) });
+        return;
+      }
+      chests.push({ x: player.x + 420, y: player.y, r: 14, t: 0, bob: 0 });
+    }
+    function pickUpChest(){
+      if (!chests.length) { state.chestAlive = false; return; }
+      chests.length = 0;
+      state.chestAlive = false;
+      if (player.chestBonusReroll > 0){
+        player.rerolls = Math.min(player.rerollCap, player.rerolls + player.chestBonusReroll);
+      }
+      openUpgradePicker("chest");
+    }
+
+    // Targeting
+    function findNearestEnemy(){
+      let best = null, bestD = Infinity;
+      for (const e of enemies){
+        if (e.type==="boss"){
+          const d = (e.x-player.x)**2 + (e.y-player.y)**2;
+          if (d < bestD*1.1){ bestD = d; best = e; }
+        }
+      }
+      for (const e of enemies){
+        if (e.type==="boss") continue;
+        const d = (e.x-player.x)**2 + (e.y-player.y)**2;
+        if (d < bestD){ bestD = d; best = e; }
+      }
+      return best;
+    }
+
+    // Shooting (bullet life doubled)
+    function shoot(dt){
+      player.shotTimer -= dt;
+      if (player.shotTimer > 0) return;
+      const target = findNearestEnemy();
+      if (!target) return;
+
+      const baseAngle = Math.atan2(target.y-player.y, target.x-player.x);
+      const shots = player.multishot;
+      const spread = player.spread;
+
+      for(let i=0;i<shots;i++){
+        const t = (shots===1) ? 0 : (i/(shots-1))*2 - 1;
+        const a = baseAngle + t*spread + randf(-0.01,0.01);
+        bullets.push({
+          x: player.x, y: player.y,
+          vx: Math.cos(a)*player.bulletSpeed,
+          vy: Math.sin(a)*player.bulletSpeed,
+          r: player.bulletSize,
+          dmg: player.damage,
+          pierce: player.pierce,
+          life: 3.2, // было 1.6
+          t: 0,
+        });
+      }
+      player.shotTimer = 1 / player.fireRate;
+    }
+
+    // Orbitals/Aura
+    let orbitalAngle = 0;
+    function updateOrbitals(dt){
+      if (player.orbitals <= 0) return;
+      orbitalAngle += player.orbitalSpeed * dt;
+
+      for(let k=0;k<player.orbitals;k++){
+        const a = orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
+        const ox = player.x + Math.cos(a)*player.orbitalRadius;
+        const oy = player.y + Math.sin(a)*player.orbitalRadius;
+
+        for (let i=enemies.length-1; i>=0; i--){
+          const e = enemies[i];
+          if (!e._oh) e._oh = new Float32Array(24);
+          e._oh[k] = Math.max(0, (e._oh[k]||0) - dt);
+          if (e._oh[k] > 0) continue;
+
+          if (circleHit(ox,oy, 7, e.x,e.y,e.r)){
+            e._oh[k] = player.orbitalHitCD;
+            const dmg = player.orbitalDamage;
+            e.hp -= dmg;
+            e.hitFlash = 0.09;
+            recordDamage(dmg);
+
+            const dx = e.x-ox, dy = e.y-oy;
+            const d = Math.hypot(dx,dy) || 1;
+            e.vx += (dx/d)*120;
+            e.vy += (dy/d)*120;
+
+            if (e.hp <= 0) killEnemy(i);
+          }
+        }
+      }
+    }
+    function applyAura(dt){
+      if (!player.aura) return;
+      for (let i=enemies.length-1; i>=0; i--){
+        const e = enemies[i];
+        const dx = e.x-player.x, dy = e.y-player.y;
+        const d = Math.hypot(dx,dy);
+        if (d <= player.auraRadius + e.r){
+          const dmg = player.auraDps * dt;
+          e.hp -= dmg;
+          e.hitFlash = Math.max(e.hitFlash, 0.05);
+          recordDamage(dmg);
+          if (player.auraSlow > 0){ e._slowT = Math.max(e._slowT||0, 0.25); e._slowMult = 1 - clamp(player.auraSlow, 0, 0.55); }
+          if (e.hp <= 0) killEnemy(i);
+        }
+      }
+    }
+
+    function enemyShoot(e, dt){
+      if (!e.shotRate) return;
+      e.shotTimer -= dt;
+      if (e.shotTimer > 0) return;
+
+      const tier = e.bossTier || 0;
+      const shootBullet = (x,y, ang, spd, dmg, r=4, life=3.2) => {
+        enemyBullets.push({ x,y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd, r, dmg, t:0, life });
+      };
+      const aim = Math.atan2(player.y - e.y, player.x - e.x);
+
+            if (e.type !== "boss") {
+        // spitter shoots a small fan
+        if (e.type === "spitter"){
+          const fan = 3;
+          const spread = 0.26;
+          for (let i=0;i<fan;i++){
+            const t = fan===1?0:(i/(fan-1))*2-1;
+            shootBullet(e.x, e.y, aim + t*spread, e.shotSpeed, e.shotDmg, 4, 2.8);
+          }
+          e.shotTimer = 1 / e.shotRate;
+          return;
+        }
+
+        shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 2.8);
+        e.shotTimer = 1 / e.shotRate;
+        return;
+      }
+
+      const kind = e.bossKind || "beholder";
+
+      if (kind === "beholder") {
+        const fan = 5 + Math.min(6, tier);
+        const spread = 0.50 + tier*0.03;
+        for (let i=0;i<fan;i++){
+          const t = fan===1?0:(i/(fan-1))*2-1;
+          shootBullet(e.x, e.y, aim + t*spread, e.shotSpeed, e.shotDmg, 4, 3.4);
+        }
+        e.shotTimer = 1 / e.shotRate;
+        return;
+      }
+
+      if (kind === "sniper") {
+        const spd = e.shotSpeed * (1.15 + tier*0.03);
+        const dmg = e.shotDmg   * (1.35 + tier*0.08);
+        shootBullet(e.x, e.y, aim, spd, dmg, 5, 3.6);
+        if (tier >= 2) {
+          shootBullet(e.x, e.y, aim + 0.22, spd*0.95, dmg*0.65, 4, 3.0);
+          shootBullet(e.x, e.y, aim - 0.22, spd*0.95, dmg*0.65, 4, 3.0);
+        }
+        e.shotTimer = 1 / (e.shotRate * 0.9);
+        return;
+      }
+
+      if (kind === "spiral") {
+        e.bossPhase += (0.55 + tier*0.08);
+        const bulletsN = 2 + Math.min(3, Math.floor(tier/2));
+        for (let k=0;k<bulletsN;k++){
+          const ang = e.bossPhase + k*(TAU/bulletsN);
+          shootBullet(e.x, e.y, ang, e.shotSpeed*(0.95 + tier*0.03), e.shotDmg*(0.9 + tier*0.05), 4, 3.8);
+        }
+        e.shotTimer = 1 / (e.shotRate * 1.15);
+        return;
+      }
+
+      if (kind === "charger") {
+        const burstN = 3 + Math.min(4, tier);
+        const spread = 0.22 + tier*0.02;
+        for (let i=0;i<burstN;i++){
+          const t = burstN===1?0:(i/(burstN-1))*2-1;
+          shootBullet(e.x, e.y, aim + t*spread, e.shotSpeed*0.95, e.shotDmg*0.85, 4, 3.0);
+        }
+        e.shotTimer = 1 / (e.shotRate * 1.1);
+        return;
+      }
+
+      if (kind === "summoner") {
+        const fan = 3 + Math.min(2, Math.floor(tier/2));
+        const spread = 0.35;
+        for (let i=0;i<fan;i++){
+          const t = fan===1?0:(i/(fan-1))*2-1;
+          shootBullet(e.x, e.y, aim + t*spread, e.shotSpeed*0.9, e.shotDmg*0.8, 4, 3.2);
+        }
+        e.bossPhase += 1;
+        e.shotTimer = 1 / (e.shotRate * 0.95);
+        return;
+      }
+
+      
+      if (kind === "mortar") {
+        // slow big balls + small shrapnel at higher tier
+        const balls = 2 + Math.min(2, Math.floor(tier/2));
+        for (let i=0;i<balls;i++){
+          const ang = aim + randf(-0.25, 0.25);
+          shootBullet(e.x, e.y, ang, e.shotSpeed*0.75, e.shotDmg*1.35, 7, 4.0);
+        }
+        if (tier >= 3){
+          const fan = 6;
+          for (let i=0;i<fan;i++){
+            const ang = (e.bossPhase||0) + i*(TAU/fan);
+            shootBullet(e.x, e.y, ang, e.shotSpeed*0.95, e.shotDmg*0.45, 3, 2.8);
+          }
+          e.bossPhase = (e.bossPhase||0) + 0.35;
+        }
+        e.shotTimer = 1 / (e.shotRate * 0.85);
+        return;
+      }
+
+      if (kind === "warden") {
+        // ring around player direction
+        const n = 10 + Math.min(10, tier*2);
+        const base = (e.bossPhase||0);
+        for (let i=0;i<n;i++){
+          const ang = base + i*(TAU/n);
+          shootBullet(e.x, e.y, ang, e.shotSpeed*(0.78 + tier*0.02), e.shotDmg*(0.62 + tier*0.03), 4, 3.8);
+        }
+        e.bossPhase = base + 0.18 + tier*0.015;
+        e.shotTimer = 1 / (e.shotRate * 0.70);
+        return;
+      }
+
+      if (kind === "vortex") {
+        // alternating spiral towards the player
+        const steps = 4 + Math.min(4, Math.floor(tier/2));
+        const base = (e.bossPhase||0) + 0.9;
+        for (let k=0;k<steps;k++){
+          const ang = base + k*0.35;
+          shootBullet(e.x, e.y, ang, e.shotSpeed*(0.9 + tier*0.02), e.shotDmg*(0.70 + tier*0.03), 4, 4.2);
+          shootBullet(e.x, e.y, ang + Math.PI, e.shotSpeed*(0.75 + tier*0.02), e.shotDmg*(0.50 + tier*0.02), 3, 4.2);
+        }
+        e.bossPhase = base;
+        e.shotTimer = 1 / (e.shotRate * 0.90);
+        return;
+      }
+
+shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
+      e.shotTimer = 1 / e.shotRate;
+    }
+
+    // Bomber explode
+    function explodeBomber(i){
+      const e = enemies[i];
+      if (!e || e.type !== "bomber") return;
+
+      burst(e.x, e.y, randi(24, 34), 340, 0.50);
+
+      // damage player
+      const dxp = player.x - e.x, dyp = player.y - e.y;
+      const dp = Math.hypot(dxp, dyp);
+      if (dp < e.explodeR){
+        if (player.invuln <= 0){
+          const mult = 1 - (dp / e.explodeR); // 0..1
+          const dmg = e.explodeDmg * (0.55 + 0.45 * mult);
+          player.hp -= dmg;
+          player.invuln = 0.75 + player.shieldAfterHit;
+
+          const push = pushAway(player.x, player.y, e.x, e.y, 18 + 22 * mult);
+          player.x += push.x;
+          player.y += push.y;
+          player.vx += push.x * 22;
+          player.vy += push.y * 22;
+
+          if (player.hp <= 0){ player.hp = 0; gameOver(); return; }
+        }
+      }
+
+      // damage other enemies
+      for (let j = enemies.length - 1; j >= 0; j--){
+        if (j === i) continue;
+        const ee = enemies[j];
+        const d = Math.hypot(ee.x - e.x, ee.y - e.y);
+        if (d < e.explodeR){
+          const mult = 1 - (d / e.explodeR);
+          const dmg = 22 * (0.5 + 0.5 * mult);
+          ee.hp -= dmg;
+          ee.hitFlash = Math.max(ee.hitFlash, 0.08);
+          recordDamage(dmg);
+          if (ee.hp <= 0) killEnemy(j);
+        }
+      }
+
+      killEnemy(i);
+    }
+
+    function killEnemy(idx){
+      const e = enemies[idx];
+      state.kills += 1;
+      burst(e.x,e.y, randi(10,16), 220, 0.35);
+      dropXp(e.x,e.y, e.xp);
+
+      // splitter spawns minions
+      if (e.type === "splitter"){
+        const n = 2 + (Math.random() < 0.35 ? 1 : 0);
+        for (let k=0;k<n;k++){
+          const a = randf(0, TAU);
+          const rr = randf(12, 24);
+          const b = enemyBase("minion");
+          enemies.push({
+            type: "minion",
+            x: e.x + Math.cos(a)*rr,
+            y: e.y + Math.sin(a)*rr,
+            r: b.r,
+            hpMax: b.hp * (0.9 + Math.min(0.6, state.difficulty*0.03)),
+            hp:    b.hp * (0.9 + Math.min(0.6, state.difficulty*0.03)),
+            spd:   b.spd * (0.95 + Math.min(0.5, state.difficulty*0.03)),
+            dmg:   b.dmg * (0.95 + Math.min(0.5, state.difficulty*0.03)),
+            xp:    b.xp,
+            vx:0, vy:0,
+            hitFlash:0,
+            shotTimer:0,
+            shotRate:0,
+            shotSpeed:0,
+            shotDmg:0,
+            explodeR:0,
+            explodeDmg:0,
+            _oh:null,
+            bossKind:null,
+            bossTier:0,
+            bossDashCd:0,
+            bossDashT:0,
+            bossDashVx:0,
+            bossDashVy:0,
+            bossPhase:0,
+          });
+        }
+      }
+
+      if (e.type==="boss"){
+        spawn.bossAlive = false;
+        bossWrap.style.display = "none";
+        player.hp = Math.min(player.hpMax, player.hp + 30);
+        for(let i=0;i<8;i++) dropXp(e.x+randf(-20,20), e.y+randf(-20,20), 14);
+      }
+
+      enemies.splice(idx,1);
+    }
+
+    // Upgrades (caps increased)
+    const U = {
+      fireRate: { title:"Скорость атаки", max: 12, desc:(lv)=>`+18% fire rate (ур. ${lv+1}/12)`, apply:()=>{ player.fireRate *= 1.18; } },
+      damage:   { title:"Урон",           max: 12, desc:(lv)=>`+20% bullet damage (ур. ${lv+1}/12)`, apply:()=>{ player.damage *= 1.20; } },
+      pierce:   { title:"Пробивание",     max: 8,  desc:(lv)=>`+1 pierce (ур. ${lv+1}/8)`,  apply:()=>{ player.pierce += 1; } },
+      multishot:{ title:"Мультивыстрел",  max: 6,  desc:(lv)=>`+1 projectile (ур. ${lv+1}/6)`,apply:()=>{ player.multishot += 1; player.spread = Math.max(player.spread, 0.12); } },
+      bulletSpeed:{ title:"Скорость пули",max: 10, desc:(lv)=>`+15% bullet speed (ур. ${lv+1}/10)`, apply:()=>{ player.bulletSpeed *= 1.15; } },
+      crit:     { title:"Криты",          max: 10, desc:(lv)=>`+5% crit chance (ур. ${lv+1}/10)`, apply:()=>{ player.critChance = Math.min(0.85, player.critChance + 0.05); } },
+
+
+      bulletSize:{ title:"Размер пули",   max: 8,  desc:(lv)=>`+18% bullet size (ур. ${lv+1}/8)`, apply:()=>{ player.bulletSize *= 1.18; } },
+      critMultUp:{ title:"Криты: множ.",  max: 8,  desc:(lv)=>`+12% crit multiplier (ур. ${lv+1}/8)`, apply:()=>{ player.critMult *= 1.12; } },
+
+      armor:    { title:"Броня",         max: 8,  desc:(lv)=>`-6% входящий урон (ур. ${lv+1}/8)`, apply:()=>{ player.armor = clamp((player.armor||0) + 0.06, 0, 0.60); } },
+      dodge:    { title:"Уклонение",     max: 7,  desc:(lv)=>`+5% шанс не получить урон (ур. ${lv+1}/7)`, apply:()=>{ player.dodge = clamp((player.dodge||0) + 0.05, 0, 0.35); } },
+      lifesteal:{ title:"Лайфстил",      max: 6,  desc:(lv)=>`+2% лечение от урона (ур. ${lv+1}/6)`, apply:()=>{ player.lifeSteal = clamp((player.lifeSteal||0) + 0.02, 0, 0.12); } },
+
+      xpGain:   { title:"Опыт",          max: 8,  desc:(lv)=>`+10% XP (ур. ${lv+1}/8)`, apply:()=>{ player.xpGainMult = (player.xpGainMult || 1) * 1.10; } },
+      rerollCap:{ title:"Лимит reroll",  max: 4,  desc:(lv)=>`+2 max rerolls (ур. ${lv+1}/4)`, apply:()=>{ player.rerollCap += 2; } },
+
+      orbitalSpeedUp:{ title:"Орбиталки: скорость", max: 10, desc:(lv)=>`+18% orbital speed (ур. ${lv+1}/10)`, apply:()=>{ player.orbitalSpeed *= 1.18; } },
+      auraSlow: { title:"Аура: замедление", max: 8, desc:(lv)=>`+7% slow в ауре (ур. ${lv+1}/8)`, apply:()=>{ player.auraSlow = clamp((player.auraSlow||0) + 0.07, 0, 0.55); } },
+
+      speed:    { title:"Скорость",       max: 10, desc:(lv)=>`+10% move speed (ур. ${lv+1}/10)`, apply:()=>{ player.speed *= 1.10; } },
+      hp:       { title:"Живучесть",      max: 10, desc:(lv)=>`+22 max HP (+heal) (ур. ${lv+1}/10)`, apply:()=>{ player.hpMax += 22; player.hp = Math.min(player.hpMax, player.hp + 22); } },
+      regen:    { title:"Регенерация",    max: 10, desc:(lv)=>`+1.0 HP/сек (ур. ${lv+1}/10)`, apply:()=>{ player.regen += 1.0; } },
+      magnet:   { title:"Магнит",         max: 8,  desc:(lv)=>`+35 радиус подбора XP (ур. ${lv+1}/8)`,  apply:()=>{ player.magnet += 35; } },
+
+      orbital:  { title:"Орбиталка",      max: 10, desc:(lv)=>`+1 orbital (ур. ${lv+1}/10)`, apply:()=>{ player.orbitals = Math.min(16, player.orbitals + 1); } },
+      orbitalDmg:{title:"Орбиталки: урон",max: 12, desc:(lv)=>`+25% orbital damage (ур. ${lv+1}/12)`, apply:()=>{ player.orbitalDamage *= 1.25; } },
+      orbitalRadius:{title:"Орбиталки: радиус",max: 10, desc:(lv)=>`+12 orbital radius (ур. ${lv+1}/10)`, apply:()=>{ player.orbitalRadius += 12; } },
+
+      aura:     { title:"Аура",           max: 1,  desc:()=>`Включить ауру урона рядом`, apply:()=>{ player.aura = true; } },
+      auraRadius:{title:"Аура: радиус",   max: 10, desc:(lv)=>`+14 aura radius (ур. ${lv+1}/10)`, apply:()=>{ player.auraRadius += 14; } },
+      auraDps:  { title:"Аура: DPS",      max: 12, desc:(lv)=>`+30% aura DPS (ур. ${lv+1}/12)`, apply:()=>{ player.auraDps *= 1.30; } },
+    };
+    const upgradeList = Object.keys(U);
+    const getLevel = (id)=>player.u[id]||0;
+    const atMax = (id)=>getLevel(id)>=U[id].max;
+
+    function isEligible(id){
+      if (atMax(id)) return false;
+      if ((id === "auraRadius" || id === "auraDps" || id === "auraSlow") && !player.aura) return false;
+      if ((id === "orbitalDmg" || id === "orbitalRadius" || id === "orbitalSpeedUp") && player.orbitals <= 0) return false;
+      return true;
+    }
+
+    function rollRarity(source){
+      let epic = source==="chest" ? 0.14 : 0.06;
+      let rare = source==="chest" ? 0.30 : 0.20;
+      rare = clamp(rare + player.chestBonusRare, 0, 0.60);
+      const r = Math.random();
+      if (r < epic) return "epic";
+      if (r < epic + rare) return "rare";
+      return "common";
+    }
+
+    function buildChoicePool(rarity){
+      const pool = [];
+      for (const id of upgradeList){
+        if (!isEligible(id)) continue;
+
+        let w = 1;
+        const weaponish = (id==="fireRate"||id==="damage"||id==="pierce"||id==="multishot"||id==="crit"||id==="critMultUp"||id==="bulletSize"||id==="orbital"||id==="orbitalDmg"||id==="orbitalSpeedUp"||id==="aura"||id==="auraDps"||id==="auraSlow");
+        const survival = (id==="hp"||id==="regen"||id==="speed"||id==="magnet"||id==="armor"||id==="dodge"||id==="lifesteal"||id==="xpGain"||id==="rerollCap"||id==="auraRadius"||id==="orbitalRadius"||id==="bulletSpeed");
+
+        if (rarity === "rare"){
+          w *= weaponish ? 2.2 : (survival ? 1.3 : 1.0);
+        } else if (rarity === "epic"){
+          w *= (id==="multishot"||id==="pierce"||id==="orbital"||id==="aura"||id==="damage"||id==="fireRate"||id==="critMultUp"||id==="lifesteal") ? 3.0 : 1.1;
+        } else {
+          w *= (id==="speed"||id==="fireRate"||id==="damage"||id==="hp"||id==="magnet") ? 1.3 : 1.0;
+        }
+        w *= 1 / (1 + getLevel(id) * 0.25);
+        pool.push([id, w]);
+      }
+      return pool;
+    }
+
+    function pickWeighted(pool){
+      let sum = 0;
+      for (const [,w] of pool) sum += w;
+      let r = Math.random() * sum;
+      for (const [id,w] of pool){
+        r -= w;
+        if (r <= 0) return id;
+      }
+      return pool.length ? pool[pool.length-1][0] : null;
+    }
+
+    let currentChoices = [];
+    let pickerSource = "level";
+
+    function buildChoices(source){
+      pickerSource = source;
+      currentChoices = [];
+      for (let slot=0; slot<3; slot++){
+        const rarity = rollRarity(source);
+        const pool = buildChoicePool(rarity).filter(([id]) => !currentChoices.some(c => c.id === id));
+        if (!pool.length) break;
+        const id = pickWeighted(pool);
+        if (!id) break;
+        currentChoices.push({ id, rarity });
+      }
+      while(currentChoices.length < 3){
+        const pool = buildChoicePool("common").filter(([id]) => !currentChoices.some(c => c.id === id));
+        if (!pool.length) break;
+        const id = pickWeighted(pool);
+        currentChoices.push({ id, rarity:"common" });
+      }
+    }
+
+    function openUpgradePicker(source){
+      state.paused = true;
+      ui.buildFromPicker = false;
+      btnResume.textContent = "Resume";
+
+      pauseMenu.style.display = "none";
+      pickerOverlay.style.display = "grid";
+
+      pickerTitle.textContent = source === "chest"
+        ? "Сундук — выбери улучшение (шанс rare/epic выше)"
+        : "Уровень повышен — выбери улучшение";
+
+      pickerHint.textContent = "Клик по карточке или 1/2/3. Reroll (R) тратит жетон. Skip (S) закрывает. Build — посмотреть билд.";
+
+      buildChoices(source);
+      renderChoices();
+      btnReroll.disabled = player.rerolls <= 0;
+    }
+
+    function renderChoices(){
+      choicesWrap.innerHTML = "";
+      currentChoices.forEach((c, i)=>{
+        const u = U[c.id];
+        const lv = getLevel(c.id);
+        const div = document.createElement("div");
+        div.className = "choice";
+        div.innerHTML = `
+          <div class="t">
+            ${i+1}. ${u.title}
+            <span class="pill ${c.rarity}">${c.rarity.toUpperCase()}</span>
+          </div>
+          <div class="d">${u.desc(lv)}</div>
+        `;
+        div.addEventListener("click", ()=>pickChoice(i));
+        choicesWrap.appendChild(div);
+      });
+    }
+
+    function pickChoice(i){
+      if (pickerOverlay.style.display!=="grid") return;
+      const c = currentChoices[i];
+      if (!c) return;
+      const id = c.id;
+      if (!isEligible(id)) return;
+
+      U[id].apply();
+      player.u[id] = getLevel(id) + 1;
+
+      pickerOverlay.style.display = "none";
+      ui.buildFromPicker = false;
+      btnResume.textContent = "Resume";
+      state.paused = false;
+    }
+
+    function doReroll(){
+      if (pickerOverlay.style.display!=="grid") return;
+      if (player.rerolls <= 0) return;
+      player.rerolls -= 1;
+      buildChoices(pickerSource);
+      renderChoices();
+      btnReroll.disabled = player.rerolls <= 0;
+    }
+
+    function doSkip(){
+      if (pickerOverlay.style.display!=="grid") return;
+      pickerOverlay.style.display = "none";
+      ui.buildFromPicker = false;
+      btnResume.textContent = "Resume";
+      state.paused = false;
+    }
+
+    btnReroll.addEventListener("click", doReroll);
+    btnSkip.addEventListener("click", doSkip);
+
+    btnShowBuild.addEventListener("click", ()=>{
+      ui.buildFromPicker = (pickerOverlay.style.display === "grid");
+      btnResume.textContent = ui.buildFromPicker ? "Back to picker" : "Resume";
+      updateBuildUI();
+      pauseMenu.style.display = "grid";
+    });
+
+    function togglePauseMenu(){
+      if (state.dead) return;
+      state.paused = !state.paused;
+      if (state.paused){
+        ui.buildFromPicker = false;
+        btnResume.textContent = "Resume";
+        updateBuildUI();
+        pauseMenu.style.display = "grid";
+      } else pauseMenu.style.display = "none";
+    }
+
+    btnResume.addEventListener("click", ()=>{
+      if (ui.buildFromPicker && pickerOverlay.style.display === "grid"){
+        pauseMenu.style.display = "none";
+        return; // keep paused, picker remains
+      }
+      pauseMenu.style.display = "none";
+      state.paused = false;
+    });
+
+    btnRestart2.addEventListener("click", ()=>resetGame());
+    btnCopy.addEventListener("click", ()=>copyStats());
+
+    function updateBuildUI(){
+      const entries = Object.keys(player.u)
+        .map(id => ({ id, lv: player.u[id] }))
+        .sort((a,b)=> (U[a.id]?.title || a.id).localeCompare(U[b.id]?.title || b.id));
+
+      buildListEl.innerHTML = "";
+      if (!entries.length){
+        buildListEl.innerHTML = `<div class="small" style="opacity:.8">Пока нет апгрейдов. Подбирай XP и сундуки.</div>`;
+      } else {
+        for (const e of entries){
+          const title = U[e.id]?.title || e.id;
+          const max = U[e.id]?.max ?? "?";
+          const row = document.createElement("div");
+          row.className = "item";
+          row.innerHTML = `<div class="k">${title}</div><div class="v">Lv ${e.lv}/${max}</div>`;
+          buildListEl.appendChild(row);
+        }
+      }
+
+      const wparts = [];
+      wparts.push("Bullets");
+      if (player.orbitals>0) wparts.push(`Orbit x${player.orbitals}`);
+      if (player.aura) wparts.push("Aura");
+
+      buildStatsEl.innerHTML = `
+        <div class="item"><div class="k">Hero</div><div class="v">${player.heroName}</div></div>
+        <div class="small" style="opacity:.78; margin:6px 0 10px;">${player.heroPerkText}</div>
+        <div class="item"><div class="k">Time</div><div class="v">${fmtTime(state.t)}</div></div>
+        <div class="item"><div class="k">Level</div><div class="v">${player.lvl}</div></div>
+        <div class="item"><div class="k">Kills</div><div class="v">${state.kills}</div></div>
+        <div class="item"><div class="k">DPS (2s)</div><div class="v">${getDps()}</div></div>
+        <div class="item"><div class="k">HP</div><div class="v">${Math.ceil(player.hp)} / ${player.hpMax}</div></div>
+        <div class="item"><div class="k">Speed</div><div class="v">${Math.round(player.speed)}</div></div>
+        <div class="item"><div class="k">Rerolls</div><div class="v">${player.rerolls}</div></div>
+        <div class="item"><div class="k">Weapons</div><div class="v">${wparts.join(" + ")}</div></div>
+      `;
+    }
+
+    function gameOver(){
+      state.dead = true;
+      state.paused = true;
+      pickerOverlay.style.display = "none";
+      pauseMenu.style.display = "none";
+      gameoverOverlay.style.display = "grid";
+      summaryEl.textContent = `Time: ${fmtTime(state.t)} · Hero: ${player.heroName} · Level: ${player.lvl} · Kills: ${state.kills} · Damage: ${Math.round(state.dmgDone)}`;
+    }
+
+    function copyStats(){
+      const text =
+`Survivor stats
+Hero: ${player.heroName}
+Time: ${fmtTime(state.t)}
+Level: ${player.lvl}
+Kills: ${state.kills}
+Damage: ${Math.round(state.dmgDone)}
+Rerolls: ${player.rerolls}
+Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
+`;
+      navigator.clipboard?.writeText(text).catch(()=>{});
+    }
+
+    restartBtn.addEventListener("click", ()=>resetGame());
+    copyBtn.addEventListener("click", ()=>copyStats());
+
+    function resetGame(){
+      location.reload();
+    }
+
+    // Loop
+    let last = performance.now();
+    let fpsAcc=0, fpsN=0, fpsLast=0;
+
+    function step(now){
+      const dtRaw = (now-last)/1000;
+      last = now;
+      const dt = clamp(dtRaw, 0, 0.05);
+
+      fpsAcc += (dtRaw>0?1/dtRaw:0);
+      fpsN++;
+      if (now - fpsLast > 400){
+        elFps.textContent = "FPS " + Math.round(fpsAcc/Math.max(1,fpsN));
+        fpsAcc=0; fpsN=0; fpsLast=now;
+      }
+
+      if (!state.paused && !state.dead) update(dt);
+      render();
+      requestAnimationFrame(step);
+    }
+
+    function update(dt){
+      state.t += dt;
+
+      state.difficulty = 1 + state.t/30;
+      spawn.interval = clamp(0.85 - state.t/180, 0.22, 0.85);
+      spawn.packChance = clamp(0.10 + state.t/240, 0.10, 0.35);
+
+      if (!spawn.bossAlive && state.t >= spawn.nextBossAt){
+        spawn.nextBossAt += spawn.bossEvery;
+        spawnBoss();
+      }
+
+      // chest schedule (self-heal)
+      if (state.chestAlive && chests.length === 0) {
+        state.chestAlive = false;
+        state.chestTimer = Math.max(state.chestTimer, 1);
+      }
+      if (!state.chestAlive){
+        state.chestTimer -= dt;
+        if (state.chestTimer <= 0){
+          state.chestTimer = 35;
+          spawnChest();
+        }
+      }
+
+      // move input
+      let ix=0, iy=0;
+      if (keys.has("KeyW") || keys.has("ArrowUp")) iy -= 1;
+      if (keys.has("KeyS") || keys.has("ArrowDown")) iy += 1;
+      if (keys.has("KeyA") || keys.has("ArrowLeft")) ix -= 1;
+      if (keys.has("KeyD") || keys.has("ArrowRight")) ix += 1;
+      if (isTouch){ ix += joyVec.x; iy += joyVec.y; }
+
+      const ilen = Math.hypot(ix,iy) || 1;
+      ix/=ilen; iy/=ilen;
+
+      const targetVx = ix*player.speed;
+      const targetVy = iy*player.speed;
+      player.vx = lerp(player.vx, targetVx, 1 - Math.pow(0.001, dt));
+      player.vy = lerp(player.vy, targetVy, 1 - Math.pow(0.001, dt));
+
+      player.x += player.vx*dt;
+      player.y += player.vy*dt;
+
+      // regen + invuln
+      if (player.regen > 0 && player.hp > 0){
+        player.hp = Math.min(player.hpMax, player.hp + player.regen*dt);
+      }
+      player.invuln = Math.max(0, player.invuln - dt);
+
+      // spawns
+      spawn.timer -= dt;
+      while(spawn.timer <= 0){
+        spawn.timer += spawn.interval;
+        const pack = Math.random() < spawn.packChance;
+        if (spawn.bossAlive && Math.random() < 0.55) continue;
+        spawnEnemy(pack);
+      }
+
+      // chest pickup
+      if (chests.length){
+        const c = chests[0];
+        c.t += dt;
+        if (circleHit(player.x,player.y,player.r, c.x,c.y,c.r)){
+          pickUpChest();
+        }
+      }
+
+      shoot(dt);
+      updateOrbitals(dt);
+      applyAura(dt);
+
+      // bullets
+      for (let i=bullets.length-1;i>=0;i--){
+        const b=bullets[i];
+        b.t += dt;
+        b.x += b.vx*dt;
+        b.y += b.vy*dt;
+        if (b.t >= b.life){ bullets.splice(i,1); continue; }
+
+        for (let j=enemies.length-1;j>=0;j--){
+          const e=enemies[j];
+          if (!circleHit(b.x,b.y,b.r, e.x,e.y,e.r)) continue;
+
+          const isCrit = Math.random() < player.critChance;
+          let dmg = b.dmg * (isCrit ? player.critMult : 1);
+          // shield enemy takes reduced bullet damage
+          if (e.type === "shield") dmg *= 0.65;
+          e.hp -= dmg;
+          e.hitFlash = 0.09;
+          recordDamage(dmg);
+
+          b.pierce -= 1;
+          if (b.pierce<=0) bullets.splice(i,1);
+
+          if (e.hp<=0) killEnemy(j);
+          break;
+        }
+      }
+
+      // enemy bullets
+      for (let i=enemyBullets.length-1;i>=0;i--){
+        const b=enemyBullets[i];
+        b.t += dt;
+        b.x += b.vx*dt;
+        b.y += b.vy*dt;
+        if (b.t >= b.life){ enemyBullets.splice(i,1); continue; }
+
+        if (circleHit(b.x,b.y,b.r, player.x,player.y, player.r)){
+          if (player.invuln<=0){
+            applyDamageToPlayer(b.dmg);
+            player.invuln = 0.55 + player.shieldAfterHit;
+            burst(player.x,player.y, randi(10,16), 240, 0.32);
+            enemyBullets.splice(i,1);
+            if (player.hp<=0){ player.hp=0; gameOver(); return; }
+          } else enemyBullets.splice(i,1);
+        }
+      }
+
+      // enemies
+      for (let i=enemies.length-1;i>=0;i--){
+        const e=enemies[i];
+        e.hitFlash = Math.max(0, e.hitFlash - dt);
+
+        const dx = player.x - e.x, dy = player.y - e.y;
+        const d = Math.hypot(dx,dy) || 1;
+
+        // bomber explode when close
+        if (e.type === "bomber"){
+          const dist = Math.hypot(dx, dy);
+          if (dist < e.explodeR * 0.55){
+            explodeBomber(i);
+            continue;
+          }
+        }
+
+        e.vx *= Math.pow(0.001, dt);
+        e.vy *= Math.pow(0.001, dt);
+
+
+        // Dasher (обычный моб) — короткие рывки к игроку
+        if (e.type === "dasher"){
+          e.bossDashCd = Math.max(0, (e.bossDashCd || 0) - dt);
+          e.bossDashT  = Math.max(0, (e.bossDashT  || 0) - dt);
+
+          if (e.bossDashT > 0){
+            e.x += (e.bossDashVx || 0) * dt;
+            e.y += (e.bossDashVy || 0) * dt;
+          } else if ((e.bossDashCd || 0) <= 0){
+            const a = Math.atan2(player.y - e.y, player.x - e.x);
+            const spd = 560 + Math.min(220, state.difficulty*22);
+            e.bossDashVx = Math.cos(a) * spd;
+            e.bossDashVy = Math.sin(a) * spd;
+            e.bossDashT  = 0.18;
+            e.bossDashCd = 1.35;
+          }
+        }
+
+        // Charger dash
+        if (e.type === "boss" && e.bossKind === "charger") {
+          e.bossDashCd = Math.max(0, (e.bossDashCd || 0) - dt);
+          e.bossDashT  = Math.max(0, (e.bossDashT  || 0) - dt);
+
+          if (e.bossDashT > 0) {
+            e.x += e.bossDashVx * dt;
+            e.y += e.bossDashVy * dt;
+          } else if (e.bossDashCd <= 0) {
+            const tier = e.bossTier || 0;
+            const a = Math.atan2(player.y - e.y, player.x - e.x);
+            const spd = 520 + tier*40;
+            e.bossDashVx = Math.cos(a) * spd;
+            e.bossDashVy = Math.sin(a) * spd;
+            e.bossDashT  = 0.28 + tier*0.01;
+            e.bossDashCd = 1.6 - Math.min(0.8, tier*0.08);
+          }
+        }
+
+        const isDashing = ((e.type==="boss" && e.bossKind==="charger") || e.type==="dasher") && (e.bossDashT||0) > 0;
+        if (!isDashing) {
+          e._slowT = Math.max(0, (e._slowT||0) - dt);
+          const spdNow = e.spd * ((e._slowT||0) > 0 ? (e._slowMult||1) : 1);
+          e.x += ((dx/d)*spdNow + e.vx) * dt;
+          e.y += ((dy/d)*spdNow + e.vy) * dt;
+        }
+
+        if (e.type==="shooter" || e.type==="spitter" || e.type==="boss") enemyShoot(e, dt);
+
+        // anti-sticky player collision + damage
+        if (circleHit(player.x,player.y, player.r, e.x,e.y, e.r)){
+          // always separate a bit (even during invuln)
+          const overlap = (player.r + e.r) - Math.hypot(player.x - e.x, player.y - e.y);
+          const push = pushAway(player.x, player.y, e.x, e.y, Math.max(6, overlap * 0.6));
+          player.x += push.x;
+          player.y += push.y;
+          player.vx += push.x * 18;
+          player.vy += push.y * 18;
+
+          if (player.invuln<=0){
+            applyDamageToPlayer(e.dmg);
+            player.invuln = 0.65 + player.shieldAfterHit;
+            burst(player.x,player.y, randi(12,20), 260, 0.35);
+            if (player.hp<=0){ player.hp=0; gameOver(); return; }
+          }
+        }
+      }
+
+      // XP drops update + pickup
+      for (let i = drops.length - 1; i >= 0; i--) {
+        const g = drops[i];
+        g.t += dt;
+
+        // initial drift fades
+        g.vx *= Math.pow(0.001, dt);
+        g.vy *= Math.pow(0.001, dt);
+        g.x += g.vx * dt;
+        g.y += g.vy * dt;
+
+        const dx = player.x - g.x;
+        const dy = player.y - g.y;
+        const dist = Math.hypot(dx, dy) || 1;
+
+        if (dist < player.magnet) {
+          const pull = (1 - dist / player.magnet);
+          const speed = 240 + 520 * pull;
+          g.x += (dx / dist) * speed * dt;
+          g.y += (dy / dist) * speed * dt;
+        }
+
+        if (dist < player.r + g.r + 6) {
+          gainXp(g.v);
+          drops.splice(i, 1);
+        } else if (g.t > 24) {
+          drops.splice(i, 1);
+        }
+      }
+
+      // particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.t += dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vx *= Math.pow(0.02, dt);
+        p.vy *= Math.pow(0.02, dt);
+        if (p.t >= p.life) particles.splice(i, 1);
+      }
+
+      // boss ui
+      let boss = null;
+      for (const ee of enemies) if (ee.type==="boss") { boss = ee; break; }
+      if (boss){
+        bossWrap.style.display = "block";
+        bossbar.style.width = `${clamp(boss.hp/boss.hpMax,0,1)*100}%`;
+      } else bossWrap.style.display = "none";
+
+      // HUD
+      elLvl.textContent = `Lv ${player.lvl}`;
+      elKills.textContent = `Kills ${state.kills}`;
+      elDps.textContent = `Dmg ${getDps()}`;
+      elTime.textContent = fmtTime(state.t);
+
+      hpbar.style.width = `${(player.hp/player.hpMax)*100}%`;
+      hptext.textContent = `${Math.ceil(player.hp)} / ${player.hpMax}`;
+
+      xpbar.style.width = `${(player.xp/player.xpNeed)*100}%`;
+      xptext.textContent = `${Math.floor(player.xp)} / ${player.xpNeed}`;
+
+      elWep.textContent = "W: Bullets" + (player.orbitals>0?` + Orbit x${player.orbitals}`:"") + (player.aura?" + Aura":"");
+
+      if (state.chestAlive) elChest.textContent = chests.length ? "Chest: ON MAP" : "Chest: SPAWNING…";
+      else elChest.textContent = `Chest ${Math.max(0, Math.ceil(state.chestTimer))}s`;
+
+      elRerolls.textContent = `Reroll ${player.rerolls}`;
+    }
+
+    function render(){
+      const w = innerWidth  / GAME_SCALE;
+      const h = innerHeight / GAME_SCALE;
+
+      const camX = player.x - w*0.5;
+      const camY = player.y - h*0.5;
+
+      ctx.fillStyle = "#0b0e14";
+      ctx.fillRect(0,0,w,h);
+
+      // grid
+      const g = 52;
+      const gx0 = Math.floor(camX/g)*g;
+      const gy0 = Math.floor(camY/g)*g;
+
+      ctx.globalAlpha = 0.40;
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x=gx0; x<camX+w+g; x+=g){
+        const sx = x-camX;
+        ctx.moveTo(sx,0); ctx.lineTo(sx,h);
+      }
+      for (let y=gy0; y<camY+h+g; y+=g){
+        const sy = y-camY;
+        ctx.moveTo(0,sy); ctx.lineTo(w,sy);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // chest
+      if (chests.length){
+        const c = chests[0];
+        const sx=c.x-camX, sy=c.y-camY;
+        const bob = Math.sin(c.t*3 + c.bob)*3;
+
+        ctx.globalAlpha = 0.15;
+        ctx.fillStyle = "rgba(255,220,120,1)";
+        ctx.beginPath();
+        ctx.arc(sx, sy+10, 18, 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        ctx.fillStyle = "rgba(255,220,120,0.95)";
+        ctx.beginPath();
+        ctx.roundRect(sx-16, sy-12 + bob, 32, 24, 6);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.35)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.fillRect(sx-2, sy-12 + bob, 4, 24);
+
+// direction arrow to chest (when it's off-screen)
+const onScreen = (sx >= 0 && sx <= w && sy >= 0 && sy <= h);
+if (!onScreen){
+  const dxC = c.x - player.x;
+  const dyC = c.y - player.y;
+  const distC = Math.hypot(dxC, dyC) || 1;
+  const ux = dxC / distC;
+  const uy = dyC / distC;
+
+  const margin = 26;
+  const cx = w * 0.5;
+  const cy = h * 0.5;
+  const reach = Math.max(40, Math.min(cx, cy) - margin);
+  let ax = cx + ux * reach;
+  let ay = cy + uy * reach;
+  ax = clamp(ax, margin, w - margin);
+  ay = clamp(ay, margin, h - margin);
+
+  const ang = Math.atan2(uy, ux);
+
+  ctx.save();
+  ctx.translate(ax, ay);
+  ctx.rotate(ang);
+  ctx.globalAlpha = 0.90;
+  ctx.fillStyle = "rgba(255,220,120,0.95)";
+  ctx.beginPath();
+  ctx.moveTo(14, 0);
+  ctx.lineTo(-10, 8);
+  ctx.lineTo(-10, -8);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+      }
+
+      // XP drops
+      for (const d of drops){
+        const sx=d.x-camX, sy=d.y-camY;
+        ctx.beginPath();
+        ctx.fillStyle="rgba(120,220,255,0.9)";
+        ctx.arc(sx,sy,d.r,0,TAU);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.fillStyle="rgba(255,255,255,0.55)";
+        ctx.arc(sx-2,sy-2,2,0,TAU);
+        ctx.fill();
+      }
+
+      // enemy bullets
+      for (const b of enemyBullets){
+        const sx=b.x-camX, sy=b.y-camY;
+        ctx.beginPath();
+        ctx.fillStyle="rgba(255,140,160,0.9)";
+        ctx.arc(sx,sy,b.r,0,TAU);
+        ctx.fill();
+      }
+
+      // aura
+      if (player.aura){
+        const sx=player.x-camX, sy=player.y-camY;
+        ctx.globalAlpha = 0.10;
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.beginPath();
+        ctx.arc(sx,sy, player.auraRadius, 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // bullets
+      for (const b of bullets){
+        const sx=b.x-camX, sy=b.y-camY;
+        ctx.beginPath();
+        ctx.fillStyle="rgba(255,245,210,0.95)";
+        ctx.arc(sx,sy,b.r,0,TAU);
+        ctx.fill();
+      }
+
+      // enemies
+      for (const e of enemies){
+        const sx=e.x-camX, sy=e.y-camY;
+        let baseCol = e.type==="boss" ? "rgba(210,120,255,0.95)" : "rgba(255,120,140,0.92)";
+        if (e.type==="tank") baseCol="rgba(255,90,90,0.95)";
+        if (e.type==="runner") baseCol="rgba(255,160,90,0.95)";
+        if (e.type==="shooter") baseCol="rgba(120,255,190,0.92)";
+        if (e.type==="bomber") baseCol="rgba(255,220,120,0.92)";
+        if (e.type==="boss"){
+          if (e.bossKind==="sniper") baseCol = "rgba(120,220,255,0.95)";
+          if (e.bossKind==="charger") baseCol = "rgba(255,180,120,0.95)";
+          if (e.bossKind==="spiral") baseCol = "rgba(200,140,255,0.95)";
+          if (e.bossKind==="summoner") baseCol = "rgba(160,255,160,0.92)";
+        }
+        ctx.beginPath();
+        ctx.fillStyle = e.hitFlash>0 ? "rgba(255,255,255,0.95)" : baseCol;
+        ctx.arc(sx,sy,e.r,0,TAU);
+        ctx.fill();
+
+        if (e.type==="boss" || e.type==="tank"){
+          ctx.globalAlpha=0.7;
+          ctx.lineWidth=3;
+          ctx.strokeStyle="rgba(0,0,0,0.35)";
+          ctx.beginPath();
+          ctx.arc(sx,sy,e.r+3,0,TAU);
+          ctx.stroke();
+
+          const p = clamp(e.hp/e.hpMax,0,1);
+          ctx.strokeStyle="rgba(255,255,255,0.65)";
+          ctx.beginPath();
+          ctx.arc(sx,sy,e.r+3,-Math.PI/2,-Math.PI/2+TAU*p);
+          ctx.stroke();
+          ctx.globalAlpha=1;
+        }
+      }
+
+      // particles
+      ctx.globalAlpha = 0.8;
+      for (const p of particles){
+        const sx=p.x-camX, sy=p.y-camY;
+        const a = 1 - (p.t/p.life);
+        ctx.globalAlpha = 0.85*a;
+        ctx.beginPath();
+        ctx.fillStyle="rgba(255,255,255,0.9)";
+        ctx.arc(sx,sy, p.r, 0, TAU);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // orbitals
+      if (player.orbitals>0){
+        for(let k=0;k<player.orbitals;k++){
+          const a = orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
+          const ox = player.x + Math.cos(a)*player.orbitalRadius;
+          const oy = player.y + Math.sin(a)*player.orbitalRadius;
+          const sx=ox-camX, sy=oy-camY;
+
+          ctx.beginPath();
+          ctx.fillStyle="rgba(210,230,255,0.95)";
+          ctx.arc(sx,sy, 7, 0, TAU);
+          ctx.fill();
+        }
+      }
+
+      // magnet radius
+      {
+        const sx = player.x - camX;
+        const sy = player.y - camY;
+
+        ctx.globalAlpha = 0.08;
+        ctx.strokeStyle = "rgba(120,220,255,0.9)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx, sy, player.magnet, 0, TAU);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      // player
+      {
+        const sx=player.x-camX, sy=player.y-camY;
+        ctx.beginPath();
+        const blink = player.invuln>0 && (Math.floor(performance.now()/60)%2===0);
+        ctx.fillStyle = blink ? "rgba(255,255,255,0.9)" : "rgba(210,230,255,0.95)";
+        ctx.arc(sx,sy, player.r, 0, TAU);
+        ctx.fill();
+      }
+
+      // vignette
+      const grd = ctx.createRadialGradient(w*0.5,h*0.5, Math.min(w,h)*0.15, w*0.5,h*0.5, Math.max(w,h)*0.75);
+      grd.addColorStop(0,"rgba(0,0,0,0)");
+      grd.addColorStop(1,"rgba(0,0,0,0.55)");
+      ctx.fillStyle=grd;
+      ctx.fillRect(0,0,w,h);
+    }
+
+    // start
+    openStart();
+    requestAnimationFrame((now)=>{ last = now; requestAnimationFrame(step); });
+
+  } catch (err) {
+    crash(err);
+  }
+
+})();
+</script>
+</body>
+</html>
