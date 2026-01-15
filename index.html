@@ -25,7 +25,7 @@
     .barWrap.small{ margin-top:6px; }
     .barWrap.small span{ width:56px; font-size:12px; opacity:.85; }
     .bar{
-      width:240px; height:10px; border-radius:999px;
+      width:260px; height:12px; border-radius:999px;
       background:rgba(255,255,255,.12); overflow:hidden;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
       position:relative;
@@ -223,7 +223,7 @@
     @media (max-width:900px){
       .choices{grid-template-columns:1fr;}
       .grid2{grid-template-columns: 1fr;}
-      .bar{width:180px;}
+      .bar{width:200px;}
       .list{max-height: 240px;}
       .totemTimer{ top:20vh; font-size:56px; }
       .totemWarning{ font-size:28px; padding:12vh 18px 0; }
@@ -246,7 +246,6 @@
       <span id="dps">Dmg 0</span><span>·</span>
       <span id="fps">FPS --</span><span>·</span>
       <span id="wep">W: Bullets</span><span>·</span>
-      <span id="chest">Chest 35s</span><span>·</span>
       <span id="rerolls">Reroll 2</span><span>·</span>
       <span id="threat">Threat 1.0</span>
     </div>
@@ -271,6 +270,11 @@
     <span>Boss</span>
     <div class="bar small"><div id="bossBar" class="fill"></div></div>
     <span id="bossText"></span>
+  </div>
+  <div class="barWrap small">
+    <span>Chest</span>
+    <div class="bar small"><div id="chestBar" class="fill"></div></div>
+    <span id="chestText"></span>
   </div>
 
   <div class="bossWrap" id="bossWrap">
@@ -386,7 +390,6 @@
     const elDps  = document.getElementById("dps");
     const elFps  = document.getElementById("fps");
     const elWep  = document.getElementById("wep");
-    const elChest= document.getElementById("chest");
     const elRerolls = document.getElementById("rerolls");
     const elThreat = document.getElementById("threat");
     const elChestRespawn = document.getElementById("chestRespawn");
@@ -402,6 +405,8 @@
     const totemText = document.getElementById("totemText");
     const bossBar = document.getElementById("bossBar");
     const bossText = document.getElementById("bossText");
+    const chestBar = document.getElementById("chestBar");
+    const chestText = document.getElementById("chestText");
 
     const bossWrap = document.getElementById("bossWrap");
     const bossList = document.getElementById("bossList");
@@ -470,12 +475,16 @@
     const ORBITAL_BASE_SIZE = 7 * 1.25;
     const ORBITAL_KNOCKBACK_CHANCE = 0.12;
     const ORBITAL_KNOCKBACK_FORCE = 120;
-    const AURA_WAVE_COOLDOWN = 2.4;
+    const AURA_WAVE_COOLDOWN_BASE = 2.6;
+    const AURA_WAVE_COOLDOWN_STEP = 0.1;
     const AURA_WAVE_BASE_FORCE = 60;
     const AURA_WAVE_FORCE_STEP = 10;
-    const AURA_WAVE_BOSS_MULT = 0.4;
-    const AURA_WAVE_ELITE_MULT = 0.7;
+    const AURA_WAVE_BOSS_MULT = 0.0;
+    const AURA_WAVE_ELITE_MULT = 0.2;
+    const AURA_WAVE_POS_MULT = 0.45;
     const AURA_WAVE_VEL_MULT = 4;
+    const AURA_WAVE_TRAVEL_TIME = 0.35;
+    const AURA_WAVE_THICKNESS = 18;
     const XP_BONUS_NORMAL = 0.0005;
     const XP_BONUS_ELITE = 0.002;
     const XP_BONUS_BOSS = 0.01;
@@ -488,21 +497,36 @@
     const TURRET_BULLET_SIZE = 4;
     const TURRET_SIZE_MULT = 1.20;
     const TURRET_SIZE_LV_BONUS = 0.04;
+    const INVULN_LV_STEP = 4;
+    const INVULN_STEP = 0.01;
+    const INVULN_BULLET_BASE = 0.35;
+    const INVULN_BULLET_MIN = 0.05;
+    const INVULN_CONTACT_BASE = 0.4;
+    const INVULN_CONTACT_MIN = 0.1;
     const TOTEM_SPAWN_EVERY = 75;
     const TOTEM_SPAWN_MIN_INTERVAL = 50;
     const TOTEM_SPAWN_LV_STEP = 10;
     const TOTEM_SPAWN_STEP = 5;
     const TOTEM_SPAWN_FIRST = 45;
-    const TOTEM_LIFE = 25;
+    const TOTEM_LIFE_BASE = 25;
+    const TOTEM_LIFE_STEP = 1;
+    const TOTEM_LIFE_LV_STEP = 10;
+    const TOTEM_LIFE_CAP = 40;
     const TOTEM_GRACE = 5;
     const TOTEM_SPAWN_MIN = 640;
     const TOTEM_SPAWN_MAX = 960;
     const TOTEM_RADIUS_MIN = 420;
     const TOTEM_RADIUS_MAX = 600;
-    const TOTEM_EFFECT_GAIN = 1.0;
+    const TOTEM_EFFECT_GAIN_BASE = 1.0;
+    const TOTEM_EFFECT_GAIN_STEP = 1.0;
+    const TOTEM_EFFECT_GAIN_LV_STEP = 10;
+    const TOTEM_EFFECT_GAIN_CAP = 10;
     const TOTEM_EFFECT_DECAY = 0.8;
     const TOTEM_DPS_BASE = 1;
-    const TOTEM_DPS_RAMP = 2;
+    const TOTEM_DPS_RAMP_BASE = 2;
+    const TOTEM_DPS_RAMP_GROWTH = 1.2;
+    const TOTEM_DPS_RAMP_LV_STEP = 4;
+    const TOTEM_DPS_RAMP_CAP = 25;
     const TOTEM_EFFECT_MAX = 90;
     const LOW_HP_SLOW_THRESHOLD = 0.08;
     const LOW_HP_SLOW_RESET = 0.12;
@@ -739,6 +763,12 @@ btnPause.addEventListener("click", (e)=>{
       healActive: null,
       xpEnemyBonus: 0,
       auraWaveT: 0,
+      auraWaveActive: false,
+      auraWaveR: 0,
+      auraWaveMaxR: 0,
+      auraWaveX: 0,
+      auraWaveY: 0,
+      auraWaveId: 0,
       slowMoT: 0,
       slowMoCd: 0,
       slowMoLocked: false,
@@ -815,7 +845,7 @@ btnPause.addEventListener("click", (e)=>{
     };
 
     function getChestInterval(){
-      const reduce = Math.floor((player.lvl - 1) / 5);
+      const reduce = Math.floor((player.lvl - 1) / 4);
       return Math.max(20, 35 - reduce);
     }
     function getTotemInterval(){
@@ -902,6 +932,7 @@ btnPause.addEventListener("click", (e)=>{
       x: 0, y: 0, r: 0,
       t: 0,
       life: 0,
+      lifeMax: 0,
       grace: 0,
       effect: 0,
       inZone: false,
@@ -1095,7 +1126,7 @@ btnPause.addEventListener("click", (e)=>{
       state.dmgDone += amount;
       // lifesteal
       if (player.lifeSteal > 0 && amount > 0){
-        const chance = 0.02 * player.lifeSteal;
+        const chance = 0.01 * player.lifeSteal;
         if (Math.random() < chance){
           const before = player.hp;
           player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.01);
@@ -1451,16 +1482,33 @@ btnPause.addEventListener("click", (e)=>{
     }
 
     // Totem
+    function getTotemLife(lv = player.lvl){
+      const bonus = Math.floor(Math.max(0, lv) / TOTEM_LIFE_LV_STEP) * TOTEM_LIFE_STEP;
+      return Math.min(TOTEM_LIFE_CAP, TOTEM_LIFE_BASE + bonus);
+    }
+    function getInvulnDuration(base, min, lv = player.lvl){
+      const steps = Math.floor(Math.max(0, lv) / INVULN_LV_STEP);
+      return Math.max(min, base - steps * INVULN_STEP);
+    }
+    function getTotemEffectGain(lv = player.lvl){
+      const bonus = Math.floor(Math.max(0, lv) / TOTEM_EFFECT_GAIN_LV_STEP) * TOTEM_EFFECT_GAIN_STEP;
+      return Math.min(TOTEM_EFFECT_GAIN_CAP, TOTEM_EFFECT_GAIN_BASE + bonus);
+    }
+    function getTotemDpsRamp(lv = player.lvl){
+      const steps = Math.floor(Math.max(0, lv) / TOTEM_DPS_RAMP_LV_STEP);
+      return Math.min(TOTEM_DPS_RAMP_CAP, TOTEM_DPS_RAMP_BASE * Math.pow(TOTEM_DPS_RAMP_GROWTH, steps));
+    }
     function spawnTotem(){
       if (totem.active) return;
       const a = randf(0, TAU);
       const d = randf(TOTEM_SPAWN_MIN, TOTEM_SPAWN_MAX);
       totem.x = player.x + Math.cos(a) * d;
       totem.y = player.y + Math.sin(a) * d;
-      const lvlScale = 1 + Math.min(1, Math.max(0, player.lvl - 1) * 0.01);
+      const lvlScale = 1 + Math.min(0.8, Math.max(0, player.lvl - 1) * 0.005);
       totem.r = randf(TOTEM_RADIUS_MIN, TOTEM_RADIUS_MAX) * lvlScale;
       totem.t = 0;
-      totem.life = TOTEM_LIFE;
+      totem.life = getTotemLife();
+      totem.lifeMax = totem.life;
       totem.grace = TOTEM_GRACE;
       totem.active = true;
       totem.inZone = false;
@@ -1693,17 +1741,31 @@ btnPause.addEventListener("click", (e)=>{
       if (!player.aura) return;
 
       const waveLv = getLevel("auraWave");
-      let doWave = false;
       if (waveLv > 0){
         state.auraWaveT -= dt;
         if (state.auraWaveT <= 0){
-          state.auraWaveT = AURA_WAVE_COOLDOWN;
-          doWave = true;
+          state.auraWaveT = getAuraWaveCooldown();
+          state.auraWaveActive = true;
+          state.auraWaveR = 0;
+          state.auraWaveMaxR = player.auraRadius;
+          state.auraWaveX = player.x;
+          state.auraWaveY = player.y;
+          state.auraWaveId += 1;
         }
       }
 
+      let wavePrevR = state.auraWaveR;
+      if (state.auraWaveActive){
+        const speed = state.auraWaveMaxR / Math.max(0.1, AURA_WAVE_TRAVEL_TIME);
+        state.auraWaveR += speed * dt;
+        if (state.auraWaveR >= state.auraWaveMaxR + AURA_WAVE_THICKNESS){
+          state.auraWaveActive = false;
+        }
+        state.auraWaveX = player.x;
+        state.auraWaveY = player.y;
+      }
+
       const radius = player.auraRadius;
-      const force = doWave ? getAuraWaveForce() : 0;
       const candidates = [];
       gridQueryCircle(player.x, player.y, radius + ENEMY_MAX_R, candidates);
       for (let i=candidates.length-1; i>=0; i--){
@@ -1720,17 +1782,44 @@ btnPause.addEventListener("click", (e)=>{
         recordDamage(dmg);
         if (player.auraSlow > 0){ e._slowT = Math.max(e._slowT||0, 0.25); e._slowMult = 1 - clamp(player.auraSlow, 0, 0.55); }
         if (e.hp <= 0){ killEnemy(e); continue; }
+      }
 
-        if (doWave){
-          let mult = 1;
-          if (e.type === "boss") mult = AURA_WAVE_BOSS_MULT;
-          else if (e.elite) mult = AURA_WAVE_ELITE_MULT;
+      if (state.auraWaveActive){
+        const waveCandidates = [];
+        const waveR = state.auraWaveR;
+        const minR = Math.min(wavePrevR, waveR);
+        const maxR = Math.max(wavePrevR, waveR);
+        const waveX = state.auraWaveX;
+        const waveY = state.auraWaveY;
+        const range = maxR + AURA_WAVE_THICKNESS + ENEMY_MAX_R;
+        const force = getAuraWaveForce();
+        if (force > 0){
+          gridQueryCircle(waveX, waveY, range, waveCandidates);
+          for (let i=waveCandidates.length-1; i>=0; i--){
+            const e = waveCandidates[i];
+            if (e.dead || e.dying) continue;
+            if (e._auraWaveId === state.auraWaveId) continue;
+            const dx = e.x - waveX;
+            const dy = e.y - waveY;
+            const dist = Math.hypot(dx, dy);
+            const inner = Math.max(0, minR - AURA_WAVE_THICKNESS - e.r);
+            const outer = maxR + AURA_WAVE_THICKNESS + e.r;
+            if (dist < inner || dist > outer) continue;
 
-          const push = pushAway(e.x, e.y, player.x, player.y, force * mult);
-          e.x += push.x;
-          e.y += push.y;
-          e.vx += push.x * AURA_WAVE_VEL_MULT;
-          e.vy += push.y * AURA_WAVE_VEL_MULT;
+            let mult = 1;
+            if (e.type === "boss") mult = AURA_WAVE_BOSS_MULT;
+            else if (e.elite) mult = AURA_WAVE_ELITE_MULT;
+
+            const band = AURA_WAVE_THICKNESS + e.r;
+            const waveBand = clamp(1 - Math.abs(dist - waveR) / Math.max(1, band), 0, 1);
+            const smooth = waveBand * waveBand * (3 - 2 * waveBand);
+            const push = pushAway(e.x, e.y, waveX, waveY, force * mult * smooth);
+            e.x += push.x * AURA_WAVE_POS_MULT;
+            e.y += push.y * AURA_WAVE_POS_MULT;
+            e.vx += push.x * AURA_WAVE_VEL_MULT;
+            e.vy += push.y * AURA_WAVE_VEL_MULT;
+            e._auraWaveId = state.auraWaveId;
+          }
         }
       }
     }
@@ -1973,7 +2062,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         const mult = 1 - (dp / e.explodeR); // 0..1
         const dmg = e.explodeDmg * (0.55 + 0.45 * mult);
         player.hp -= dmg;
-        player.invuln = 0.75 + player.shieldAfterHit;
+        player.invuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN) + player.shieldAfterHit;
 
         const push = pushAway(player.x, player.y, e.x, e.y, 18 + 22 * mult);
         player.x += push.x;
@@ -2046,7 +2135,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         else if (e.elite) mult = 2;
         if (Math.random() < 0.02 * mult){
           const before = player.hp;
-          player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.02);
+          player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.01);
           const healed = player.hp - before;
           if (healed > 0) spawnHealFloat(healed);
         }
@@ -2173,7 +2262,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
       armor:    { title:"Броня",         max: 8,  desc:(lv)=>`-6% входящий урон (ур. ${lv+1}/8)`, apply:()=>{ player.armor = clamp((player.armor||0) + 0.06, 0, 0.60); } },
       dodge:    { title:"Уклонение",     max: 6,  desc:(lv)=>`+5% шанс не получить урон (ур. ${lv+1}/6)`, apply:()=>{ player.dodge = clamp((player.dodge||0) + 0.05, 0, 0.35); } },
-      lifesteal:{ title:"Лайфстил",      max: 8,  desc:(lv)=>`+2% шанс отхилить 1% HP (ур. ${lv+1}/8) · килл: 2% на 2% HP`, apply:()=>{ player.lifeSteal = Math.min(8, (player.lifeSteal||0) + 1); } },
+      lifesteal:{ title:"Лайфстил",      max: 8,  desc:(lv)=>`+1% шанс отхилить 1% HP (ур. ${lv+1}/8) · килл: 2% на 1% HP`, apply:()=>{ player.lifeSteal = Math.min(8, (player.lifeSteal||0) + 1); } },
 
       xpGain:   { title:"Опыт",          max: 8,  desc:(lv)=>`+10% XP (ур. ${lv+1}/8)`, apply:()=>{ player.xpGainMult = (player.xpGainMult || 1) * 1.10; } },
       rerollCap:{ title:"Лимит reroll",  max: 4,  desc:(lv)=>`+2 max rerolls (ур. ${lv+1}/4)`, apply:()=>{ player.rerollCap += 2; } },
@@ -2184,7 +2273,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       speed:    { title:"Скорость",       max: 10, desc:(lv)=>`+10% move speed (ур. ${lv+1}/10)`, apply:()=>{ player.speed *= 1.10; } },
       hp:       { title:"Живучесть",      max: 10, desc:(lv)=>`+22 max HP (+heal) (ур. ${lv+1}/10)`, apply:()=>{ player.hpMax += 22; player.hp = Math.min(player.hpMax, player.hp + 22); } },
       regen:    { title:"Регенерация",    max: 10, desc:(lv)=>`+1.0 HP/сек (ур. ${lv+1}/10)`, apply:()=>{ player.regen += 1.0; } },
-      magnet:   { title:"Магнит",         max: 8,  desc:(lv)=>`+35 радиус подбора XP (ур. ${lv+1}/8)`,  apply:()=>{ player.magnet += 35; } },
+      magnet:   { title:"Магнит",         max: 8,  desc:(lv)=>`+40 радиус подбора XP (ур. ${lv+1}/8)`,  apply:()=>{ player.magnet += 40; } },
 
       orbital:  { title:"Орбиталка",      max: 12, desc:(lv)=>`+1 orbital (ур. ${lv+1}/12)`, apply:()=>{ player.orbitals = Math.min(12, player.orbitals + 1); } },
       orbitalDmg:{title:"Орбиталки: урон",max: 12, desc:(lv)=>`+25% orbital damage (ур. ${lv+1}/12)`, apply:()=>{ player.orbitalDamage *= 1.25; } },
@@ -2193,7 +2282,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       aura:     { title:"Аура",           max: 1,  desc:()=>`Включить ауру урона рядом`, apply:()=>{ player.aura = true; } },
       auraRadius:{title:"Аура: радиус",   max: 10, desc:(lv)=>`+16 aura radius (ур. ${lv+1}/10)`, apply:()=>{ player.auraRadius += 16; } },
       auraDps:  { title:"Аура: DPS",      max: 12, desc:(lv)=>`+30% aura DPS (ур. ${lv+1}/12)`, apply:()=>{ player.auraDps *= 1.30; } },
-      auraWave: { title:"Аура: волна",    max: 6,  desc:(lv)=>`Волна каждые 2.4с · сила +${AURA_WAVE_FORCE_STEP} (ур. ${lv+1}/6)`, apply:()=>{ if (getLevel("auraWave") === 0) state.auraWaveT = AURA_WAVE_COOLDOWN; } },
+      auraWave: { title:"Аура: волна",    max: 5,  desc:(lv)=>`Волна каждые ${fmtNum(getAuraWaveCooldown(lv + 1), 1)}с · сила +${AURA_WAVE_FORCE_STEP} (ур. ${lv+1}/5)`, apply:()=>{ if (getLevel("auraWave") === 0) state.auraWaveT = getAuraWaveCooldown(1); } },
     };
     const upgradeList = Object.keys(U);
     const getLevel = (id)=>player.u[id]||0;
@@ -2209,6 +2298,10 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       const lv = getLevel("auraWave");
       if (lv <= 0) return 0;
       return AURA_WAVE_BASE_FORCE + (lv - 1) * AURA_WAVE_FORCE_STEP;
+    }
+    function getAuraWaveCooldown(lv = getLevel("auraWave")){
+      if (lv <= 0) return AURA_WAVE_COOLDOWN_BASE;
+      return Math.max(0.1, AURA_WAVE_COOLDOWN_BASE - (lv - 1) * AURA_WAVE_COOLDOWN_STEP);
     }
 
     function isEligible(id){
@@ -2255,7 +2348,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         if (hpRatio < 0.10 && id === "hp") w *= 2.6;
         const lvl = getLevel(id);
         w *= 1 / (1 + lvl * 0.36);
-        if (id === "lifesteal" && lvl > 0) w *= 1 / (1 + lvl * 0.25);
+        if (id === "orbital" && lvl > 0) w *= 1 / (1 - lvl * 0.05);
+        if (id === "lifesteal" && lvl > 0) w *= 1 / (1 + lvl * 0.4);
         if (id === "dodge" && lvl > 0) w *= 1 / (1 + lvl * 0.2);
         if (id === "multishot" && lvl > 0) w *= 1 / (1 + lvl * 0.25);
         if (id === "pierce" && lvl > 0) w *= 1 / (1 + lvl * 0.28);
@@ -2463,7 +2557,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         case "dodge":
           return `Уклонение: ${fmtPct(player.dodge || 0)}`;
         case "lifesteal":
-          return `Лайфстил: ${fmtPct((player.lifeSteal || 0) * 0.02)} шанс на 1% HP при попадании`;
+          return `Лайфстил: ${fmtPct((player.lifeSteal || 0) * 0.01)} шанс на 1% HP при попадании`;
         case "xpGain": {
           const bonus = (player.xpGainMult || 1) - 1;
           return `Опыт: x${fmtNum(player.xpGainMult || 1, 2)} (${fmtSignedPct(bonus)})`;
@@ -2475,7 +2569,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         case "auraSlow":
           return `Аура: замедление ${fmtPct(player.auraSlow || 0)}`;
         case "auraWave":
-          return `Аура: волна ${fmtNum(AURA_WAVE_COOLDOWN, 1)}с · сила ${fmtNum(getAuraWaveForce())}`;
+          return `Аура: волна ${fmtNum(getAuraWaveCooldown(), 1)}с · сила ${fmtNum(getAuraWaveForce())}`;
         case "speed":
           return `Скорость: ${fmtNum(player.speed)}`;
         case "hp":
@@ -2789,8 +2883,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         totem.inZone = inZone;
 
         if (totem.grace <= 0 && !inZone){
-          totem.effect = Math.min(TOTEM_EFFECT_MAX, totem.effect + dt * TOTEM_EFFECT_GAIN);
-          const dps = TOTEM_DPS_BASE + TOTEM_DPS_RAMP * totem.effect;
+          totem.effect = Math.min(TOTEM_EFFECT_MAX, totem.effect + dt * getTotemEffectGain());
+          const dps = TOTEM_DPS_BASE + getTotemDpsRamp() * totem.effect;
           const dmg = applyDamageToPlayer(dps * dt);
           if (dmg > 0 && player.hp <= 0){
             player.hp = 0;
@@ -2922,7 +3016,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         if (circleHit(b.x,b.y,b.r, player.x,player.y, player.r)){
           if (player.invuln<=0){
             applyDamageToPlayer(b.dmg);
-            player.invuln = 0.55 + player.shieldAfterHit;
+            player.invuln = getInvulnDuration(INVULN_BULLET_BASE, INVULN_BULLET_MIN) + player.shieldAfterHit;
             if (b.explodeR){
               const push = pushAway(player.x, player.y, b.x, b.y, b.explodePush || 16);
               player.x += push.x;
@@ -3071,7 +3165,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
           if (player.invuln<=0){
             applyDamageToPlayer(e.dmg);
-            player.invuln = 0.65 + player.shieldAfterHit;
+            player.invuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN) + player.shieldAfterHit;
             burst(player.x,player.y, randi(12,20), 260, 0.35);
             if (player.hp<=0){
               player.hp=0;
@@ -3161,7 +3255,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           }
           if (g.turretPull) useTurret = true;
         }
-        if (useNova) targetMagnet = Math.max(targetMagnet, novaMagnetR * 6);
+        if (useNova) targetMagnet = Math.max(targetMagnet, dist + 1);
         if (useTurret) targetMagnet = Math.max(targetMagnet, turretAggro * 4);
 
         if (dist < targetMagnet) {
@@ -3261,7 +3355,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
       if (totemBar && totemText){
         const totemLeft = totem.active ? totem.life : state.totemTimer;
-        const totemMax = totem.active ? TOTEM_LIFE : (state.totemTimerMax || getTotemInterval());
+        const totemMax = totem.active ? (totem.lifeMax || getTotemLife()) : (state.totemTimerMax || getTotemInterval());
         const totemPct = clamp(totemLeft / Math.max(1, totemMax), 0, 1);
         totemBar.style.width = `${totemPct*100}%`;
         totemText.textContent = `${Math.max(0, Math.ceil(totemLeft))}s`;
@@ -3273,6 +3367,18 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         bossBar.style.width = `${bossPct*100}%`;
         bossText.textContent = `${Math.max(0, Math.ceil(bossLeft))}s`;
       }
+      if (chestBar && chestText){
+        if (state.chestAlive){
+          chestBar.style.width = "100%";
+          chestText.textContent = chests.length ? "ON MAP" : "SPAWNING…";
+        } else {
+          const chestLeft = Math.max(0, state.chestTimer);
+          const chestMax = Math.max(1, getChestInterval());
+          const chestPct = clamp(chestLeft / chestMax, 0, 1);
+          chestBar.style.width = `${chestPct*100}%`;
+          chestText.textContent = `${Math.max(0, Math.ceil(chestLeft))}s`;
+        }
+      }
 
       elWep.textContent = "W: Bullets"
         + (player.orbitals>0?` + Orbit x${player.orbitals}`:"")
@@ -3281,9 +3387,6 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         + (getTurretLevel()>0?` + Turret L${getTurretLevel()}`:"");
 
       if (elChestRespawn) elChestRespawn.textContent = String(getChestInterval());
-
-      if (state.chestAlive) elChest.textContent = chests.length ? "Chest: ON MAP" : "Chest: SPAWNING…";
-      else elChest.textContent = `Chest ${Math.max(0, Math.ceil(state.chestTimer))}s`;
 
       elRerolls.textContent = `Reroll ${player.rerolls}`;
       if (elThreat) elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;
@@ -3392,7 +3495,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           ctx.translate(ax, ay);
           ctx.rotate(ang);
           ctx.globalAlpha = 0.95;
-          ctx.fillStyle = "rgba(110,230,255,0.95)";
+          ctx.fillStyle = "rgba(90,220,190,0.95)";
           ctx.beginPath();
           ctx.moveTo(22, 0);
           ctx.lineTo(-16, 12);
@@ -3401,7 +3504,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           ctx.fill();
 
           ctx.globalAlpha = 0.6;
-          ctx.strokeStyle = "rgba(255,255,255,0.65)";
+          ctx.strokeStyle = "rgba(210,255,245,0.7)";
           ctx.lineWidth = 2;
           ctx.stroke();
           ctx.restore();
@@ -3523,6 +3626,21 @@ if (!onScreen){
         ctx.arc(sx,sy, player.auraRadius, 0, TAU);
         ctx.fill();
         ctx.globalAlpha = 1;
+      }
+      if (state.auraWaveActive){
+        const wx = state.auraWaveX - camX;
+        const wy = state.auraWaveY - camY;
+        const fade = 1 - clamp(state.auraWaveR / Math.max(1, state.auraWaveMaxR), 0, 1);
+        ctx.save();
+        ctx.globalAlpha = 0.35 + 0.25 * fade;
+        ctx.strokeStyle = "rgba(200,230,255,0.9)";
+        ctx.lineWidth = Math.max(2, AURA_WAVE_THICKNESS * 0.25);
+        ctx.shadowColor = "rgba(140,220,255,0.7)";
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(wx, wy, state.auraWaveR, 0, TAU);
+        ctx.stroke();
+        ctx.restore();
       }
 
       // bullets
