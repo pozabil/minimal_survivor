@@ -662,6 +662,7 @@ btnPause.addEventListener("click", (e)=>{
       bulletSpeed: 520,
       bulletSize: 5,
       damage: 16,
+      baseDamage: 16,
       pierce: 1,
       spread: 0.0,
       multishot: 1,
@@ -672,7 +673,7 @@ btnPause.addEventListener("click", (e)=>{
 
       armor: 0.0,      // до 60% снижения входящего урона
       dodge: 0.0,      // шанс уклониться (0..0.35)
-      lifeSteal: 0.0,  // доля лечения от нанесённого урона (0..0.12)
+      lifeSteal: 0,  // уровни лайфстила (0..8)
 
       orbitals: 0,
       orbitalRadius: 48,
@@ -731,9 +732,13 @@ btnPause.addEventListener("click", (e)=>{
       const base = player.r * 2 * TURRET_SIZE_MULT;
       return base * (1 + TURRET_SIZE_LV_BONUS * (lvl - 1));
     }
+    function getTurretDamageScale(){
+      const base = player.baseDamage || player.damage || 1;
+      return player.damage / base;
+    }
     function getTurretDamage(){
       const lv = getLevel("turretLevel");
-      return TURRET_DAMAGE * Math.pow(1.12, lv);
+      return TURRET_DAMAGE * Math.pow(1.12, lv) * getTurretDamageScale();
     }
     function getTurretFireRate(){
       const lv = getLevel("turretLevel");
@@ -807,6 +812,7 @@ btnPause.addEventListener("click", (e)=>{
           player.hp = player.hpMax;
           player.fireRate = 4.6;
           player.damage = 15;
+          player.baseDamage = 15;
 
           player.xpGainMult = 1.0;
           player.shieldAfterHit = 0.0;
@@ -827,6 +833,7 @@ btnPause.addEventListener("click", (e)=>{
           player.speed = 240;
           player.baseSpeed = 240;
           player.damage = 16;
+          player.baseDamage = 16;
           player.fireRate = 4.1;
 
           player.xpGainMult = 1.0;
@@ -845,6 +852,7 @@ btnPause.addEventListener("click", (e)=>{
           player.orbitals = 1;
           player.orbitalDamage = 12;
           player.damage = 18;
+          player.baseDamage = 18;
           player.fireRate = 4.0;
           player.hpMax = BASE_HP * 1.0;
           player.hp = player.hpMax;
@@ -950,7 +958,10 @@ btnPause.addEventListener("click", (e)=>{
       state.dmgDone += amount;
       // lifesteal
       if (player.lifeSteal > 0 && amount > 0){
-        player.hp = Math.min(player.hpMax, player.hp + amount * player.lifeSteal);
+        const chance = 0.02 * player.lifeSteal;
+        if (Math.random() < chance){
+          player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.01);
+        }
       }
       state.lastDmgWindow.push([state.t, amount]);
       const cutoff = state.t - 2;
@@ -1832,6 +1843,15 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       burst(e.x,e.y, randi(10,16), 220, 0.35);
       dropXp(e.x,e.y, e.xp);
 
+      if (player.lifeSteal > 0){
+        let mult = 1;
+        if (e.type === "boss") mult = 5;
+        else if (e.elite) mult = 2;
+        if (Math.random() < 0.02 * mult){
+          player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.02);
+        }
+      }
+
       if (e.elite){
         const bonus = e.eliteReward ? Math.round(e.xp * 1.2) : Math.round(e.xp * 0.4);
         dropXp(e.x, e.y, bonus);
@@ -1953,7 +1973,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
       armor:    { title:"Броня",         max: 8,  desc:(lv)=>`-6% входящий урон (ур. ${lv+1}/8)`, apply:()=>{ player.armor = clamp((player.armor||0) + 0.06, 0, 0.60); } },
       dodge:    { title:"Уклонение",     max: 7,  desc:(lv)=>`+5% шанс не получить урон (ур. ${lv+1}/7)`, apply:()=>{ player.dodge = clamp((player.dodge||0) + 0.05, 0, 0.35); } },
-      lifesteal:{ title:"Лайфстил",      max: 8,  desc:(lv)=>`+1% лечение от урона (ур. ${lv+1}/8)`, apply:()=>{ player.lifeSteal = clamp((player.lifeSteal||0) + 0.01, 0, 0.08); } },
+      lifesteal:{ title:"Лайфстил",      max: 8,  desc:(lv)=>`+2% шанс отхилить 1% HP (ур. ${lv+1}/8) · килл: 2% на 2% HP`, apply:()=>{ player.lifeSteal = Math.min(8, (player.lifeSteal||0) + 1); } },
 
       xpGain:   { title:"Опыт",          max: 8,  desc:(lv)=>`+10% XP (ур. ${lv+1}/8)`, apply:()=>{ player.xpGainMult = (player.xpGainMult || 1) * 1.10; } },
       rerollCap:{ title:"Лимит reroll",  max: 4,  desc:(lv)=>`+2 max rerolls (ур. ${lv+1}/4)`, apply:()=>{ player.rerollCap += 2; } },
