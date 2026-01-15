@@ -190,7 +190,7 @@
   </div>
 
   <div class="hint">
-    PC: WASD/стрелки · Esc — билд/пауза · Авто-стрельба · Босс каждые 2 минуты · Сундук ~каждые 35 секунд<br/>
+    PC: WASD/стрелки · Esc — билд/пауза · Авто-стрельба · Босс каждые 2 минуты · Сундук ~каждые <span id="chestRespawn">35</span> секунд<br/>
     Mobile: джойстик слева
   </div>
 </div>
@@ -295,6 +295,7 @@
     const elWep  = document.getElementById("wep");
     const elChest= document.getElementById("chest");
     const elRerolls = document.getElementById("rerolls");
+    const elChestRespawn = document.getElementById("chestRespawn");
 
     const hpbar  = document.getElementById("hpbar");
     const xpbar  = document.getElementById("xpbar");
@@ -616,6 +617,11 @@ btnPause.addEventListener("click", (e)=>{
       chestBonusRare: 0.0,
     };
 
+    function getChestInterval(){
+      const reduce = Math.floor((player.lvl - 1) / 5);
+      return Math.max(20, 35 - reduce);
+    }
+
     Object.defineProperty(player, "xGainMultSafe", { get(){ return player.xpGainMult || 1; } });
 
     const bullets = [];
@@ -798,6 +804,7 @@ btnPause.addEventListener("click", (e)=>{
         player.xp -= player.xpNeed;
         player.lvl += 1;
         player.xpNeed = Math.floor(player.xpNeed * 1.22 + 8);
+        state.chestTimer = Math.min(state.chestTimer, getChestInterval());
         openUpgradePicker("level");
       }
     }
@@ -1707,7 +1714,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       if (!state.chestAlive){
         state.chestTimer -= dt;
         if (state.chestTimer <= 0){
-          state.chestTimer = 35;
+          state.chestTimer = getChestInterval();
           spawnChest();
         }
       }
@@ -1979,6 +1986,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         + (player.orbitals>0?` + Orbit x${player.orbitals}`:"")
         + (player.aura?" + Aura":"")
         + (player.novaCount>0?` + Nova x${player.novaCount}`:"");
+
+      if (elChestRespawn) elChestRespawn.textContent = String(getChestInterval());
 
       if (state.chestAlive) elChest.textContent = chests.length ? "Chest: ON MAP" : "Chest: SPAWNING…";
       else elChest.textContent = `Chest ${Math.max(0, Math.ceil(state.chestTimer))}s`;
