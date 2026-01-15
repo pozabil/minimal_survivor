@@ -992,6 +992,7 @@ btnPause.addEventListener("click", (e)=>{
         dasher:   { r:13, hp:44,  spd:150, dmg:14, xp:14 }, // рывки к игроку
         shield:   { r:16, hp:95,  spd:110, dmg:13, xp:18 }, // снижает урон от пуль
         triad:    { r:15, hp:70,  spd:112, dmg:14, xp:20, triRad:24, triSpin:4.6, triShotRate:0.85, triShotSpeed:280, triShotDmg:9 }, // вращающийся треугольник + залп
+        blaster:  { r:14, hp:78,  spd:106, dmg:12, xp:22, shotRate:1.0, shotSpeed:300, shotDmg:12, shotSize:5, shotLife:3.0, explodeR:44, explodePush:18, burstGap:0.12, burstCooldown:1.2, bulletColor:"rgba(120,190,255,0.95)", bulletGlow:"rgba(120,200,255,0.9)" }, // синие взрывные снаряды очередями
         burst:    { r:14, hp:60,  spd:112, dmg:11, xp:17, burstN:6, burstSpeed:270, burstDmg:9 }, // при смерти выпускает пули
         splitter: { r:15, hp:78,  spd:118, dmg:12, xp:18 }, // при смерти делится на миньонов
         minion:   { r:10, hp:26,  spd:170, dmg:9,  xp:6  }, // спавнится от splitter
@@ -1024,26 +1025,34 @@ btnPause.addEventListener("click", (e)=>{
         const pSpitter  = (diff > 2.5) ? (0.03 + Math.min(0.09, (diff-2.5)*0.015)) : 0.0;
         const pShield   = (diff > 3.0) ? (0.03 + Math.min(0.08, (diff-3)*0.013)) : 0.0;
         const pTriad    = (player.lvl >= 15) ? (0.02 + Math.min(0.07, (player.lvl-15)*0.006)) : 0.0;
+        const unlockBlaster = (player.lvl >= 20 || state.t >= 12*60);
+        const pBlaster  = unlockBlaster ? (0.02 + Math.min(0.07, diff*0.010)) : 0.0;
         const pBurst    = (diff > 3.0) ? (0.02 + Math.min(0.07, (diff-3)*0.012)) : 0.0;
         const pSplitter = (diff > 3.5) ? (0.02 + Math.min(0.07, (diff-3.5)*0.012)) : 0.0;
         const pBrute    = (diff > 4.0) ? (0.02 + Math.min(0.06, (diff-4)*0.010)) : 0.0;
 
-        // нормализуем "верх" так, чтобы остался baseline на grunt
+        const picks = [
+          { t: "runner",  w: pRunner },
+          { t: "tank",    w: pTank },
+          { t: "shooter", w: pShooter },
+          { t: "bomber",  w: pBomber },
+          { t: "dasher",  w: pDasher },
+          { t: "spitter", w: pSpitter },
+          { t: "shield",  w: pShield },
+          { t: "triad",   w: pTriad },
+          { t: "blaster", w: pBlaster },
+          { t: "burst",   w: pBurst },
+          { t: "splitter",w: pSplitter },
+          { t: "brute",   w: pBrute },
+        ];
+        const total = picks.reduce((sum, p)=>sum + p.w, 0);
+        const scale = total > 1 ? (1 / total) : 1;
         let acc = 0;
-        const pick = (p, t)=>{ acc += p; return roll < acc ? t : null; };
-
-        type = pick(pRunner, "runner")
-            || pick(pTank, "tank")
-            || pick(pShooter, "shooter")
-            || pick(pBomber, "bomber")
-            || pick(pDasher, "dasher")
-            || pick(pSpitter, "spitter")
-            || pick(pShield, "shield")
-            || pick(pTriad, "triad")
-            || pick(pBurst, "burst")
-            || pick(pSplitter, "splitter")
-            || pick(pBrute, "brute")
-            || "grunt";
+        for (const p of picks){
+          acc += p.w * scale;
+          if (roll < acc){ type = p.t; break; }
+        }
+        if (!type) type = "grunt";
       }
 
       const b = enemyBase(type);
@@ -1080,11 +1089,20 @@ btnPause.addEventListener("click", (e)=>{
         shotRate: b.shotRate || 0,
         shotSpeed: b.shotSpeed || 0,
         shotDmg: b.shotDmg || 0,
+        shotSize: b.shotSize || 0,
+        shotLife: b.shotLife || 0,
         explodeR: b.explodeR || 0,
         explodeDmg: b.explodeDmg || 0,
+        explodePush: b.explodePush || 0,
+        bulletColor: b.bulletColor || null,
+        bulletGlow: b.bulletGlow || null,
         burstN: b.burstN || 0,
         burstSpeed: b.burstSpeed || 0,
         burstDmg: b.burstDmg || 0,
+        burstGap: b.burstGap || 0,
+        burstCooldown: b.burstCooldown || 0,
+        burstLeft: 0,
+        burstCd: randf(0, b.burstCooldown || 0),
         triRad: b.triRad || 0,
         triSpin: b.triSpin || 0,
         triShotRate: b.triShotRate || 0,
@@ -1455,22 +1473,48 @@ btnPause.addEventListener("click", (e)=>{
 
     function enemyShoot(e, dt, tx, ty){
       if (!e.shotRate) return;
-      e.shotTimer -= dt;
-      if (e.shotTimer > 0) return;
 
       const tier = e.bossTier || 0;
-      const shootBullet = (x,y, ang, spd, dmg, r=4, life=3.2) => {
-        enemyBullets.push({
+      const shootBullet = (x,y, ang, spd, dmg, r=4, life=3.2, extra=null) => {
+        const b = {
           x,y,
           vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
           r, dmg, t:0, life,
           srcType: e.type,
           srcBossKind: e.bossKind || null,
-        });
+        };
+        if (extra) Object.assign(b, extra);
+        enemyBullets.push(b);
       };
       const aim = Math.atan2(ty - e.y, tx - e.x);
 
-            if (e.type !== "boss") {
+      if (e.type === "blaster"){
+        e.burstCd = Math.max(0, (e.burstCd || 0) - dt);
+        e.shotTimer = Math.max(0, (e.shotTimer || 0) - dt);
+        if ((e.burstLeft || 0) <= 0){
+          if (e.burstCd > 0) return;
+          e.burstLeft = randi(3, 5);
+        }
+        if (e.shotTimer > 0) return;
+        const spread = 0.10;
+        const ang = aim + randf(-spread, spread);
+        shootBullet(
+          e.x, e.y, ang,
+          e.shotSpeed, e.shotDmg,
+          e.shotSize || 4,
+          e.shotLife || 3.0,
+          { color: e.bulletColor, glow: e.bulletGlow, explodeR: e.explodeR, explodePush: e.explodePush }
+        );
+        e.burstLeft -= 1;
+        e.shotTimer = e.burstGap || 0.12;
+        if (e.burstLeft <= 0) e.burstCd = e.burstCooldown || 1.0;
+        return;
+      }
+
+      e.shotTimer -= dt;
+      if (e.shotTimer > 0) return;
+
+      if (e.type !== "boss") {
         // spitter shoots a small fan
         if (e.type === "spitter"){
           const fan = 3;
@@ -2333,7 +2377,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
             if (circleRectHit(b.x,b.y,b.r, tur.x,tur.y, tur.size, tur.size)){
               tur.hp -= b.dmg;
               tur.hitCd = Math.max(tur.hitCd, 0.1);
-              burst(tur.x,tur.y, randi(6,10), 200, 0.25);
+              if (b.explodeR) burst(b.x,b.y, randi(10,16), 260, 0.32);
+              else burst(tur.x,tur.y, randi(6,10), 200, 0.25);
               enemyBullets.splice(i,1);
               if (tur.hp <= 0) turrets.splice(t,1);
               hitTurret = true;
@@ -2347,7 +2392,16 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           if (player.invuln<=0){
             applyDamageToPlayer(b.dmg);
             player.invuln = 0.55 + player.shieldAfterHit;
-            burst(player.x,player.y, randi(10,16), 240, 0.32);
+            if (b.explodeR){
+              const push = pushAway(player.x, player.y, b.x, b.y, b.explodePush || 16);
+              player.x += push.x;
+              player.y += push.y;
+              player.vx += push.x * 18;
+              player.vy += push.y * 18;
+              burst(b.x,b.y, randi(12,18), 280, 0.36);
+            } else {
+              burst(player.x,player.y, randi(10,16), 240, 0.32);
+            }
             enemyBullets.splice(i,1);
             if (player.hp<=0){
               player.hp=0;
@@ -2444,7 +2498,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           e.y += ((dy/d)*spdNow + e.vy) * dt;
         }
 
-        if (e.type==="shooter" || e.type==="spitter" || e.type==="boss") enemyShoot(e, dt, target.x, target.y);
+        if (e.type==="shooter" || e.type==="spitter" || e.type==="blaster" || e.type==="boss") enemyShoot(e, dt, target.x, target.y);
 
         // anti-sticky player collision + damage
         if (circleHit(player.x,player.y, player.r, e.x,e.y, e.r)){
@@ -2749,10 +2803,16 @@ if (!onScreen){
       // enemy bullets
       for (const b of enemyBullets){
         const sx=b.x-camX, sy=b.y-camY;
+        if (b.glow){
+          ctx.save();
+          ctx.shadowColor = b.glow;
+          ctx.shadowBlur = b.glowBlur || 14;
+        }
         ctx.beginPath();
-        ctx.fillStyle="rgba(255,140,160,0.9)";
+        ctx.fillStyle = b.color || "rgba(255,140,160,0.9)";
         ctx.arc(sx,sy,b.r,0,TAU);
         ctx.fill();
+        if (b.glow) ctx.restore();
       }
 
       // aura
@@ -2813,6 +2873,7 @@ if (!onScreen){
         if (e.type==="shooter") baseCol="rgba(120,255,190,0.92)";
         if (e.type==="bomber") baseCol="rgba(255,220,120,0.92)";
         if (e.type==="triad") baseCol="rgba(160,190,255,0.95)";
+        if (e.type==="blaster") baseCol="rgba(140,190,255,0.95)";
         if (e.type==="burst") baseCol="rgba(180,200,255,0.95)";
         if (e.type==="boss"){
           if (e.bossKind==="sniper") baseCol = "rgba(120,220,255,0.95)";
