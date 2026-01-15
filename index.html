@@ -61,6 +61,7 @@
       color:rgba(255,170,80,0.98);
       text-shadow:0 2px 14px rgba(120,70,20,.55), 0 1px 0 rgba(0,0,0,.45);
       letter-spacing:1px;
+      text-align:center;
       pointer-events:none;
       display:none;
       z-index: 3;
@@ -475,12 +476,16 @@
     const TURRET_SIZE_MULT = 1.20;
     const TURRET_SIZE_LV_BONUS = 0.04;
     const TOTEM_SPAWN_EVERY = 75;
+    const TOTEM_SPAWN_MIN_INTERVAL = 50;
+    const TOTEM_SPAWN_LV_STEP = 10;
+    const TOTEM_SPAWN_STEP = 5;
+    const TOTEM_SPAWN_FIRST = 45;
     const TOTEM_LIFE = 25;
     const TOTEM_GRACE = 5;
     const TOTEM_SPAWN_MIN = 640;
     const TOTEM_SPAWN_MAX = 960;
-    const TOTEM_RADIUS_MIN = 560;
-    const TOTEM_RADIUS_MAX = 720;
+    const TOTEM_RADIUS_MIN = 420;
+    const TOTEM_RADIUS_MAX = 600;
     const TOTEM_EFFECT_GAIN = 1.0;
     const TOTEM_EFFECT_DECAY = 0.8;
     const TOTEM_DPS_BASE = 1;
@@ -710,7 +715,8 @@ btnPause.addEventListener("click", (e)=>{
       difficulty: 1,
       chestTimer: 35,
       chestAlive: false,
-      totemTimer: 15,
+      totemTimer: TOTEM_SPAWN_FIRST,
+      totemTimerMax: TOTEM_SPAWN_FIRST,
       healQueue: [],
       healActive: null,
       xpEnemyBonus: 0,
@@ -789,6 +795,10 @@ btnPause.addEventListener("click", (e)=>{
     function getChestInterval(){
       const reduce = Math.floor((player.lvl - 1) / 5);
       return Math.max(20, 35 - reduce);
+    }
+    function getTotemInterval(){
+      const reduce = Math.floor((player.lvl - 1) / TOTEM_SPAWN_LV_STEP) * TOTEM_SPAWN_STEP;
+      return Math.max(TOTEM_SPAWN_MIN_INTERVAL, TOTEM_SPAWN_EVERY - reduce);
     }
     function getRicochetBounces(){
       if (player.ricochetChance <= 0) return 0;
@@ -1589,8 +1599,8 @@ btnPause.addEventListener("click", (e)=>{
               pierce: 1,
               life: 2.6,
               t: 0,
-              ricochetLeft: 0,
-              ricochetChance: 0,
+              ricochetLeft: getRicochetBounces(),
+              ricochetChance: player.ricochetChance,
               lastHitId: null,
             });
           }
@@ -1940,7 +1950,6 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
           const dmg = 22 * (0.5 + 0.5 * mult);
           ee.hp -= dmg;
           ee.hitFlash = Math.max(ee.hitFlash, 0.08);
-          recordDamage(dmg);
           if (ee.hp <= 0) killEnemy(ee);
         }
       }
@@ -2091,7 +2100,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       bulletSize:{ title:"Размер пули",   max: 8,  desc:(lv)=>`+18% bullet size (ур. ${lv+1}/8)`, apply:()=>{ player.bulletSize *= 1.18; } },
       critMultUp:{ title:"Криты: множ.",  max: 8,  desc:(lv)=>`+12% crit multiplier (ур. ${lv+1}/8)`, apply:()=>{ player.critMult *= 1.12; } },
       ricochetChance:{ title:"Рикошет: шанс", max: 8, desc:(lv)=>`+3% шанс рикошета (ур. ${lv+1}/8)`, apply:()=>{ player.ricochetChance = clamp((player.ricochetChance||0) + 0.03, 0, 0.24); if (player.ricochetBounces < 1) player.ricochetBounces = 1; } },
-      ricochetBounces:{ title:"Рикошет: отскоки", max: 4, desc:(lv)=>`+1 отскок (ур. ${lv+1}/4)`, apply:()=>{ player.ricochetBounces = Math.min(5, (player.ricochetBounces||0) + 1); } },
+      ricochetBounces:{ title:"Рикошет: отскоки", max: 5, desc:(lv)=>`+1 отскок (ур. ${lv+1}/5)`, apply:()=>{ player.ricochetBounces = Math.min(5, (player.ricochetBounces||0) + 1); } },
 
       armor:    { title:"Броня",         max: 8,  desc:(lv)=>`-6% входящий урон (ур. ${lv+1}/8)`, apply:()=>{ player.armor = clamp((player.armor||0) + 0.06, 0, 0.60); } },
       dodge:    { title:"Уклонение",     max: 7,  desc:(lv)=>`+5% шанс не получить урон (ур. ${lv+1}/7)`, apply:()=>{ player.dodge = clamp((player.dodge||0) + 0.05, 0, 0.35); } },
@@ -2101,7 +2110,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       rerollCap:{ title:"Лимит reroll",  max: 4,  desc:(lv)=>`+2 max rerolls (ур. ${lv+1}/4)`, apply:()=>{ player.rerollCap += 2; } },
 
       orbitalSpeedUp:{ title:"Орбиталки: скорость", max: 10, desc:(lv)=>`+18% orbital speed (ур. ${lv+1}/10)`, apply:()=>{ player.orbitalSpeed *= 1.18; } },
-      auraSlow: { title:"Аура: замедление", max: 8, desc:(lv)=>`+7% slow в ауре (ур. ${lv+1}/8)`, apply:()=>{ player.auraSlow = clamp((player.auraSlow||0) + 0.07, 0, 0.55); } },
+      auraSlow: { title:"Аура: замедление", max: 8, desc:(lv)=>`+7.5% slow в ауре (ур. ${lv+1}/8)`, apply:()=>{ player.auraSlow = clamp((player.auraSlow||0) + 0.075, 0, 0.60); } },
 
       speed:    { title:"Скорость",       max: 10, desc:(lv)=>`+10% move speed (ур. ${lv+1}/10)`, apply:()=>{ player.speed *= 1.10; } },
       hp:       { title:"Живучесть",      max: 10, desc:(lv)=>`+22 max HP (+heal) (ур. ${lv+1}/10)`, apply:()=>{ player.hpMax += 22; player.hp = Math.min(player.hpMax, player.hp + 22); } },
@@ -2517,11 +2526,15 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         }
       }
 
-      // totem schedule
-      state.totemTimer -= dt;
-      if (state.totemTimer <= 0){
-        if (!totem.active) spawnTotem();
-        state.totemTimer = TOTEM_SPAWN_EVERY;
+      // totem schedule (cooldown does not tick while active)
+      if (!totem.active){
+        state.totemTimer -= dt;
+        if (state.totemTimer <= 0){
+          spawnTotem();
+          const interval = getTotemInterval();
+          state.totemTimer = interval;
+          state.totemTimerMax = interval;
+        }
       }
 
       // move input
@@ -3048,7 +3061,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
       if (totemBar && totemText){
         const totemLeft = totem.active ? totem.life : state.totemTimer;
-        const totemMax = totem.active ? TOTEM_LIFE : TOTEM_SPAWN_EVERY;
+        const totemMax = totem.active ? TOTEM_LIFE : (state.totemTimerMax || getTotemInterval());
         const totemPct = clamp(totemLeft / Math.max(1, totemMax), 0, 1);
         totemBar.style.width = `${totemPct*100}%`;
         totemText.textContent = `${Math.max(0, Math.ceil(totemLeft))}s`;
@@ -3114,8 +3127,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         const inner = totem.r * (0.15 + 0.55 * pulse);
         const grad = ctx.createRadialGradient(sx, sy, inner, sx, sy, totem.r);
         grad.addColorStop(0, "rgba(90,220,190,0)");
-        grad.addColorStop(0.55, `rgba(90,220,190,${0.07 + 0.08 * pulse})`);
-        grad.addColorStop(1, `rgba(90,220,190,${0.16 + 0.16 * pulse})`);
+        grad.addColorStop(0.55, `rgba(90,220,190,${0.05 + 0.06 * pulse})`);
+        grad.addColorStop(1, `rgba(90,220,190,${0.12 + 0.12 * pulse})`);
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(sx, sy, totem.r, 0, TAU);
@@ -3135,8 +3148,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         ctx.fillText(String(lifeLeft), sx, sy);
         ctx.restore();
 
-        ctx.globalAlpha = 0.7 + 0.15 * pulse;
-        ctx.strokeStyle = "rgba(90,220,190,0.7)";
+        ctx.globalAlpha = 0.55 + 0.12 * pulse;
+        ctx.strokeStyle = "rgba(90,220,190,0.55)";
         ctx.lineWidth = 2 + 2 * pulse;
         ctx.beginPath();
         ctx.arc(sx, sy, totem.r, 0, TAU);
@@ -3144,9 +3157,9 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         ctx.globalAlpha = 1;
 
         ctx.save();
-        ctx.shadowColor = "rgba(90,220,190,0.75)";
+        ctx.shadowColor = "rgba(90,220,190,0.55)";
         ctx.shadowBlur = 18 + 8 * pulse;
-        ctx.fillStyle = "rgba(80,200,170,0.88)";
+        ctx.fillStyle = "rgba(80,200,170,0.78)";
         ctx.beginPath();
         ctx.roundRect(sx-10, sy-18, 20, 36, 6);
         ctx.fill();
