@@ -1512,7 +1512,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       novaDamage:{title:"Нова: урон",     max: 10, desc:(lv)=>`+18% урон новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaDamage *= 1.18; } },
       novaRate: { title:"Нова: скор. атаки", max: 10, desc:(lv)=>`+15% скорость атаки новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaRate *= 1.15; } },
       novaSpeed:{ title:"Нова: скорость", max: 10, desc:(lv)=>`+15% скорость снаряда новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaSpeed *= 1.15; } },
-      novaMagnet:{ title:"Нова: притяжение", max: 6, desc:(lv)=>`+16 радиус притяжения (ур. ${lv+1}/6, бонус за урон)`, apply:()=>{ player.novaMagnet = Math.min(6, player.novaMagnet + 1); } },
+      novaMagnet:{ title:"Нова: притяжение", max: 1, desc:()=>`Нова притягивает орбы к игроку`, apply:()=>{ player.novaMagnet = 1; } },
       bulletSpeed:{ title:"Скорость пули",max: 10, desc:(lv)=>`+15% bullet speed (ур. ${lv+1}/10)`, apply:()=>{ player.bulletSpeed *= 1.15; } },
       crit:     { title:"Криты",          max: 10, desc:(lv)=>`+5% crit chance (ур. ${lv+1}/10)`, apply:()=>{ player.critChance = Math.min(0.85, player.critChance + 0.05); } },
 
@@ -1549,10 +1549,11 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     const getLevel = (id)=>player.u[id]||0;
     const atMax = (id)=>getLevel(id)>=U[id].max;
     function getNovaMagnetRadius(){
-      const lv = getLevel("novaMagnet");
-      if (lv <= 0) return 0;
+      const enabled = getLevel("novaMagnet") > 0;
+      if (!enabled) return 0;
+      const novaLv = getLevel("nova");
       const dmgLv = getLevel("novaDamage");
-      return 60 + lv * 16 + dmgLv * 4;
+      return 70 + novaLv * 22 + dmgLv * 3;
     }
 
     function isEligible(id){
@@ -2114,26 +2115,22 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         let targetMagnet = player.magnet;
         let useNova = false;
         if (novaBullets.length){
-          let best = null;
-          let bestD = Infinity;
           for (const b of novaBullets){
             const ndx = b.x - g.x;
             const ndy = b.y - g.y;
-            const d = ndx*ndx + ndy*ndy;
-            if (d < bestD){
-              bestD = d;
-              best = b;
+            if ((ndx*ndx + ndy*ndy) <= novaMagnetR * novaMagnetR){
+              useNova = true;
+              break;
             }
           }
-          if (best && bestD <= novaMagnetR * novaMagnetR){
-            targetX = best.x;
-            targetY = best.y;
-            targetMagnet = novaMagnetR;
-            dx = targetX - g.x;
-            dy = targetY - g.y;
-            dist = Math.hypot(dx, dy) || 1;
-            useNova = true;
-          }
+        }
+        if (useNova){
+          targetX = player.x;
+          targetY = player.y;
+          targetMagnet = Math.max(player.magnet, novaMagnetR * 6);
+          dx = targetX - g.x;
+          dy = targetY - g.y;
+          dist = Math.hypot(dx, dy) || 1;
         }
 
         if (dist < targetMagnet) {
