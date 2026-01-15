@@ -357,14 +357,16 @@
     if (isTouch) { joy.style.display = "none"; btnPause.style.display = "block"; }
     const GAME_SCALE = isTouch ? 0.5 : 1;
     const SPAWN_SCALE = 1 / GAME_SCALE;
+    let cameraScale = GAME_SCALE;
+    let curDpr = 1;
 
     // Resize
     function resize(){
-      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      canvas.width = Math.floor(innerWidth * dpr);
-      canvas.height= Math.floor(innerHeight * dpr);
+      curDpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      canvas.width = Math.floor(innerWidth * curDpr);
+      canvas.height= Math.floor(innerHeight * curDpr);
       // dpr * GAME_SCALE — это zoom-out без потери "CSS fullscreen"
-      ctx.setTransform(dpr * GAME_SCALE, 0, 0, dpr * GAME_SCALE, 0, 0);
+      ctx.setTransform(curDpr * GAME_SCALE, 0, 0, curDpr * GAME_SCALE, 0, 0);
     }
     addEventListener("resize", resize, { passive:true });
     resize();
@@ -379,10 +381,14 @@
     const GRID_SIZE = 140;
     const BURST_TELEGRAPH = 0.25;
     const HEAL_OVER_TIME = 0.25;
+    const CAMERA_ZOOM_OUT = 0.04;
     const TURRET_SPAWN_RADIUS = 280;
     const TURRET_MIN_DIST = 120;
     const ORBITAL_BASE_DISTANCE = 48;
     const ORBITAL_BASE_SIZE = 7 * 1.25;
+    const XP_BONUS_NORMAL = 0.0005;
+    const XP_BONUS_ELITE = 0.002;
+    const XP_BONUS_BOSS = 0.01;
     const TURRET_AGGRO_BASE = 220;
     const TURRET_RANGE = 520;
     const TURRET_FIRE_RATE = 1.8;
@@ -617,6 +623,7 @@ btnPause.addEventListener("click", (e)=>{
       chestAlive: false,
       healQueue: [],
       healActive: null,
+      xpEnemyBonus: 0,
     };
 
     // UI state
@@ -661,7 +668,7 @@ btnPause.addEventListener("click", (e)=>{
       orbitals: 0,
       orbitalRadius: 48,
       orbitalSpeed: 2.4,
-      orbitalDamage: 10,
+      orbitalDamage: 12,
       orbitalHitCD: 0.22,
 
       aura: false,
@@ -861,7 +868,7 @@ btnPause.addEventListener("click", (e)=>{
           x: x + randf(-10,10),
           y: y + randf(-10,10),
           r: 6,
-          v: (amount / n) * player.xGainMultSafe,
+          v: (amount / n),
           vx: randf(-60,60),
           vy: randf(-60,60),
           t: 0,
@@ -967,7 +974,8 @@ btnPause.addEventListener("click", (e)=>{
 
 
     function gainXp(v){
-      player.xp += v;
+      const mult = player.xGainMultSafe * (1 + (state.xpEnemyBonus || 0));
+      player.xp += v * mult;
       while(player.xp >= player.xpNeed && !state.dead){
         player.xp -= player.xpNeed;
         player.lvl += 1;
@@ -992,7 +1000,7 @@ btnPause.addEventListener("click", (e)=>{
         dasher:   { r:13, hp:44,  spd:150, dmg:14, xp:14 }, // рывки к игроку
         shield:   { r:16, hp:95,  spd:110, dmg:13, xp:18 }, // снижает урон от пуль
         triad:    { r:15, hp:70,  spd:112, dmg:14, xp:20, triRad:24, triSpin:4.6, triShotRate:0.85, triShotSpeed:280, triShotDmg:9 }, // вращающийся треугольник + залп
-        blaster:  { r:14, hp:78,  spd:106, dmg:12, xp:22, shotRate:1.0, shotSpeed:300, shotDmg:12, shotSize:5, shotLife:3.0, explodeR:44, explodePush:18, burstGap:0.12, burstCooldown:1.2, bulletColor:"rgba(120,190,255,0.95)", bulletGlow:"rgba(120,200,255,0.9)" }, // синие взрывные снаряды очередями
+        blaster:  { r:14, hp:78,  spd:106, dmg:12, xp:22, shotRate:1.0, shotSpeed:300, shotDmg:12, shotSize:5, shotLife:3.0, explodeR:44, explodePush:18, burstGap:0.12, burstCooldown:1.2, bulletColor:"rgba(255,235,120,0.98)", bulletGlow:"rgba(255,230,140,0.95)" }, // желтые взрывные снаряды очередями
         burst:    { r:14, hp:60,  spd:112, dmg:11, xp:17, burstN:6, burstSpeed:270, burstDmg:9 }, // при смерти выпускает пули
         splitter: { r:15, hp:78,  spd:118, dmg:12, xp:18 }, // при смерти делится на миньонов
         minion:   { r:10, hp:26,  spd:170, dmg:9,  xp:6  }, // спавнится от splitter
@@ -1084,6 +1092,8 @@ btnPause.addEventListener("click", (e)=>{
         dmg: b.dmg * (0.9 + Math.min(0.6, state.difficulty*0.03)),
         xp: b.xp,
         vx: 0, vy: 0,
+        moveDirX: 1,
+        moveDirY: 0,
         hitFlash: 0,
         shotTimer: randf(0, 0.6),
         shotRate: b.shotRate || 0,
@@ -1103,6 +1113,9 @@ btnPause.addEventListener("click", (e)=>{
         burstCooldown: b.burstCooldown || 0,
         burstLeft: 0,
         burstCd: randf(0, b.burstCooldown || 0),
+        burstTotal: 0,
+        holdT: 0,
+        blastKind: 0,
         triRad: b.triRad || 0,
         triSpin: b.triSpin || 0,
         triShotRate: b.triShotRate || 0,
@@ -1127,6 +1140,9 @@ btnPause.addEventListener("click", (e)=>{
         bossDashVy: 0,
         bossPhase: 0,
       };
+      if (type === "blaster"){
+        baseEnemy.blastKind = Math.random() < 0.5 ? 1 : 2;
+      }
 
       const e = { ...baseEnemy, id: enemyIdCounter++ };
 
@@ -1489,11 +1505,41 @@ btnPause.addEventListener("click", (e)=>{
       const aim = Math.atan2(ty - e.y, tx - e.x);
 
       if (e.type === "blaster"){
+        if ((e.blastKind || 0) === 1){
+          e.burstCd = Math.max(0, (e.burstCd || 0) - dt);
+          if ((e.holdT || 0) > 0){
+            e.holdT = Math.max(0, (e.holdT || 0) - dt);
+            if (e.holdT > 0) return;
+            const n = randi(3, 5);
+            const spread = 0.22;
+            for (let i=0;i<n;i++){
+              const t = n===1 ? 0 : (i/(n-1))*2-1;
+              const ang = aim + t*spread;
+              shootBullet(
+                e.x, e.y, ang,
+                e.shotSpeed, e.shotDmg,
+                e.shotSize || 4,
+                e.shotLife || 3.0,
+                { color: e.bulletColor, glow: e.bulletGlow, explodeR: e.explodeR, explodePush: e.explodePush }
+              );
+            }
+            e.burstCd = e.burstCooldown || 1.0;
+            e.burstLeft = 0;
+            e.burstTotal = 0;
+            return;
+          }
+          if (e.burstCd > 0) return;
+          e.holdT = randf(0.2, 0.4);
+          return;
+        }
+
         e.burstCd = Math.max(0, (e.burstCd || 0) - dt);
         e.shotTimer = Math.max(0, (e.shotTimer || 0) - dt);
         if ((e.burstLeft || 0) <= 0){
           if (e.burstCd > 0) return;
-          e.burstLeft = randi(3, 5);
+          const total = randi(3, 5);
+          e.burstTotal = total;
+          e.burstLeft = total;
         }
         if (e.shotTimer > 0) return;
         const spread = 0.10;
@@ -1798,6 +1844,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
             dmg:   b.dmg * (0.95 + Math.min(0.5, state.difficulty*0.03)),
             xp:    b.xp,
             vx:0, vy:0,
+            moveDirX: 1,
+            moveDirY: 0,
             hitFlash:0,
             shotTimer:0,
             shotRate:0,
@@ -1854,7 +1902,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         return `${chance}% шанс · макс ${maxT} · ${aggroText} (ур. ${lvl}/4)`;
       }, apply:()=>{} },
       turretDamage:{ title:"Турель: урон", max: 6, desc:(lv)=>`+18% урон турели (ур. ${lv+1}/6)`, apply:()=>{} },
-      turretHeal:{ title:"Турель: сбор HP", max: 1, desc:()=>`Турель притягивает HP-дропы к игроку`, apply:()=>{} },
+      turretHeal:{ title:"Турель: сбор XP", max: 1, desc:()=>`Турель притягивает XP-шарики к игроку`, apply:()=>{} },
       bulletSpeed:{ title:"Скорость пули",max: 10, desc:(lv)=>`+15% bullet speed (ур. ${lv+1}/10)`, apply:()=>{ player.bulletSpeed *= 1.15; } },
       crit:     { title:"Криты",          max: 10, desc:(lv)=>`+5% crit chance (ур. ${lv+1}/10)`, apply:()=>{ player.critChance = Math.min(0.85, player.critChance + 0.05); } },
 
@@ -2274,6 +2322,11 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         }
       }
 
+      const spd = Math.hypot(player.vx, player.vy) || 0;
+      const ratio = clamp(spd / Math.max(1, player.speed), 0, 1);
+      const targetScale = GAME_SCALE * (1 - CAMERA_ZOOM_OUT * ratio);
+      cameraScale = lerp(cameraScale, targetScale, 1 - Math.pow(0.001, dt));
+
       // regen + invuln
       if (player.regen > 0 && player.hp > 0){
         player.hp = Math.min(player.hpMax, player.hp + player.regen*dt);
@@ -2417,6 +2470,9 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       pruneDeadEnemies();
 
       // enemies
+      let xpNearNormal = 0;
+      let xpNearElite = 0;
+      let xpNearBoss = 0;
       for (let i=enemies.length-1;i>=0;i--){
         const e=enemies[i];
         if (e.dead) continue;
@@ -2439,6 +2495,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         const target = getEnemyTarget(e);
         const dx = target.x - e.x, dy = target.y - e.y;
         const d = Math.hypot(dx,dy) || 1;
+        e.moveDirX = dx / d;
+        e.moveDirY = dy / d;
 
         // bomber explode when close
         if (e.type === "bomber"){
@@ -2491,11 +2549,17 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         }
 
         const isDashing = ((e.type==="boss" && e.bossKind==="charger") || e.type==="dasher") && (e.bossDashT||0) > 0;
+        const isBlasterHold = e.type==="blaster" && (e.blastKind || 0) === 1 && (e.holdT||0) > 0;
         if (!isDashing) {
           e._slowT = Math.max(0, (e._slowT||0) - dt);
           const spdNow = e.spd * ((e._slowT||0) > 0 ? (e._slowMult||1) : 1);
-          e.x += ((dx/d)*spdNow + e.vx) * dt;
-          e.y += ((dy/d)*spdNow + e.vy) * dt;
+          if (isBlasterHold){
+            e.x += e.vx * dt;
+            e.y += e.vy * dt;
+          } else {
+            e.x += ((dx/d)*spdNow + e.vx) * dt;
+            e.y += ((dy/d)*spdNow + e.vy) * dt;
+          }
         }
 
         if (e.type==="shooter" || e.type==="spitter" || e.type==="blaster" || e.type==="boss") enemyShoot(e, dt, target.x, target.y);
@@ -2556,9 +2620,19 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
             }
           }
         }
+        const dxp = e.x - player.x;
+        const dyp = e.y - player.y;
+        if ((dxp*dxp + dyp*dyp) <= player.magnet * player.magnet){
+          if (e.type === "boss") xpNearBoss += 1;
+          else if (e.elite) xpNearElite += 1;
+          else xpNearNormal += 1;
+        }
       }
 
       pruneDeadEnemies();
+      state.xpEnemyBonus = xpNearNormal * XP_BONUS_NORMAL
+        + xpNearElite * XP_BONUS_ELITE
+        + xpNearBoss * XP_BONUS_BOSS;
 
       // XP drops update + pickup
       const novaMagnetR = getNovaMagnetRadius();
@@ -2681,8 +2755,9 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
     }
 
     function render(){
-      const w = innerWidth  / GAME_SCALE;
-      const h = innerHeight / GAME_SCALE;
+      ctx.setTransform(curDpr * cameraScale, 0, 0, curDpr * cameraScale, 0, 0);
+      const w = innerWidth  / cameraScale;
+      const h = innerHeight / cameraScale;
 
       const camX = player.x - w*0.5;
       const camY = player.y - h*0.5;
@@ -2881,6 +2956,25 @@ if (!onScreen){
           if (e.bossKind==="spiral") baseCol = "rgba(200,140,255,0.95)";
           if (e.bossKind==="summoner") baseCol = "rgba(160,255,160,0.92)";
         }
+        let blasterCharge = 0;
+        let blasterFillFromBack = true;
+        if (e.type === "blaster"){
+          const cd = e.burstCooldown || 1.0;
+          if ((e.blastKind || 0) === 1){
+            if ((e.holdT || 0) > 0) blasterCharge = 1;
+            else if ((e.burstCd || 0) > 0) blasterCharge = clamp(1 - ((e.burstCd || 0) / cd), 0, 1);
+            else blasterCharge = 1;
+          } else {
+            if ((e.burstLeft || 0) > 0 && (e.burstTotal || 0) > 0){
+              blasterCharge = clamp((e.burstLeft || 0) / (e.burstTotal || 1), 0, 1);
+              blasterFillFromBack = false;
+            } else if ((e.burstCd || 0) > 0){
+              blasterCharge = clamp(1 - ((e.burstCd || 0) / cd), 0, 1);
+            } else {
+              blasterCharge = 1;
+            }
+          }
+        }
         if (e.type === "triad"){
           const rad = e.triRad || 22;
           const a0 = e.triAngle || 0;
@@ -2899,10 +2993,39 @@ if (!onScreen){
           ctx.globalAlpha = 1;
         }
 
+        ctx.save();
+        if (e.type === "blaster" && blasterCharge > 0){
+          ctx.shadowColor = e.bulletGlow || "rgba(255,230,140,0.95)";
+          ctx.shadowBlur = 16 + blasterCharge * 18;
+        }
         ctx.beginPath();
         ctx.fillStyle = e.hitFlash>0 ? "rgba(255,255,255,0.95)" : baseCol;
         ctx.arc(sx,sy,e.r,0,TAU);
         ctx.fill();
+        ctx.restore();
+
+        if (e.type === "blaster"){
+          if (blasterCharge > 0){
+            const dirX = e.moveDirX || 1;
+            const dirY = e.moveDirY || 0;
+            const ang = Math.atan2(dirY, dirX);
+            const rr = e.r;
+            const fillW = (rr * 2) * blasterCharge;
+            ctx.save();
+            ctx.translate(sx, sy);
+            ctx.rotate(ang);
+            ctx.beginPath();
+            ctx.arc(0, 0, rr, 0, TAU);
+            ctx.clip();
+            ctx.globalAlpha = 0.95;
+            ctx.shadowColor = e.bulletGlow || "rgba(255,230,140,0.95)";
+            ctx.shadowBlur = 26;
+            ctx.fillStyle = e.bulletColor || "rgba(255,235,120,0.98)";
+            const x0 = blasterFillFromBack ? -rr : (rr - fillW);
+            ctx.fillRect(x0, -rr, fillW, rr * 2);
+            ctx.restore();
+          }
+        }
 
         if (e.dying){
           const p = clamp(1 - (e.deathT / BURST_TELEGRAPH), 0, 1);
