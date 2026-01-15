@@ -184,7 +184,7 @@
       <span id="lvl">Lv 1</span><span>·</span>
       <span id="kills">Kills 0</span><span>·</span>
       <span id="enemiesCount">Enemies 0</span><span>·</span>
-      <span id="shots">Shots 0</span><span>·</span>
+      <span id="shots">Bullets 0</span><span>·</span>
       <span id="dps">Dmg 0</span><span>·</span>
       <span id="fps">FPS --</span><span>·</span>
       <span id="wep">W: Bullets</span><span>·</span>
@@ -386,11 +386,13 @@
     const GRID_SIZE = 140;
     const BURST_TELEGRAPH = 0.25;
     const HEAL_OVER_TIME = 0.25;
-    const CAMERA_ZOOM_OUT = 0.04;
+    const CAMERA_ZOOM_OUT = 0.05;
     const TURRET_SPAWN_RADIUS = 280;
     const TURRET_MIN_DIST = 120;
     const ORBITAL_BASE_DISTANCE = 48;
     const ORBITAL_BASE_SIZE = 7 * 1.25;
+    const ORBITAL_KNOCKBACK_CHANCE = 0.12;
+    const ORBITAL_KNOCKBACK_FORCE = 120;
     const XP_BONUS_NORMAL = 0.0005;
     const XP_BONUS_ELITE = 0.002;
     const XP_BONUS_BOSS = 0.01;
@@ -644,6 +646,7 @@ btnPause.addEventListener("click", (e)=>{
       x:0, y:0, r:14,
       vx:0, vy:0,
       speed:260,
+      baseSpeed:260,
       hpMax: BASE_HP,
       hp: BASE_HP,
       regen:0,
@@ -673,7 +676,7 @@ btnPause.addEventListener("click", (e)=>{
 
       orbitals: 0,
       orbitalRadius: 48,
-      orbitalSpeed: 2.4,
+      orbitalSpeed: 2.2,
       orbitalDamage: 12,
       orbitalHitCD: 0.22,
 
@@ -685,7 +688,7 @@ btnPause.addEventListener("click", (e)=>{
 
       novaCount: 0,
       novaDamage: 32,
-      novaRate: 0.60,
+      novaRate: 0.56,
       novaSpeed: 460,
       novaTimer: 0,
       novaMagnet: 0,
@@ -798,6 +801,7 @@ btnPause.addEventListener("click", (e)=>{
         apply(){
           player.heroId="scout"; player.heroName="Скаут"; player.heroPerkText=this.perk;
           player.speed = 295;
+          player.baseSpeed = 295;
           player.magnet = 150;
           player.hpMax = BASE_HP * 0.9;
           player.hp = player.hpMax;
@@ -821,6 +825,7 @@ btnPause.addEventListener("click", (e)=>{
           player.hp = player.hpMax;
           player.regen = 0.8;
           player.speed = 240;
+          player.baseSpeed = 240;
           player.damage = 16;
           player.fireRate = 4.1;
 
@@ -844,6 +849,7 @@ btnPause.addEventListener("click", (e)=>{
           player.hpMax = BASE_HP * 1.0;
           player.hp = player.hpMax;
           player.speed = 255;
+          player.baseSpeed = 255;
 
           player.xpGainMult = 1.10;
           player.orbitalSpeed = 2.4 * 1.20;
@@ -1263,10 +1269,10 @@ btnPause.addEventListener("click", (e)=>{
         const x = player.x + Math.cos(a)*d;
         const y = player.y + Math.sin(a)*d;
         if (Math.hypot(x - player.x, y - player.y) < 260) continue;
-        chests.push({ x, y, r: 14, t: 0, bob: randf(0, TAU) });
+        chests.push({ x, y, r: 16, t: 0, bob: randf(0, TAU) });
         return;
       }
-      chests.push({ x: player.x + 420, y: player.y, r: 14, t: 0, bob: 0 });
+      chests.push({ x: player.x + 420, y: player.y, r: 16, t: 0, bob: 0 });
     }
     function pickUpChest(){
       if (!chests.length) { state.chestAlive = false; return; }
@@ -1379,7 +1385,7 @@ btnPause.addEventListener("click", (e)=>{
       player.novaTimer -= dt;
       if (player.novaTimer > 0) return;
 
-      const shots = Math.max(1, player.novaCount);
+      const shots = Math.max(1, player.novaCount * 3);
       const offset = randf(0, TAU);
       for(let i=0;i<shots;i++){
         const a = offset + i*(TAU/shots);
@@ -1488,10 +1494,12 @@ btnPause.addEventListener("click", (e)=>{
             e.hitFlash = 0.09;
             recordDamage(dmg);
 
-            const dx = e.x-ox, dy = e.y-oy;
-            const d = Math.hypot(dx,dy) || 1;
-            e.vx += (dx/d)*120;
-            e.vy += (dy/d)*120;
+            if (Math.random() < ORBITAL_KNOCKBACK_CHANCE){
+              const dx = e.x-ox, dy = e.y-oy;
+              const d = Math.hypot(dx,dy) || 1;
+              e.vx += (dx/d) * ORBITAL_KNOCKBACK_FORCE;
+              e.vy += (dy/d) * ORBITAL_KNOCKBACK_FORCE;
+            }
 
             if (e.hp <= 0) killEnemy(e);
           }
@@ -1510,7 +1518,7 @@ btnPause.addEventListener("click", (e)=>{
         if (d <= player.auraRadius + e.r){
           const dmg = player.auraDps * dt;
           e.hp -= dmg;
-          e.hitFlash = Math.max(e.hitFlash, 0.05);
+        e.auraFlash = Math.max(e.auraFlash || 0, 0.05);
           recordDamage(dmg);
           if (player.auraSlow > 0){ e._slowT = Math.max(e._slowT||0, 0.25); e._slowMult = 1 - clamp(player.auraSlow, 0, 0.55); }
           if (e.hp <= 0) killEnemy(e);
@@ -1920,7 +1928,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       damage:   { title:"Урон",           max: 12, desc:(lv)=>`+20% bullet damage (ур. ${lv+1}/12)`, apply:()=>{ player.damage *= 1.20; } },
       pierce:   { title:"Пробивание",     max: 8,  desc:(lv)=>`+1 pierce (ур. ${lv+1}/8)`,  apply:()=>{ player.pierce += 1; } },
       multishot:{ title:"Мультивыстрел",  max: 7,  desc:(lv)=>`+1 projectile (ур. ${lv+1}/7)`,apply:()=>{ player.multishot += 1; player.spread = Math.max(player.spread, 0.12); } },
-      nova:     { title:"Нова",           max: 8,  desc:(lv)=>`+1 снаряд по кругу (ур. ${lv+1}/8)`, apply:()=>{ player.novaCount = Math.min(8, player.novaCount + 1); } },
+      nova:     { title:"Нова",           max: 8,  desc:(lv)=>`+3 снаряда по кругу (ур. ${lv+1}/8)`, apply:()=>{ player.novaCount = Math.min(8, player.novaCount + 1); } },
       novaDamage:{title:"Нова: урон",     max: 10, desc:(lv)=>`+18% урон новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaDamage *= 1.18; } },
       novaRate: { title:"Нова: скор. атаки", max: 10, desc:(lv)=>`+15% скорость атаки новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaRate *= 1.15; } },
       novaSpeed:{ title:"Нова: скорость", max: 10, desc:(lv)=>`+15% скорость снаряда новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaSpeed *= 1.15; } },
@@ -2217,7 +2225,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       wparts.push("Bullets");
       if (player.orbitals>0) wparts.push(`Orbit x${player.orbitals}`);
       if (player.aura) wparts.push("Aura");
-      if (player.novaCount>0) wparts.push(`Nova x${player.novaCount}`);
+      if (player.novaCount>0) wparts.push(`Nova x${player.novaCount * 3}`);
       if (getTurretLevel()>0) wparts.push(`Turret L${getTurretLevel()}`);
 
       buildStatsEl.innerHTML = `
@@ -2357,7 +2365,9 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
       const spd = Math.hypot(player.vx, player.vy) || 0;
       const ratio = clamp(spd / Math.max(1, player.speed), 0, 1);
-      const targetScale = GAME_SCALE * (1 - CAMERA_ZOOM_OUT * ratio);
+      const baseSpd = player.baseSpeed || player.speed || 1;
+      const speedBonus = player.speed / baseSpd;
+      const targetScale = GAME_SCALE * (1 - CAMERA_ZOOM_OUT * speedBonus * ratio);
       cameraScale = lerp(cameraScale, targetScale, 1 - Math.pow(0.001, dt));
 
       // regen + invuln
@@ -2515,6 +2525,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           continue;
         }
         e.hitFlash = Math.max(0, e.hitFlash - dt);
+        e.auraFlash = Math.max(0, (e.auraFlash || 0) - dt);
 
         if (e.type === "triad"){
           e.triAngle = (e.triAngle || 0) + (e.triDir || 1) * (e.triSpin || 0) * dt;
@@ -2774,7 +2785,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         for (const e of enemies) if (!e.dead) alive += 1;
         elEnemiesCount.textContent = `Enemies ${alive}`;
       }
-      if (elShots) elShots.textContent = `Shots ${bullets.length + enemyBullets.length}`;
+      if (elShots) elShots.textContent = `Bullets ${bullets.length + enemyBullets.length}`;
       elDps.textContent = `Dmg ${getDps()}`;
       elTime.textContent = fmtTime(state.t);
 
@@ -2793,7 +2804,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       elWep.textContent = "W: Bullets"
         + (player.orbitals>0?` + Orbit x${player.orbitals}`:"")
         + (player.aura?" + Aura":"")
-        + (player.novaCount>0?` + Nova x${player.novaCount}`:"")
+        + (player.novaCount>0?` + Nova x${player.novaCount * 3}`:"")
         + (getTurretLevel()>0?` + Turret L${getTurretLevel()}`:"");
 
       if (elChestRespawn) elChestRespawn.textContent = String(getChestInterval());
@@ -2845,20 +2856,20 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         ctx.globalAlpha = 0.15;
         ctx.fillStyle = "rgba(255,220,120,1)";
         ctx.beginPath();
-        ctx.arc(sx, sy+10, 18, 0, TAU);
+        ctx.arc(sx, sy+10, 20, 0, TAU);
         ctx.fill();
         ctx.globalAlpha = 1;
 
         ctx.fillStyle = "rgba(255,220,120,0.95)";
         ctx.beginPath();
-        ctx.roundRect(sx-16, sy-12 + bob, 32, 24, 6);
+        ctx.roundRect(sx-18, sy-13 + bob, 36, 26, 7);
         ctx.fill();
         ctx.strokeStyle = "rgba(255,255,255,0.35)";
         ctx.lineWidth = 2;
         ctx.stroke();
 
         ctx.fillStyle = "rgba(255,255,255,0.55)";
-        ctx.fillRect(sx-2, sy-12 + bob, 4, 24);
+        ctx.fillRect(sx-2, sy-13 + bob, 4, 26);
 
 // direction arrow to chest (when it's off-screen)
 const onScreen = (sx >= 0 && sx <= w && sy >= 0 && sy <= h);
@@ -2886,9 +2897,9 @@ if (!onScreen){
   ctx.globalAlpha = 0.90;
   ctx.fillStyle = "rgba(255,220,120,0.95)";
   ctx.beginPath();
-  ctx.moveTo(14, 0);
-  ctx.lineTo(-10, 8);
-  ctx.lineTo(-10, -8);
+  ctx.moveTo(16, 0);
+  ctx.lineTo(-12, 9);
+  ctx.lineTo(-12, -9);
   ctx.closePath();
   ctx.fill();
 
@@ -3007,6 +3018,18 @@ if (!onScreen){
           if (e.bossKind==="spiral") baseCol = "rgba(200,140,255,0.95)";
           if (e.bossKind==="summoner") baseCol = "rgba(160,255,160,0.92)";
         }
+        if (e.type==="boss"){
+          const waveT = (state.t * 0.55 + e.id * 0.17) % 1;
+          const waveR = e.r + 12 + waveT * 78;
+          ctx.save();
+          ctx.globalAlpha = 0.28 * (1 - waveT);
+          ctx.strokeStyle = baseCol;
+          ctx.lineWidth = 2 + waveT * 2;
+          ctx.beginPath();
+          ctx.arc(sx, sy, waveR, 0, TAU);
+          ctx.stroke();
+          ctx.restore();
+        }
         let blasterCharge = 0;
         let blasterFillFromBack = true;
         if (e.type === "blaster"){
@@ -3049,10 +3072,40 @@ if (!onScreen){
           ctx.shadowColor = e.bulletGlow || "rgba(255,230,140,0.95)";
           ctx.shadowBlur = 16 + blasterCharge * 18;
         }
-        ctx.beginPath();
-        ctx.fillStyle = e.hitFlash>0 ? "rgba(255,255,255,0.95)" : baseCol;
-        ctx.arc(sx,sy,e.r,0,TAU);
-        ctx.fill();
+        const auraFlash = (e.auraFlash || 0) > 0;
+        if (e.hitFlash > 0){
+          if (e.type === "boss"){
+            ctx.beginPath();
+            ctx.fillStyle = baseCol;
+            ctx.arc(sx,sy,e.r,0,TAU);
+            ctx.fill();
+            ctx.globalAlpha = 0.75;
+            ctx.beginPath();
+            ctx.fillStyle = "rgba(255,255,255,0.95)";
+            ctx.arc(sx,sy,e.r,0,TAU);
+            ctx.fill();
+          } else {
+            ctx.beginPath();
+            ctx.fillStyle = "rgba(255,255,255,0.95)";
+            ctx.arc(sx,sy,e.r,0,TAU);
+            ctx.fill();
+          }
+        } else if (auraFlash) {
+          ctx.beginPath();
+          ctx.fillStyle = baseCol;
+          ctx.arc(sx,sy,e.r,0,TAU);
+          ctx.fill();
+          ctx.globalAlpha = 0.60;
+          ctx.beginPath();
+          ctx.fillStyle = "rgba(255,255,255,0.95)";
+          ctx.arc(sx,sy,e.r,0,TAU);
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.fillStyle = baseCol;
+          ctx.arc(sx,sy,e.r,0,TAU);
+          ctx.fill();
+        }
         ctx.restore();
 
         if (e.type === "blaster"){
