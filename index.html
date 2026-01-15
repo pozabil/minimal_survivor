@@ -2779,6 +2779,10 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
     function update(dt){
       state.t += dt;
 
+      const dampFast = Math.pow(0.001, dt);
+      const dampSlow = Math.pow(0.02, dt);
+      const lerpFast = 1 - dampFast;
+
       const lvl = player.lvl;
       const bossReduce = Math.floor((lvl - 1) / 5);
       spawn.bossEvery = Math.max(60, 120 - bossReduce * 5);
@@ -2833,8 +2837,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
       const targetVx = ix*player.speed;
       const targetVy = iy*player.speed;
-      player.vx = lerp(player.vx, targetVx, 1 - Math.pow(0.001, dt));
-      player.vy = lerp(player.vy, targetVy, 1 - Math.pow(0.001, dt));
+      player.vx = lerp(player.vx, targetVx, lerpFast);
+      player.vy = lerp(player.vy, targetVy, lerpFast);
 
       player.x += player.vx*dt;
       player.y += player.vy*dt;
@@ -2862,7 +2866,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       const baseSpd = player.baseSpeed || player.speed || 1;
       const speedBonus = player.speed / baseSpd;
       const targetScale = GAME_SCALE * (1 - CAMERA_ZOOM_OUT * speedBonus * ratio);
-      cameraScale = lerp(cameraScale, targetScale, 1 - Math.pow(0.001, dt));
+      cameraScale = lerp(cameraScale, targetScale, lerpFast);
 
       // regen + invuln
       if (player.regen > 0 && player.hp > 0){
@@ -3080,8 +3084,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           }
         }
 
-        e.vx *= Math.pow(0.001, dt);
-        e.vy *= Math.pow(0.001, dt);
+        e.vx *= dampFast;
+        e.vy *= dampFast;
 
 
         // Dasher (обычный моб) — короткие рывки к игроку
@@ -3217,8 +3221,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         g.t += dt;
 
         // initial drift fades
-        g.vx *= Math.pow(0.001, dt);
-        g.vy *= Math.pow(0.001, dt);
+        g.vx *= dampFast;
+        g.vy *= dampFast;
         g.x += g.vx * dt;
         g.y += g.vy * dt;
 
@@ -3281,8 +3285,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         p.t += dt;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        p.vx *= Math.pow(0.02, dt);
-        p.vy *= Math.pow(0.02, dt);
+        p.vx *= dampSlow;
+        p.vy *= dampSlow;
         if (p.t >= p.life) particles.splice(i, 1);
       }
 
@@ -3292,8 +3296,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         f.t += dt;
         f.x += f.vx * dt;
         f.y += f.vy * dt;
-        f.vx *= Math.pow(0.02, dt);
-        f.vy *= Math.pow(0.02, dt);
+        f.vx *= dampSlow;
+        f.vy *= dampSlow;
         if (f.t >= f.life) floaters.splice(i, 1);
       }
 
