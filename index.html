@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Top-Down Survivor</title>
+  <title>Minimal Survivor</title>
   <style>
     html, body { margin:0; padding:0; background:#0b0e14; overflow:hidden; }
     canvas { display:block; width:100vw; height:100vh; image-rendering: pixelated; touch-action:none; }
@@ -356,6 +356,37 @@
     const lerp  = (a,b,t)=>a+(b-a)*t;
     const randf = (a,b)=>a+Math.random()*(b-a);
     const randi = (a,b)=>(a+Math.random()*(b-a+1))|0;
+    const ENEMY_MAX_R = 30;
+    const GRID_SIZE = 140;
+    const enemyGrid = new Map();
+
+    function gridKey(cx, cy){ return cx + "," + cy; }
+    function gridBuild(){
+      enemyGrid.clear();
+      for (const e of enemies){
+        if (e.dead) continue;
+        const cx = Math.floor(e.x / GRID_SIZE);
+        const cy = Math.floor(e.y / GRID_SIZE);
+        const key = gridKey(cx, cy);
+        let cell = enemyGrid.get(key);
+        if (!cell){ cell = []; enemyGrid.set(key, cell); }
+        cell.push(e);
+      }
+    }
+    function gridQueryCircle(x, y, r, out){
+      out.length = 0;
+      const minCx = Math.floor((x - r) / GRID_SIZE);
+      const maxCx = Math.floor((x + r) / GRID_SIZE);
+      const minCy = Math.floor((y - r) / GRID_SIZE);
+      const maxCy = Math.floor((y + r) / GRID_SIZE);
+      for (let cy = minCy; cy <= maxCy; cy++){
+        for (let cx = minCx; cx <= maxCx; cx++){
+          const cell = enemyGrid.get(gridKey(cx, cy));
+          if (cell) out.push(...cell);
+        }
+      }
+      return out;
+    }
 
     function circleHit(ax,ay,ar,bx,by,br){
       const dx=ax-bx, dy=ay-by;
@@ -952,12 +983,14 @@ btnPause.addEventListener("click", (e)=>{
     function findNearestEnemy(){
       let best = null, bestD = Infinity;
       for (const e of enemies){
+        if (e.dead) continue;
         if (e.type==="boss"){
           const d = (e.x-player.x)**2 + (e.y-player.y)**2;
           if (d < bestD*1.1){ bestD = d; best = e; }
         }
       }
       for (const e of enemies){
+        if (e.dead) continue;
         if (e.type==="boss") continue;
         const d = (e.x-player.x)**2 + (e.y-player.y)**2;
         if (d < bestD){ bestD = d; best = e; }
@@ -998,14 +1031,17 @@ btnPause.addEventListener("click", (e)=>{
     function updateOrbitals(dt){
       if (player.orbitals <= 0) return;
       orbitalAngle += player.orbitalSpeed * dt;
+      const candidates = [];
 
       for(let k=0;k<player.orbitals;k++){
         const a = orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
         const ox = player.x + Math.cos(a)*player.orbitalRadius;
         const oy = player.y + Math.sin(a)*player.orbitalRadius;
 
-        for (let i=enemies.length-1; i>=0; i--){
-          const e = enemies[i];
+        gridQueryCircle(ox, oy, 7 + ENEMY_MAX_R, candidates);
+        for (let i=candidates.length-1; i>=0; i--){
+          const e = candidates[i];
+          if (e.dead) continue;
           if (!e._oh) e._oh = new Float32Array(24);
           e._oh[k] = Math.max(0, (e._oh[k]||0) - dt);
           if (e._oh[k] > 0) continue;
@@ -1022,15 +1058,18 @@ btnPause.addEventListener("click", (e)=>{
             e.vx += (dx/d)*120;
             e.vy += (dy/d)*120;
 
-            if (e.hp <= 0) killEnemy(i);
+            if (e.hp <= 0) killEnemy(e);
           }
         }
       }
     }
     function applyAura(dt){
       if (!player.aura) return;
-      for (let i=enemies.length-1; i>=0; i--){
-        const e = enemies[i];
+      const candidates = [];
+      gridQueryCircle(player.x, player.y, player.auraRadius + ENEMY_MAX_R, candidates);
+      for (let i=candidates.length-1; i>=0; i--){
+        const e = candidates[i];
+        if (e.dead) continue;
         const dx = e.x-player.x, dy = e.y-player.y;
         const d = Math.hypot(dx,dy);
         if (d <= player.auraRadius + e.r){
@@ -1039,7 +1078,7 @@ btnPause.addEventListener("click", (e)=>{
           e.hitFlash = Math.max(e.hitFlash, 0.05);
           recordDamage(dmg);
           if (player.auraSlow > 0){ e._slowT = Math.max(e._slowT||0, 0.25); e._slowMult = 1 - clamp(player.auraSlow, 0, 0.55); }
-          if (e.hp <= 0) killEnemy(i);
+          if (e.hp <= 0) killEnemy(e);
         }
       }
     }
@@ -1214,6 +1253,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       for (let j = enemies.length - 1; j >= 0; j--){
         if (j === i) continue;
         const ee = enemies[j];
+        if (!ee || ee.dead) continue;
         const d = Math.hypot(ee.x - e.x, ee.y - e.y);
         if (d < e.explodeR){
           const mult = 1 - (d / e.explodeR);
@@ -1221,15 +1261,16 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
           ee.hp -= dmg;
           ee.hitFlash = Math.max(ee.hitFlash, 0.08);
           recordDamage(dmg);
-          if (ee.hp <= 0) killEnemy(j);
+          if (ee.hp <= 0) killEnemy(ee);
         }
       }
 
-      killEnemy(i);
+      killEnemy(e);
     }
 
-    function killEnemy(idx){
-      const e = enemies[idx];
+    function killEnemy(e){
+      if (!e || e.dead) return;
+      e.dead = true;
       state.kills += 1;
       burst(e.x,e.y, randi(10,16), 220, 0.35);
       dropXp(e.x,e.y, e.xp);
@@ -1278,7 +1319,12 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         for(let i=0;i<8;i++) dropXp(e.x+randf(-20,20), e.y+randf(-20,20), 14);
       }
 
-      enemies.splice(idx,1);
+    }
+
+    function pruneDeadEnemies(){
+      for (let i=enemies.length-1; i>=0; i--){
+        if (enemies[i].dead) enemies.splice(i,1);
+      }
     }
 
     // Upgrades (caps increased)
@@ -1296,7 +1342,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
       armor:    { title:"Броня",         max: 8,  desc:(lv)=>`-6% входящий урон (ур. ${lv+1}/8)`, apply:()=>{ player.armor = clamp((player.armor||0) + 0.06, 0, 0.60); } },
       dodge:    { title:"Уклонение",     max: 7,  desc:(lv)=>`+5% шанс не получить урон (ур. ${lv+1}/7)`, apply:()=>{ player.dodge = clamp((player.dodge||0) + 0.05, 0, 0.35); } },
-      lifesteal:{ title:"Лайфстил",      max: 6,  desc:(lv)=>`+2% лечение от урона (ур. ${lv+1}/6)`, apply:()=>{ player.lifeSteal = clamp((player.lifeSteal||0) + 0.02, 0, 0.12); } },
+      lifesteal:{ title:"Лайфстил",      max: 8,  desc:(lv)=>`+1% лечение от урона (ур. ${lv+1}/8)`, apply:()=>{ player.lifeSteal = clamp((player.lifeSteal||0) + 0.01, 0, 0.08); } },
 
       xpGain:   { title:"Опыт",          max: 8,  desc:(lv)=>`+10% XP (ур. ${lv+1}/8)`, apply:()=>{ player.xpGainMult = (player.xpGainMult || 1) * 1.10; } },
       rerollCap:{ title:"Лимит reroll",  max: 4,  desc:(lv)=>`+2 max rerolls (ур. ${lv+1}/4)`, apply:()=>{ player.rerollCap += 2; } },
@@ -1654,11 +1700,13 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         }
       }
 
+      gridBuild();
       shoot(dt);
       updateOrbitals(dt);
       applyAura(dt);
 
       // bullets
+      const candidates = [];
       for (let i=bullets.length-1;i>=0;i--){
         const b=bullets[i];
         b.t += dt;
@@ -1666,8 +1714,10 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         b.y += b.vy*dt;
         if (b.t >= b.life){ bullets.splice(i,1); continue; }
 
-        for (let j=enemies.length-1;j>=0;j--){
-          const e=enemies[j];
+        gridQueryCircle(b.x, b.y, b.r + ENEMY_MAX_R, candidates);
+        for (let j=candidates.length-1;j>=0;j--){
+          const e=candidates[j];
+          if (e.dead) continue;
           if (!circleHit(b.x,b.y,b.r, e.x,e.y,e.r)) continue;
 
           const isCrit = Math.random() < player.critChance;
@@ -1681,7 +1731,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           b.pierce -= 1;
           if (b.pierce<=0) bullets.splice(i,1);
 
-          if (e.hp<=0) killEnemy(j);
+          if (e.hp<=0) killEnemy(e);
           break;
         }
       }
@@ -1705,9 +1755,12 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         }
       }
 
+      pruneDeadEnemies();
+
       // enemies
       for (let i=enemies.length-1;i>=0;i--){
         const e=enemies[i];
+        if (e.dead) continue;
         e.hitFlash = Math.max(0, e.hitFlash - dt);
 
         const dx = player.x - e.x, dy = player.y - e.y;
@@ -1791,6 +1844,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           }
         }
       }
+
+      pruneDeadEnemies();
 
       // XP drops update + pickup
       for (let i = drops.length - 1; i >= 0; i--) {
