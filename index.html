@@ -56,7 +56,7 @@
     .bossRow .bossName{ margin-bottom:4px; }
     .hint{opacity:.85; font-size:13px; margin-top:10px;}
     .activeItems{
-      position:fixed; right:12px; bottom:12px;
+      position:fixed; right:16px; bottom:12px;
       font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;
       color:#e8eefc; pointer-events:none;
       text-shadow:0 1px 0 rgba(0,0,0,.35);
@@ -65,6 +65,14 @@
       display:flex;
       flex-direction:column;
       align-items:flex-end;
+    }
+    .activeItems .actionHint{
+      font-weight:800;
+      font-size:11px;
+      letter-spacing:0.6px;
+      text-transform:uppercase;
+      opacity:.85;
+      margin-bottom:6px;
     }
     .activeItems .title{
       font-weight:800;
@@ -75,6 +83,7 @@
       margin-bottom:6px;
     }
     .activeItems .item{
+      margin-right:-4px;
       display:flex;
       align-items:center;
       gap:6px;
@@ -329,8 +338,7 @@
       <span id="fps">FPS --</span><span>·</span>
       <span id="wep">W: Bullets</span><span>·</span>
       <span id="rerolls">Reroll 2</span><span>·</span>
-      <span id="threat">Threat 1.0</span><span>·</span>
-      <span id="actionHint" style="display:none;"></span>
+      <span id="threat">Threat 1.0</span>
     </div>
   </div>
 
@@ -370,7 +378,11 @@
   </div>
 </div>
 
-<div class="activeItems" id="activeItems" style="display:none;"></div>
+<div class="activeItems" id="activeItems" style="display:none;">
+  <div class="actionHint" id="actionHint" style="display:none;"></div>
+  <div class="title">Активные предметы</div>
+  <div id="activeItemsList"></div>
+</div>
 
 <div class="totemTimer" id="totemTimer"></div>
 <div class="totemWarning" id="totemWarning">Вернитесь в зону тотема</div>
@@ -484,6 +496,7 @@
     const elThreat = document.getElementById("threat");
     const elActionHint = document.getElementById("actionHint");
     const activeItemsEl = document.getElementById("activeItems");
+    const activeItemsListEl = document.getElementById("activeItemsList");
     const elChestRespawn = document.getElementById("chestRespawn");
     const totemTimerEl = document.getElementById("totemTimer");
     const totemWarningEl = document.getElementById("totemWarning");
@@ -4421,7 +4434,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           elActionHint.textContent = "";
         }
       }
-      if (activeItemsEl){
+      if (activeItemsEl && activeItemsListEl){
         const items = [];
         for (const id of player.uniqueOrder){
           if (!player.unique.has(id)) continue;
@@ -4430,10 +4443,10 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         }
         if (!items.length){
           activeItemsEl.style.display = "none";
-          activeItemsEl.innerHTML = "";
+          activeItemsListEl.innerHTML = "";
         } else {
           activeItemsEl.style.display = "block";
-          activeItemsEl.innerHTML = `<div class="title">Активные предметы</div>${items.map((t)=>`<div class="item">${t}</div>`).join("")}`;
+          activeItemsListEl.innerHTML = items.map((t)=>`<div class="item">${t}</div>`).join("");
         }
       }
     }
