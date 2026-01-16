@@ -46,10 +46,20 @@
       box-shadow: inset 0 0 0 1px var(--border-1);
       position:relative;
     }
+    .bar.hpBar,
+    .bar.xpBar{
+      width: min(400px, calc(100vw - 160px));
+    }
     .bar.small{ width:180px; height:8px; }
     .bar .fill{
       position:absolute; left:0; top:0; height:100%; width:0;
       background:rgba(255,255,255,.65);
+    }
+    .bar.hpBar .fill{
+      background:#98e06a;
+    }
+    .bar.xpBar .fill{
+      background:#e7c24f;
     }
     .bar.bossHp .fill{
       background:rgba(255,120,120,0.78);
@@ -59,6 +69,9 @@
       background:rgba(140,255,170,.35);
       opacity:.7; pointer-events:none;
       animation: hpPulse 0.55s ease-in-out infinite;
+    }
+    .bar.hpBar .pulse{
+      background:rgba(152,224,106,.35);
     }
     @keyframes hpPulse{
       0%{ opacity:.35; }
@@ -329,7 +342,7 @@
     @media (max-width:900px){
       .choices{grid-template-columns:1fr;}
       .grid2{grid-template-columns: 1fr;}
-      .bar{width:200px;}
+      .bar:not(.hpBar):not(.xpBar){width:200px;}
       .list{max-height: 240px;}
       .totemTimer{ top:20vh; font-size:56px; }
       .totemWarning{ font-size:28px; padding:12vh 18px 0; }
@@ -360,12 +373,12 @@
 
   <div class="barWrap">
     <span style="width:52px; opacity:.9">HP</span>
-    <div class="bar"><div id="hpbar" class="fill"></div><div id="hpbarPulse" class="pulse"></div></div>
+    <div class="bar hpBar"><div id="hpbar" class="fill"></div><div id="hpbarPulse" class="pulse"></div></div>
     <span id="hptext" style="opacity:.9"></span>
   </div>
   <div class="barWrap">
     <span style="width:52px; opacity:.9">XP</span>
-    <div class="bar"><div id="xpbar" class="fill"></div></div>
+    <div class="bar xpBar"><div id="xpbar" class="fill"></div></div>
     <span id="xptext" style="opacity:.9"></span>
   </div>
   <div class="barWrap small">
@@ -450,6 +463,17 @@
           <button class="btn danger" id="btnHang" style="display:none;">Повеситься</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="restartConfirm">
+  <div class="panel">
+    <h2>Перезапустить игру?</h2>
+    <div style="opacity:.9; margin:8px 0 14px;">Прогресс будет потерян.</div>
+    <div class="toolbar">
+      <button class="btn danger" id="btnRestartYes">Перезапустить</button>
+      <button class="btn" id="btnRestartNo">Отмена</button>
     </div>
   </div>
 </div>
@@ -567,6 +591,10 @@
     const btnCopy = document.getElementById("btnCopy");
     const btnRecords = document.getElementById("btnRecords");
     const btnHang = document.getElementById("btnHang");
+
+    const restartConfirmOverlay = document.getElementById("restartConfirm");
+    const btnRestartYes = document.getElementById("btnRestartYes");
+    const btnRestartNo = document.getElementById("btnRestartNo");
 
     const gameoverOverlay = document.getElementById("gameover");
     const summaryEl = document.getElementById("summary");
@@ -830,11 +858,15 @@
       if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
 
       if (e.code==="Escape"){
+        if (restartConfirmOverlay.style.display === "grid"){
+          hideRestartConfirm();
+          return;
+        }
         if (recordsOverlay.style.display === "grid"){
           hideRecords();
           return;
         }
-        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid") return;
+        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
         togglePauseMenu();
         return;
       }
@@ -847,7 +879,7 @@
       }
 
       if (e.code === "Space"){
-        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || pauseMenu.style.display==="grid") return;
+        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || pauseMenu.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
         triggerAction();
       }
 
@@ -874,7 +906,8 @@ const overlaysBlockInput = () =>
   (startOverlay.style.display === "grid") ||
   (gameoverOverlay.style.display === "grid") ||
   (pauseMenu.style.display === "grid") ||
-  (recordsOverlay.style.display === "grid");
+  (recordsOverlay.style.display === "grid") ||
+  (restartConfirmOverlay.style.display === "grid");
 
 function placeJoystick(cx, cy){
   // keep fully on-screen
@@ -957,7 +990,7 @@ canvas.addEventListener("pointercancel", (e)=>{
 // Pause button (mobile)
 btnPause.addEventListener("click", (e)=>{
   e.preventDefault();
-  if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid") return;
+  if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
   togglePauseMenu();
 });
     }
@@ -3504,6 +3537,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
     function togglePauseMenu(){
       if (state.dead) return;
+      if (restartConfirmOverlay.style.display === "grid") return;
       state.paused = !state.paused;
       if (state.paused){
         ui.buildFromPicker = false;
@@ -3523,6 +3557,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     });
 
     btnRestart2.addEventListener("click", ()=>resetGame());
+    btnRestartYes.addEventListener("click", ()=>location.reload());
+    btnRestartNo.addEventListener("click", hideRestartConfirm);
     btnCopy.addEventListener("click", ()=>copyStats());
     btnRecords.addEventListener("click", ()=>showRecords());
     btnHang.addEventListener("click", ()=>{
@@ -3765,6 +3801,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
     const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkills" };
     let recordsReturnToPause = false;
+    let restartReturnToPause = false;
+    let restartReturnToPlay = false;
 
     function readRecord(key){
       try {
@@ -3826,6 +3864,26 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
     }
 
+    function showRestartConfirm(){
+      if (restartConfirmOverlay.style.display === "grid") return;
+      restartReturnToPause = pauseMenu.style.display === "grid";
+      restartReturnToPlay = !state.paused;
+      if (restartReturnToPause) pauseMenu.style.display = "none";
+      state.paused = true;
+      restartConfirmOverlay.style.display = "grid";
+    }
+
+    function hideRestartConfirm(){
+      restartConfirmOverlay.style.display = "none";
+      if (restartReturnToPause){
+        pauseMenu.style.display = "grid";
+      } else if (restartReturnToPlay){
+        state.paused = false;
+      }
+      restartReturnToPause = false;
+      restartReturnToPlay = false;
+    }
+
     function gameOver(){
       state.dead = true;
       state.paused = true;
@@ -3856,7 +3914,10 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
     btnRecordsClose.addEventListener("click", ()=>hideRecords());
 
     function resetGame(){
-      if (!confirm("Перезапустить игру? Прогресс будет потерян.")) return;
+      if (!state.dead){
+        showRestartConfirm();
+        return;
+      }
       location.reload();
     }
 
