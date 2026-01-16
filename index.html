@@ -1074,7 +1074,14 @@ btnPause.addEventListener("click", (e)=>{
     }
     function getTurretDamageScale(){
       const base = player.baseDamage || player.damage || 1;
-      return player.damage / base;
+      return (player.damage / base) * getWoundedDamageMult();
+    }
+    function getWoundedDamageMult(){
+      if (!hasUnique("baltika9")) return 1;
+      const hpRatio = player.hpMax > 0 ? (player.hp / player.hpMax) : 1;
+      if (hpRatio >= 0.5) return 1;
+      const bonus = (0.5 - hpRatio) * 0.5;
+      return 1 + bonus;
     }
     function getTurretDamage(){
       const lv = getLevel("turretLevel");
@@ -1994,7 +2001,7 @@ btnPause.addEventListener("click", (e)=>{
           vx: Math.cos(a)*player.bulletSpeed,
           vy: Math.sin(a)*player.bulletSpeed,
           r: player.bulletSize,
-          dmg: player.damage,
+          dmg: player.damage * getWoundedDamageMult(),
           pierce: player.pierce,
           life: 3.2, // было 1.6
           t: 0,
@@ -2021,7 +2028,7 @@ btnPause.addEventListener("click", (e)=>{
           vx: Math.cos(a)*player.novaSpeed,
           vy: Math.sin(a)*player.novaSpeed,
           r: Math.max(4, player.bulletSize * 1.15),
-          dmg: player.novaDamage,
+          dmg: player.novaDamage * getWoundedDamageMult(),
           pierce: 1,
           life: 3.0,
           t: 0,
@@ -2052,7 +2059,7 @@ btnPause.addEventListener("click", (e)=>{
           vx: Math.cos(a)*player.bulletSpeed,
           vy: Math.sin(a)*player.bulletSpeed,
           r: player.bulletSize,
-          dmg: player.damage,
+          dmg: player.damage * getWoundedDamageMult(),
           pierce: player.pierce,
           life: 3.2,
           t: 0,
@@ -2078,7 +2085,7 @@ btnPause.addEventListener("click", (e)=>{
           vx: Math.cos(a)*player.novaSpeed,
           vy: Math.sin(a)*player.novaSpeed,
           r: Math.max(4, player.bulletSize * 1.15),
-          dmg: player.novaDamage,
+          dmg: player.novaDamage * getWoundedDamageMult(),
           pierce: 1,
           life: 3.0,
           t: 0,
@@ -2173,7 +2180,7 @@ btnPause.addEventListener("click", (e)=>{
 
           if (circleHit(ox,oy, orbSize, e.x,e.y,e.r)){
             e._oh[k] = player.orbitalHitCD;
-            const dmg = player.orbitalDamage;
+            const dmg = player.orbitalDamage * getWoundedDamageMult();
             e.hp -= dmg;
             e.hitFlash = 0.09;
             recordDamage(dmg);
@@ -2205,6 +2212,7 @@ btnPause.addEventListener("click", (e)=>{
         y: player.y + Math.sin(a) * d,
         r: DOG_RADIUS,
         ang: a,
+        orbit: a,
         hitCd: 0,
         target: null,
         color: pickDogColor(),
@@ -2314,7 +2322,7 @@ btnPause.addEventListener("click", (e)=>{
         const dist = Math.hypot(dx, dy);
         if (dist > radius + e.r) continue;
 
-        const dmg = player.auraDps * dt;
+        const dmg = player.auraDps * getWoundedDamageMult() * dt;
         e.hp -= dmg;
         e.auraFlash = Math.max(e.auraFlash || 0, 0.05);
         recordDamage(dmg);
@@ -2383,7 +2391,7 @@ btnPause.addEventListener("click", (e)=>{
 
           if (circleHit(ox,oy, orbSize, e.x,e.y,e.r)){
             e._ohClone[k] = player.orbitalHitCD;
-            const dmg = player.orbitalDamage;
+            const dmg = player.orbitalDamage * getWoundedDamageMult();
             e.hp -= dmg;
             e.hitFlash = 0.09;
             recordDamage(dmg);
@@ -2440,7 +2448,7 @@ btnPause.addEventListener("click", (e)=>{
         const dist = Math.hypot(dx, dy);
         if (dist > radius + e.r) continue;
 
-        const dmg = player.auraDps * dt;
+        const dmg = player.auraDps * getWoundedDamageMult() * dt;
         e.hp -= dmg;
         e.auraFlash = Math.max(e.auraFlash || 0, 0.05);
         recordDamage(dmg);
@@ -2543,7 +2551,7 @@ btnPause.addEventListener("click", (e)=>{
     }
 
     function explodeSameCircle(c){
-      const dmg = player.damage * SAME_CIRCLE_DAMAGE_MULT;
+      const dmg = player.damage * SAME_CIRCLE_DAMAGE_MULT * getWoundedDamageMult();
       burst(c.x, c.y, randi(18, 26), 300, 0.5);
       for (let i=enemies.length-1; i>=0; i--){
         const e = enemies[i];
@@ -3079,6 +3087,17 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         action:true,
         desc:"Если ты есть Бог, помоги, отец мой небесный, я заколебался. Активируется кнопкой действия.",
         apply(){},
+      },
+      baltika9: {
+        title:"Балтика-9",
+        rarity:"common",
+        desc:"Вкус терпкий, да и эффект так себе. Немного снижает скорость бега и атаки, увеличивает броню и урон при ранениях.",
+        apply(){
+          player.speed *= 0.95;
+          if (player.baseSpeed) player.baseSpeed *= 0.95;
+          player.fireRate *= 0.95;
+          player.armor = clamp((player.armor || 0) + 0.08, 0, 0.60);
+        },
       },
       dog: {
         title:"Питомец",
