@@ -563,6 +563,9 @@
     const DOG_SPEED = 290;
     const DOG_TURN_RATE = 4.5;
     const DOG_HIT_COOLDOWN = 0.18;
+    const DOG_BROWN_COLORS = ["rgba(130,85,55,0.95)", "rgba(150,95,60,0.95)", "rgba(110,70,45,0.95)"];
+    const DOG_GRAY_COLOR = "rgba(150,150,155,0.95)";
+    const DOG_GRAY_CHANCE = 0.12;
     const XP_BONUS_NORMAL = 0.0005;
     const XP_BONUS_ELITE = 0.002;
     const XP_BONUS_BOSS = 0.01;
@@ -1181,6 +1184,11 @@ btnPause.addEventListener("click", (e)=>{
       },
     ];
 
+    function maybeAddStartingDog(heroId){
+      const chance = heroId==="scout" ? 0.10 : heroId==="tank" ? 0.06 : heroId==="mage" ? 0.08 : 0;
+      if (chance > 0 && Math.random() < chance) addUniqueItem("dog");
+    }
+
     function openStart(){
       state.paused = true;
       startOverlay.style.display = "grid";
@@ -1191,7 +1199,7 @@ btnPause.addEventListener("click", (e)=>{
         div.innerHTML = `<div class="t">${c.name}</div><div class="d">${c.desc}</div><div class="d" style="margin-top:8px; opacity:.75">${c.perk}</div>`;
         div.addEventListener("click", ()=>{
           c.apply();
-          addUniqueItem("dog");
+          maybeAddStartingDog(c.id);
           startOverlay.style.display = "none";
           state.paused = false;
         });
@@ -1994,6 +2002,11 @@ btnPause.addEventListener("click", (e)=>{
       }
     }
 
+    function pickDogColor(){
+      if (Math.random() < DOG_GRAY_CHANCE) return DOG_GRAY_COLOR;
+      return DOG_BROWN_COLORS[Math.floor(Math.random() * DOG_BROWN_COLORS.length)];
+    }
+
     function spawnDog(){
       if (dogs.length) return;
       const a = randf(0, TAU);
@@ -2005,6 +2018,7 @@ btnPause.addEventListener("click", (e)=>{
         ang: a,
         hitCd: 0,
         target: null,
+        color: pickDogColor(),
       });
     }
 
@@ -2844,9 +2858,9 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         apply(){},
       },
       dog: {
-        title:"Собака",
+        title:"Питомец",
         rarity:"common",
-        desc:"Собака лучший друг круга.",
+        desc:"Питомец лучший друг круга.",
         apply(){ spawnDog(); },
       },
       rf_passport: {
@@ -3288,7 +3302,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         case "auraDps":
           return `Аура: DPS ${fmtNum(player.auraDps)}`;
         case "dog":
-          return `Собака: урон ${fmtNum(player.damage)}`;
+          return `Питомец: урон ${fmtNum(player.damage)}`;
         default:
           return "";
       }
@@ -4482,7 +4496,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           ctx.translate(sx, sy);
           ctx.rotate(d.ang);
           ctx.beginPath();
-          ctx.fillStyle = "rgba(130,85,55,0.95)";
+          ctx.fillStyle = d.color || DOG_BROWN_COLORS[0];
           ctx.arc(0, 0, d.r, 0, TAU);
           ctx.fill();
           ctx.fillStyle = "rgba(255,255,255,0.85)";
