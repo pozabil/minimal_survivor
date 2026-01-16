@@ -5,29 +5,45 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>Minimal Survivor</title>
   <style>
-    html, body { margin:0; padding:0; background:#0b0e14; overflow:hidden; }
+    :root{
+      --bg: #0b0e14;
+      --ui-font: system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      --ui-text: #e8eefc;
+      --text-on-dark: #fff;
+      --ui-shadow: 0 1px 0 rgba(0,0,0,.35);
+      --overlay-bg: rgba(0,0,0,.55);
+      --panel-bg: rgba(15,18,28,.92);
+      --surface-1: rgba(255,255,255,.06);
+      --surface-2: rgba(255,255,255,.08);
+      --surface-3: rgba(255,255,255,.10);
+      --surface-4: rgba(255,255,255,.12);
+      --border-1: rgba(255,255,255,.08);
+      --border-2: rgba(255,255,255,.10);
+      --border-3: rgba(255,255,255,.12);
+    }
+    html, body { margin:0; padding:0; background:var(--bg); overflow:hidden; }
     canvas { display:block; width:100vw; height:100vh; image-rendering: pixelated; touch-action:none; }
 
     .hud{
       position:fixed; left:12px; top:10px; right:12px;
-      font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      color:#e8eefc; pointer-events:none;
-      text-shadow:0 1px 0 rgba(0,0,0,.35);
+      font:14px/1.35 var(--ui-font);
+      color:var(--ui-text); pointer-events:none;
+      text-shadow:var(--ui-shadow);
       z-index: 2;
     }
     .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
     .badge{
       display:inline-flex; gap:10px; align-items:center; flex-wrap:wrap;
       padding:6px 10px; border-radius:10px;
-      background:rgba(255,255,255,.06); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+      background:var(--surface-1); box-shadow:inset 0 0 0 1px var(--border-1);
     }
     .barWrap{display:flex; gap:10px; align-items:center; margin-top:8px;}
     .barWrap.small{ margin-top:6px; }
     .barWrap.small span{ width:56px; font-size:12px; opacity:.85; }
     .bar{
       width:260px; height:12px; border-radius:999px;
-      background:rgba(255,255,255,.12); overflow:hidden;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+      background:var(--surface-4); overflow:hidden;
+      box-shadow: inset 0 0 0 1px var(--border-1);
       position:relative;
     }
     .bar.small{ width:180px; height:8px; }
@@ -57,9 +73,9 @@
     .hint{opacity:.85; font-size:13px; margin-top:10px;}
     .activeItems{
       position:fixed; right:16px; bottom:12px;
-      font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      color:#e8eefc; pointer-events:none;
-      text-shadow:0 1px 0 rgba(0,0,0,.35);
+      font:12px/1.35 var(--ui-font);
+      color:var(--ui-text); pointer-events:none;
+      text-shadow:var(--ui-shadow);
       z-index: 2;
       text-align:right;
       display:flex;
@@ -89,8 +105,8 @@
       gap:6px;
       padding:4px 8px;
       border-radius:999px;
-      background:rgba(255,255,255,.08);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.10);
+      background:var(--surface-2);
+      box-shadow: inset 0 0 0 1px var(--border-2);
       margin-bottom:6px;
     }
     .activeItems .item:last-child{ margin-bottom:0; }
@@ -99,7 +115,7 @@
       left:50%;
       top:18vh;
       transform:translateX(-50%);
-      font:800 64px/1.1 system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      font:800 64px/1.1 var(--ui-font);
       color:rgba(255,170,80,0.98);
       text-shadow:0 2px 14px rgba(120,70,20,.55), 0 1px 0 rgba(0,0,0,.45);
       letter-spacing:1px;
@@ -120,7 +136,7 @@
       position:fixed; inset:0;
       display:flex; align-items:flex-start; justify-content:center;
       text-align:center;
-      font:900 34px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      font:900 34px/1.2 var(--ui-font);
       color:rgba(255,210,245,0.98);
       text-shadow:0 2px 14px rgba(90,0,70,.55), 0 1px 0 rgba(0,0,0,.55);
       background:
@@ -135,36 +151,36 @@
 
     .overlay{
       position:fixed; inset:0; display:none; place-items:center;
-      background:rgba(0,0,0,.55);
-      font:16px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      color:#fff;
+      background:var(--overlay-bg);
+      font:16px/1.35 var(--ui-font);
+      color:var(--text-on-dark);
       z-index: 5;
     }
     .panel{
       width:min(920px, calc(100vw - 24px));
       border-radius:18px;
-      background:rgba(15,18,28,.92);
-      box-shadow:0 12px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.10);
+      background:var(--panel-bg);
+      box-shadow:0 12px 40px rgba(0,0,0,.45), inset 0 0 0 1px var(--border-2);
       padding:18px;
     }
     .panel h2{margin:0 0 10px; font-size:18px;}
     .choices{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
     .choice{
       text-align:left; border-radius:14px; padding:12px;
-      background:rgba(255,255,255,.06);
-      box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);
+      background:var(--surface-1);
+      box-shadow:inset 0 0 0 1px var(--border-2);
       cursor:pointer; user-select:none;
     }
-    .choice:hover{background:rgba(255,255,255,.10);}
+    .choice:hover{background:var(--surface-3);}
     .choice .t{font-weight:800; margin-bottom:6px; display:flex; gap:8px; align-items:baseline; flex-wrap:wrap;}
     .choice .d{opacity:.85; font-size:13px;}
     .pill{
       font-size:11px; padding:2px 8px; border-radius:999px;
-      background: rgba(255,255,255,.10);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+      background: var(--surface-3);
+      box-shadow: inset 0 0 0 1px var(--border-3);
       opacity:.95;
     }
-    .pill.common{ background: rgba(255,255,255,.10); }
+    .pill.common{ background: var(--surface-3); }
     .pill.rare{ background: rgba(120,220,255,.14); }
     .pill.epic{ background: rgba(210,120,255,.16); }
 
@@ -174,9 +190,9 @@
       border:0; cursor:pointer;
       padding:10px 12px;
       border-radius:12px;
-      background:rgba(255,255,255,.10);
+      background:var(--surface-3);
       color:#fff;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+      box-shadow: inset 0 0 0 1px var(--border-3);
     }
     .btn:hover{ background:rgba(255,255,255,.14); }
     .btn:disabled{ opacity:.45; cursor:not-allowed; }
@@ -206,7 +222,7 @@
       width: 12px;
       height: 180px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.10);
+      background: var(--surface-3);
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
       overflow: hidden;
       display: none;
@@ -229,8 +245,8 @@
     .grid2{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap:14px; margin-top:10px; }
     .box{
       border-radius:14px;
-      background:rgba(255,255,255,.06);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.10);
+      background:var(--surface-1);
+      box-shadow: inset 0 0 0 1px var(--border-2);
       padding:12px;
     }
     .box h3{ margin:0 0 8px; font-size:14px; opacity:.95; }
@@ -240,11 +256,11 @@
       border:0; cursor:pointer;
       padding:6px 10px;
       border-radius:999px;
-      background:rgba(255,255,255,.08);
+      background:var(--surface-2);
       color:#fff;
       font-size:12px;
       font-weight:700;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+      box-shadow: inset 0 0 0 1px var(--border-3);
     }
     .tab.active{
       background: rgba(120,220,255,.22);
@@ -305,8 +321,8 @@
     /* аварийный экран */
     #fatal {
       position:fixed; inset:0; display:none; place-items:center;
-      background:#0b0e14; color:#fff; z-index: 999;
-      font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:var(--bg); color:var(--text-on-dark); z-index: 999;
+      font:14px/1.4 var(--ui-font);
       padding:18px;
     }
     #fatal .panel { max-width: 920px; }
