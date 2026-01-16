@@ -628,10 +628,11 @@
     const AURA_WAVE_BASE_FORCE = 60;
     const AURA_WAVE_FORCE_STEP = 10;
     const AURA_WAVE_BOSS_MULT = 0.0;
-    const AURA_WAVE_ELITE_MULT = 0.2;
-    const AURA_WAVE_POS_MULT = 0.45;
+    const AURA_WAVE_ELITE_MULT = 0.25;
+    const AURA_WAVE_HIT_COOLDOWN = 0.05;
+    const AURA_WAVE_POS_MULT = 0.05;
     const AURA_WAVE_VEL_MULT = 4;
-    const AURA_WAVE_TRAVEL_TIME = 0.35;
+    const AURA_WAVE_TRAVEL_TIME = 0.42;
     const AURA_WAVE_THICKNESS = 18;
     const UNIQUE_CHEST_EVERY = 4;
     const DASH_DISTANCE = 140;
@@ -2353,7 +2354,7 @@ btnPause.addEventListener("click", (e)=>{
         }
       }
 
-      let wavePrevR = state.auraWaveR;
+      const wavePrevR = state.auraWaveR;
       if (state.auraWaveActive){
         const speed = state.auraWaveMaxR / Math.max(0.1, AURA_WAVE_TRAVEL_TIME);
         state.auraWaveR += speed * dt;
@@ -2390,34 +2391,38 @@ btnPause.addEventListener("click", (e)=>{
         const maxR = Math.max(wavePrevR, waveR);
         const waveX = state.auraWaveX;
         const waveY = state.auraWaveY;
-        const range = maxR + AURA_WAVE_THICKNESS + ENEMY_MAX_R;
+        const travel = Math.abs(waveR - wavePrevR);
+        const range = maxR + AURA_WAVE_THICKNESS + ENEMY_MAX_R + travel;
         const force = getAuraWaveForce();
         if (force > 0){
           gridQueryCircle(waveX, waveY, range, waveCandidates);
           for (let i=waveCandidates.length-1; i>=0; i--){
             const e = waveCandidates[i];
             if (e.dead || e.dying) continue;
-            if (e._auraWaveId === state.auraWaveId) continue;
+            const lastHit = Number.isFinite(e._auraWaveHitT) ? e._auraWaveHitT : -Infinity;
+            if (state.t - lastHit < AURA_WAVE_HIT_COOLDOWN) continue;
             const dx = e.x - waveX;
             const dy = e.y - waveY;
             const dist = Math.hypot(dx, dy);
-            const inner = Math.max(0, minR - AURA_WAVE_THICKNESS - e.r);
-            const outer = maxR + AURA_WAVE_THICKNESS + e.r;
+            if (dist > state.auraWaveMaxR) continue;
+            const band = AURA_WAVE_THICKNESS + e.r + travel;
+            const inner = Math.max(0, minR - band);
+            const outer = maxR + band;
             if (dist < inner || dist > outer) continue;
 
             let mult = 1;
             if (e.type === "boss") mult = AURA_WAVE_BOSS_MULT;
             else if (e.elite) mult = AURA_WAVE_ELITE_MULT;
 
-            const band = AURA_WAVE_THICKNESS + e.r;
-            const waveBand = clamp(1 - Math.abs(dist - waveR) / Math.max(1, band), 0, 1);
-            const smooth = waveBand * waveBand * (3 - 2 * waveBand);
+            const centerR = (minR + maxR) * 0.5;
+            const waveBand = clamp(1 - Math.abs(dist - centerR) / Math.max(1, band), 0, 1);
+            const smooth = Math.max(0.2, waveBand * waveBand * (3 - 2 * waveBand));
             const push = pushAway(e.x, e.y, waveX, waveY, force * mult * smooth);
             e.x += push.x * AURA_WAVE_POS_MULT;
             e.y += push.y * AURA_WAVE_POS_MULT;
             e.vx += push.x * AURA_WAVE_VEL_MULT;
             e.vy += push.y * AURA_WAVE_VEL_MULT;
-            e._auraWaveId = state.auraWaveId;
+            e._auraWaveHitT = state.t;
           }
         }
       }
@@ -2479,7 +2484,7 @@ btnPause.addEventListener("click", (e)=>{
         }
       }
 
-      let wavePrevR = c.auraWaveR || 0;
+      const wavePrevR = c.auraWaveR || 0;
       if (c.auraWaveActive){
         const speed = c.auraWaveMaxR / Math.max(0.1, AURA_WAVE_TRAVEL_TIME);
         c.auraWaveR += speed * dt;
@@ -2516,34 +2521,38 @@ btnPause.addEventListener("click", (e)=>{
         const maxR = Math.max(wavePrevR, waveR);
         const waveX = c.auraWaveX;
         const waveY = c.auraWaveY;
-        const range = maxR + AURA_WAVE_THICKNESS + ENEMY_MAX_R;
+        const travel = Math.abs(waveR - wavePrevR);
+        const range = maxR + AURA_WAVE_THICKNESS + ENEMY_MAX_R + travel;
         const force = getAuraWaveForce();
         if (force > 0){
           gridQueryCircle(waveX, waveY, range, waveCandidates);
           for (let i=waveCandidates.length-1; i>=0; i--){
             const e = waveCandidates[i];
             if (e.dead || e.dying) continue;
-            if (e._auraWaveCloneId === c.auraWaveId) continue;
+            const lastHit = Number.isFinite(e._auraWaveHitT) ? e._auraWaveHitT : -Infinity;
+            if (state.t - lastHit < AURA_WAVE_HIT_COOLDOWN) continue;
             const dx = e.x - waveX;
             const dy = e.y - waveY;
             const dist = Math.hypot(dx, dy);
-            const inner = Math.max(0, minR - AURA_WAVE_THICKNESS - e.r);
-            const outer = maxR + AURA_WAVE_THICKNESS + e.r;
+            if (dist > c.auraWaveMaxR) continue;
+            const band = AURA_WAVE_THICKNESS + e.r + travel;
+            const inner = Math.max(0, minR - band);
+            const outer = maxR + band;
             if (dist < inner || dist > outer) continue;
 
             let mult = 1;
             if (e.type === "boss") mult = AURA_WAVE_BOSS_MULT;
             else if (e.elite) mult = AURA_WAVE_ELITE_MULT;
 
-            const band = AURA_WAVE_THICKNESS + e.r;
-            const waveBand = clamp(1 - Math.abs(dist - waveR) / Math.max(1, band), 0, 1);
-            const smooth = waveBand * waveBand * (3 - 2 * waveBand);
+            const centerR = (minR + maxR) * 0.5;
+            const waveBand = clamp(1 - Math.abs(dist - centerR) / Math.max(1, band), 0, 1);
+            const smooth = Math.max(0.5, waveBand * waveBand * (3 - 2 * waveBand));
             const push = pushAway(e.x, e.y, waveX, waveY, force * mult * smooth);
             e.x += push.x * AURA_WAVE_POS_MULT;
             e.y += push.y * AURA_WAVE_POS_MULT;
             e.vx += push.x * AURA_WAVE_VEL_MULT;
             e.vy += push.y * AURA_WAVE_VEL_MULT;
-            e._auraWaveCloneId = c.auraWaveId;
+            e._auraWaveHitT = state.t;
           }
         }
       }
@@ -3835,6 +3844,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
     btnRecordsClose.addEventListener("click", ()=>hideRecords());
 
     function resetGame(){
+      if (!confirm("Перезапустить игру? Прогресс будет потерян.")) return;
       location.reload();
     }
 
@@ -4875,15 +4885,29 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       if (state.auraWaveActive){
         const wx = state.auraWaveX - camX;
         const wy = state.auraWaveY - camY;
-        const fade = 1 - clamp(state.auraWaveR / Math.max(1, state.auraWaveMaxR), 0, 1);
+        const drawMax = state.auraWaveMaxR + AURA_WAVE_THICKNESS * 0.1;
+        const drawR = Math.min(state.auraWaveR, drawMax);
+        const fade = 1 - clamp(drawR / Math.max(1, drawMax), 0, 1);
         ctx.save();
-        ctx.globalAlpha = 0.35 + 0.25 * fade;
+        const mainAlpha = 0.22 + 0.18 * fade;
         ctx.strokeStyle = "rgba(200,230,255,0.9)";
-        ctx.lineWidth = Math.max(2, AURA_WAVE_THICKNESS * 0.25);
-        ctx.shadowColor = "rgba(140,220,255,0.7)";
-        ctx.shadowBlur = 12;
+        ctx.shadowColor = "rgba(120,210,255,0.55)";
+        ctx.shadowBlur = 18;
+        ctx.lineCap = "round";
+        ctx.globalAlpha = mainAlpha * 0.45;
+        ctx.lineWidth = Math.max(4, AURA_WAVE_THICKNESS * 0.7);
         ctx.beginPath();
-        ctx.arc(wx, wy, state.auraWaveR, 0, TAU);
+        ctx.arc(wx, wy, drawR, 0, TAU);
+        ctx.stroke();
+        ctx.globalAlpha = mainAlpha * 0.25;
+        ctx.lineWidth = Math.max(7, AURA_WAVE_THICKNESS * 1.1);
+        ctx.beginPath();
+        ctx.arc(wx, wy, drawR, 0, TAU);
+        ctx.stroke();
+        ctx.globalAlpha = mainAlpha;
+        ctx.lineWidth = Math.max(2, AURA_WAVE_THICKNESS * 0.25);
+        ctx.beginPath();
+        ctx.arc(wx, wy, drawR, 0, TAU);
         ctx.stroke();
         ctx.restore();
       }
