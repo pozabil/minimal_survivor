@@ -999,6 +999,7 @@ btnPause.addEventListener("click", (e)=>{
       slowMoT: 0,
       slowMoCd: 0,
       slowMoLocked: false,
+      pendingLevelUps: 0,
     };
 
     // UI state
@@ -1561,8 +1562,9 @@ btnPause.addEventListener("click", (e)=>{
         player.lvl += 1;
         player.xpNeed = Math.floor(player.xpNeed * 1.12 * (player.xpNeedMult || 1) + 8);
         state.chestTimer = Math.min(state.chestTimer, getChestInterval());
-        openUpgradePicker("level");
+        state.pendingLevelUps += 1;
       }
+      maybeOpenLevelPicker();
     }
 
     // Enemies
@@ -3398,6 +3400,13 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       updateRerollsUI();
     }
 
+    function maybeOpenLevelPicker(){
+      if (state.pendingLevelUps <= 0) return;
+      if (pickerOverlay.style.display === "grid") return;
+      state.pendingLevelUps -= 1;
+      openUpgradePicker("level");
+    }
+
     function renderChoices(){
       choicesWrap.innerHTML = "";
       if (!currentChoices.length){
@@ -3437,6 +3446,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         ui.buildFromPicker = false;
         btnResume.textContent = "Resume";
         state.paused = false;
+        maybeOpenLevelPicker();
         return;
       }
       if (!isEligible(id)) return;
@@ -3448,6 +3458,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       ui.buildFromPicker = false;
       btnResume.textContent = "Resume";
       state.paused = false;
+      maybeOpenLevelPicker();
     }
 
     function doReroll(){
@@ -3467,6 +3478,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       ui.buildFromPicker = false;
       btnResume.textContent = "Resume";
       state.paused = false;
+      maybeOpenLevelPicker();
     }
 
     btnReroll.addEventListener("click", doReroll);
