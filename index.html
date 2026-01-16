@@ -708,9 +708,9 @@
     const TOTEM_EFFECT_DECAY = 0.8;
     const TOTEM_DPS_BASE = 1;
     const TOTEM_DPS_RAMP_BASE = 2;
-    const TOTEM_DPS_RAMP_GROWTH = 1.2;
+    const TOTEM_DPS_RAMP_GROWTH = 1.08;
     const TOTEM_DPS_RAMP_LV_STEP = 4;
-    const TOTEM_DPS_RAMP_CAP = 25;
+    const TOTEM_DPS_RAMP_CAP = 5;
     const TOTEM_EFFECT_MAX = 90;
     const LOW_HP_SLOW_THRESHOLD = 0.08;
     const LOW_HP_SLOW_RESET = 0.12;
@@ -3082,7 +3082,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       auraSlow: { title:"Аура: замедление", max: 8, desc:(lv)=>`+7.5% slow в ауре (ур. ${lv+1}/8)`, apply:()=>{ player.auraSlow = clamp((player.auraSlow||0) + 0.075, 0, 0.60); } },
 
       speed:    { title:"Скорость",       max: 10, desc:(lv)=>`+10% move speed (ур. ${lv+1}/10)`, apply:()=>{ player.speed *= 1.10; } },
-      hp:       { title:"Живучесть",      max: 10, desc:(lv)=>`+22 max HP (+heal) (ур. ${lv+1}/10)`, apply:()=>{ player.hpMax += 22; player.hp = Math.min(player.hpMax, player.hp + 22); } },
+      hp:       { title:"Живучесть",      max: 10, desc:(lv)=>`+22 max HP +3% (+heal) (ур. ${lv+1}/10)`, apply:()=>{ const prevMax = player.hpMax; const newMax = Math.round((prevMax + 22) * 1.03); player.hpMax = newMax; const delta = newMax - prevMax; if (delta > 0) player.hp = Math.min(player.hpMax, player.hp + delta); } },
       regen:    { title:"Регенерация",    max: 10, desc:(lv)=>`+1.0 HP/сек (ур. ${lv+1}/10)`, apply:()=>{ player.regen += 1.0; } },
       magnet:   { title:"Магнит",         max: 8,  desc:(lv)=>`+40 радиус подбора XP (ур. ${lv+1}/8)`,  apply:()=>{ player.magnet += 40; } },
 
