@@ -686,7 +686,7 @@
     const INVULN_BULLET_MIN = 0.05;
     const INVULN_CONTACT_BASE = 0.4;
     const INVULN_CONTACT_MIN = 0.1;
-    const TANK_INVULN_BONUS_CAP = 0.35;
+    const TANK_INVULN_BONUS_CAP = 0.15;
     const TOTEM_SPAWN_EVERY = 75;
     const TOTEM_SPAWN_MIN_INTERVAL = 50;
     const TOTEM_SPAWN_LV_STEP = 10;
@@ -1315,7 +1315,7 @@ btnPause.addEventListener("click", (e)=>{
         id:"tank",
         name:"Танк",
         desc:"HP + реген. Доп. неуязвимость после урона.",
-        perk:"Перки: после попадания неуязвимость x2 (макс +0.35с).",
+        perk:"Перки: после попадания неуязвимость x1.3 (макс +0.15с).",
         apply(){
           player.heroId="tank"; player.heroName="Танк"; player.heroPerkText=this.perk;
           player.hpMax = BASE_HP * 1.4;
@@ -1913,7 +1913,7 @@ btnPause.addEventListener("click", (e)=>{
       return Math.max(min, base - steps * INVULN_STEP);
     }
     function getInvulnAfterHit(base){
-      if (player.heroId === "tank") return base + Math.min(base, TANK_INVULN_BONUS_CAP);
+      if (player.heroId === "tank") return base + Math.min(base * 0.3, TANK_INVULN_BONUS_CAP);
       return base;
     }
     function getTotemEffectGain(lv = player.lvl){
@@ -4104,6 +4104,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           const e=candidates[j];
           if (e.dead || e.dying) continue;
           if (b.lastHitId && e.id === b.lastHitId) continue;
+          if (!b.isNova && b.hitIds && b.hitIds.has(e.id)) continue;
           if (!circleHit(b.x,b.y,b.r, e.x,e.y,e.r)) continue;
 
           const isCrit = Math.random() < player.critChance;
@@ -4113,6 +4114,10 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           e.hp -= dmg;
           e.hitFlash = 0.09;
           recordDamage(dmg);
+          if (!b.isNova){
+            if (!b.hitIds) b.hitIds = new Set();
+            b.hitIds.add(e.id);
+          }
 
           let didRicochet = false;
           if ((b.ricochetLeft || 0) > 0 && (b.ricochetChance || 0) > 0 && Math.random() < b.ricochetChance){
