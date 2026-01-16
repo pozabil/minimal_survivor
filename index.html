@@ -3025,17 +3025,18 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         epic: [],
       };
       const firstUniqueChest = state.uniqueChestCount === 1;
+      const secondUniqueChest = state.uniqueChestCount === 2;
       for (const id of pool){
         const rarity = UNIQUE[id]?.rarity || "common";
         if (firstUniqueChest && rarity !== "common") continue;
         if (rarityPools[rarity]) rarityPools[rarity].push(id);
       }
       currentChoices = [];
-      let epicAllowed = true;
+      let epicAllowed = !(firstUniqueChest || secondUniqueChest);
       const rarityWeights = {
-        common: firstUniqueChest ? 1 : 0.55,
+        common: firstUniqueChest ? 1 : (secondUniqueChest ? 0.65 : 0.55),
         rare: firstUniqueChest ? 0 : 0.35,
-        epic: firstUniqueChest ? 0 : 0.10,
+        epic: (firstUniqueChest || secondUniqueChest) ? 0 : 0.10,
       };
       function pickRarity(){
         const weights = [
