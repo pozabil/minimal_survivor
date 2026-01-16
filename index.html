@@ -55,6 +55,36 @@
     .bossName{ opacity:.9; margin-bottom:6px; }
     .bossRow .bossName{ margin-bottom:4px; }
     .hint{opacity:.85; font-size:13px; margin-top:10px;}
+    .activeItems{
+      position:fixed; right:12px; bottom:12px;
+      font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:#e8eefc; pointer-events:none;
+      text-shadow:0 1px 0 rgba(0,0,0,.35);
+      z-index: 2;
+      text-align:right;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+    }
+    .activeItems .title{
+      font-weight:800;
+      font-size:11px;
+      letter-spacing:0.6px;
+      text-transform:uppercase;
+      opacity:.75;
+      margin-bottom:6px;
+    }
+    .activeItems .item{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.10);
+      margin-bottom:6px;
+    }
+    .activeItems .item:last-child{ margin-bottom:0; }
     .totemTimer{
       position:fixed;
       left:50%;
@@ -340,6 +370,8 @@
   </div>
 </div>
 
+<div class="activeItems" id="activeItems" style="display:none;"></div>
+
 <div class="totemTimer" id="totemTimer"></div>
 <div class="totemWarning" id="totemWarning">Вернитесь в зону тотема</div>
 
@@ -451,6 +483,7 @@
     const elRerolls = document.getElementById("rerolls");
     const elThreat = document.getElementById("threat");
     const elActionHint = document.getElementById("actionHint");
+    const activeItemsEl = document.getElementById("activeItems");
     const elChestRespawn = document.getElementById("chestRespawn");
     const totemTimerEl = document.getElementById("totemTimer");
     const totemWarningEl = document.getElementById("totemWarning");
@@ -554,17 +587,31 @@
     const AURA_WAVE_TRAVEL_TIME = 0.35;
     const AURA_WAVE_THICKNESS = 18;
     const UNIQUE_CHEST_EVERY = 4;
-    const DASH_DISTANCE = 120;
+    const DASH_DISTANCE = 140;
+    const DASH_DURATION = 0.2;
     const DASH_COOLDOWN = 2;
     const DASH_INVULN = 0.35;
+    const DASH_TRAIL_LIFE = 0.24;
+    const DASH_TRAIL_INTERVAL = 0.01;
+    const DASH_TRAIL_MAX = 36;
     const SAME_CIRCLE_INTERVAL = 6;
     const SAME_CIRCLE_LIFE = 2;
     const SAME_CIRCLE_RADIUS = 120;
     const SAME_CIRCLE_DAMAGE_MULT = 2.5;
-    const MAX_SHIRT_SLOW_DURATION = 3;
+    const MAX_SHIRT_SLOW_DURATION = 2.4;
     const MAX_SHIRT_COOLDOWN = 30;
     const MAX_SHIRT_SLOW_SCALE = 0.5;
     const MAX_SHIRT_KILL_CD_REDUCE = 0.2;
+    const PATRIARCH_DOLL_COOLDOWN = 3;
+    const PATRIARCH_DOLL_DAMAGE_MULT = 3;
+    const PATRIARCH_DOLL_TARGETS_MIN = 8;
+    const PATRIARCH_DOLL_TARGETS_MAX = 16;
+    const LIGHTNING_STRIKE_LIFE = 0.22;
+    const LIGHTNING_STRIKE_SEGMENTS_MIN = 4;
+    const LIGHTNING_STRIKE_SEGMENTS_MAX = 6;
+    const LIGHTNING_STRIKE_JITTER = 18;
+    const LIGHTNING_STRIKE_HEIGHT_MIN = 180;
+    const LIGHTNING_STRIKE_HEIGHT_MAX = 320;
     const DOG_RADIUS = 8.5;
     const DOG_SPEED = 290;
     const DOG_TURN_RATE = 4.5;
@@ -720,15 +767,15 @@
 
     // Input
     const keys = new Set();
-    let dashQueued = false;
     let lastTapTime = 0;
     let lastTapX = 0;
     let lastTapY = 0;
 
     function triggerAction(){
       if (state.paused || state.dead) return;
+      if (hasUnique("patriarch_doll")) tryActivatePatriarchDoll();
       if (hasUnique("max_shirt")) tryActivateMaxShirt();
-      if (hasUnique("british_citizenship")) dashQueued = true;
+      if (hasUnique("british_citizenship")) triggerDash();
     }
     addEventListener("keydown",(e)=>{
       if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
@@ -811,7 +858,7 @@ canvas.addEventListener("pointerdown", (e)=>{
 
   // не давать стартовать джойстик при тапе по кнопке паузы (и другим UI при желании)
   if (e.target.closest("#btnPause")) return;
-  if (hasUnique("british_citizenship") || hasUnique("max_shirt")){
+  if (hasUnique("british_citizenship") || hasUnique("max_shirt") || hasUnique("patriarch_doll")){
     const now = performance.now();
     const dtTap = now - lastTapTime;
     const dist = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY);
@@ -877,6 +924,11 @@ btnPause.addEventListener("click", (e)=>{
       uniqueChestCount: 0,
       maxShirtCd: 0,
       maxShirtSlowT: 0,
+      patriarchDollCd: 0,
+      dashT: 0,
+      dashVx: 0,
+      dashVy: 0,
+      dashTrailT: 0,
       totemTimer: TOTEM_SPAWN_FIRST,
       totemTimerMax: TOTEM_SPAWN_FIRST,
       healQueue: [],
@@ -1034,26 +1086,81 @@ btnPause.addEventListener("click", (e)=>{
       const bonus = (hasUnique("peace_pipe") && totem.active && totem.inZone) ? 1.02 : 1;
       return base * bonus + flat;
     }
-    function triggerDash(){
-      if (!hasUnique("british_citizenship")) return;
-      if (player.dashCd > 0) return;
-      const dx = player.lastDirX || 1;
-      const dy = player.lastDirY || 0;
-      const d = Math.hypot(dx, dy) || 1;
-      const ux = dx / d;
-      const uy = dy / d;
-      player.x += ux * DASH_DISTANCE;
-      player.y += uy * DASH_DISTANCE;
-      player.vx += ux * 120;
-      player.vy += uy * 120;
+    function getDashDir(dirX, dirY){
+      if (Number.isFinite(dirX) && Number.isFinite(dirY) && (dirX !== 0 || dirY !== 0)){
+        const d = Math.hypot(dirX, dirY) || 1;
+        return { x: dirX / d, y: dirY / d };
+      }
+      let ix = 0, iy = 0;
+      if (keys.has("KeyW") || keys.has("ArrowUp")) iy -= 1;
+      if (keys.has("KeyS") || keys.has("ArrowDown")) iy += 1;
+      if (keys.has("KeyA") || keys.has("ArrowLeft")) ix -= 1;
+      if (keys.has("KeyD") || keys.has("ArrowRight")) ix += 1;
+      if (isTouch){ ix += joyVec.x; iy += joyVec.y; }
+      const ilen = Math.hypot(ix, iy);
+      if (ilen > 0.2) return { x: ix / ilen, y: iy / ilen };
+      const spd = Math.hypot(player.vx, player.vy);
+      if (spd > 1) return { x: player.vx / spd, y: player.vy / spd };
+      const ld = Math.hypot(player.lastDirX || 0, player.lastDirY || 0) || 1;
+      return { x: (player.lastDirX || 1) / ld, y: (player.lastDirY || 0) / ld };
+    }
+    function triggerDash(dirX, dirY){
+      if (!hasUnique("british_citizenship")) return false;
+      if (player.dashCd > 0 || state.dashT > 0) return false;
+      const dir = getDashDir(dirX, dirY);
+      const ux = dir.x;
+      const uy = dir.y;
+      const dashSpeed = DASH_DISTANCE / DASH_DURATION;
+      state.dashT = DASH_DURATION;
+      state.dashVx = ux * dashSpeed;
+      state.dashVy = uy * dashSpeed;
+      player.vx = state.dashVx;
+      player.vy = state.dashVy;
       player.invuln = Math.max(player.invuln, DASH_INVULN);
       player.dashCd = DASH_COOLDOWN;
+      state.dashTrailT = 0;
+      spawnDashTrail();
+      return true;
     }
     function tryActivateMaxShirt(){
       if (!hasUnique("max_shirt")) return false;
       if (state.maxShirtCd > 0 || state.maxShirtSlowT > 0) return false;
       state.maxShirtSlowT = MAX_SHIRT_SLOW_DURATION;
       state.maxShirtCd = MAX_SHIRT_COOLDOWN;
+      return true;
+    }
+    function tryActivatePatriarchDoll(){
+      if (!hasUnique("patriarch_doll")) return false;
+      if (state.patriarchDollCd > 0) return false;
+      const alive = [];
+      const range = Math.min(800, 380 + player.lvl * 4);
+      const range2 = range * range;
+      for (const e of enemies){
+        if (!e || e.dead || e.dying) continue;
+        const dx = e.x - player.x;
+        const dy = e.y - player.y;
+        if ((dx * dx + dy * dy) > range2) continue;
+        alive.push(e);
+      }
+      if (!alive.length) return false;
+      const hits = Math.min(randi(PATRIARCH_DOLL_TARGETS_MIN, PATRIARCH_DOLL_TARGETS_MAX), alive.length);
+      const baseDmg = player.damage * PATRIARCH_DOLL_DAMAGE_MULT;
+      for (let i=0; i<hits; i++){
+        const idx = randi(i, alive.length - 1);
+        const tmp = alive[i];
+        alive[i] = alive[idx];
+        alive[idx] = tmp;
+        const e = alive[i];
+        spawnLightningStrike(e.x, e.y);
+        let dmg = baseDmg;
+        if (e.type === "shield") dmg *= 0.65;
+        e.hp -= dmg;
+        e.hitFlash = Math.max(e.hitFlash, 0.12);
+        recordDamage(dmg);
+        burst(e.x, e.y, randi(8, 12), 260, 0.25);
+        if (e.hp <= 0) killEnemy(e);
+      }
+      state.patriarchDollCd = PATRIARCH_DOLL_COOLDOWN;
       return true;
     }
     function getTurretHpMax(){
@@ -1091,6 +1198,8 @@ btnPause.addEventListener("click", (e)=>{
     const drops = [];
     const particles = [];
     const floaters = [];
+    const dashTrail = [];
+    const lightningStrikes = [];
     const clones = [];
     const dogs = [];
     const chests = [];
@@ -1277,6 +1386,30 @@ btnPause.addEventListener("click", (e)=>{
           t: 0,
         });
       }
+    }
+    function spawnDashTrail(){
+      dashTrail.push({
+        x: player.x,
+        y: player.y,
+        r: player.r * 0.95,
+        t: 0,
+        life: DASH_TRAIL_LIFE,
+      });
+      if (dashTrail.length > DASH_TRAIL_MAX) dashTrail.shift();
+    }
+    function spawnLightningStrike(x,y){
+      const height = randf(LIGHTNING_STRIKE_HEIGHT_MIN, LIGHTNING_STRIKE_HEIGHT_MAX);
+      const topY = y - height;
+      const segments = randi(LIGHTNING_STRIKE_SEGMENTS_MIN, LIGHTNING_STRIKE_SEGMENTS_MAX);
+      const pts = [{ x, y: topY }];
+      for (let i=1; i<segments; i++){
+        const t = i / segments;
+        const px = x + randf(-LIGHTNING_STRIKE_JITTER, LIGHTNING_STRIKE_JITTER);
+        const py = topY + (y - topY) * t;
+        pts.push({ x: px, y: py });
+      }
+      pts.push({ x, y });
+      lightningStrikes.push({ pts, x, y, t: 0, life: LIGHTNING_STRIKE_LIFE });
     }
     function spawnHealFloat(amount){
       const value = Math.round(amount);
@@ -2379,6 +2512,23 @@ btnPause.addEventListener("click", (e)=>{
       }
     }
 
+    function updateDashTrail(dt){
+      for (let i=dashTrail.length-1; i>=0; i--){
+        const d = dashTrail[i];
+        d.t += dt;
+        if (d.t >= d.life) dashTrail.splice(i,1);
+      }
+      if (state.dashT > 0){
+        state.dashTrailT += dt;
+        while (state.dashTrailT >= DASH_TRAIL_INTERVAL){
+          state.dashTrailT -= DASH_TRAIL_INTERVAL;
+          spawnDashTrail();
+        }
+      } else {
+        state.dashTrailT = 0;
+      }
+    }
+
     function explodeSameCircle(c){
       const dmg = player.damage * SAME_CIRCLE_DAMAGE_MULT;
       burst(c.x, c.y, randi(18, 26), 300, 0.5);
@@ -2391,6 +2541,13 @@ btnPause.addEventListener("click", (e)=>{
         e.hitFlash = Math.max(e.hitFlash, 0.12);
         recordDamage(dmg);
         if (e.hp <= 0) killEnemy(e);
+      }
+    }
+    function updateLightning(dt){
+      for (let i=lightningStrikes.length-1; i>=0; i--){
+        const s = lightningStrikes[i];
+        s.t += dt;
+        if (s.t >= s.life) lightningStrikes.splice(i,1);
       }
     }
 
@@ -2871,6 +3028,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       british_citizenship: {
         title:"Британское гражданство",
         rarity:"rare",
+        action:true,
         desc:"Дает рывок с неуязвимостью. Активируется кнопкой действия.",
         apply(){},
       },
@@ -2898,7 +3056,15 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       max_shirt: {
         title:"Рубашка Больного Макса",
         rarity:"rare",
+        action:true,
         desc:"Замедляет время на 3 сек. КД 30 сек, заряжается убийствами. Активируется кнопкой действия.",
+        apply(){},
+      },
+      patriarch_doll: {
+        title:"Куколь патриарха",
+        rarity:"rare",
+        action:true,
+        desc:"Если ты есть Бог, помоги, отец мой небесный, я заколебался. Активируется кнопкой действия.",
         apply(){},
       },
       dog: {
@@ -3538,6 +3704,9 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
             state.maxShirtCd = Math.max(0, state.maxShirtCd - dtRaw);
           }
         }
+        if (hasUnique("patriarch_doll") && state.patriarchDollCd > 0){
+          state.patriarchDollCd = Math.max(0, state.patriarchDollCd - dtRaw);
+        }
         const hpRatio = player.hpMax > 0 ? (player.hp / player.hpMax) : 1;
         if (!state.slowMoLocked && state.slowMoCd <= 0 && hpRatio > 0 && hpRatio <= LOW_HP_SLOW_THRESHOLD){
           state.slowMoT = LOW_HP_SLOW_DURATION;
@@ -3636,16 +3805,23 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         player.lastDirY = iy;
       }
       player.dashCd = Math.max(0, player.dashCd - dt);
-      if (dashQueued){
-        dashQueued = false;
-        triggerDash();
+      const dashActive = state.dashT > 0;
+      if (dashActive){
+        state.dashT = Math.max(0, state.dashT - dt);
       }
 
       const moveSpeed = getMoveSpeed();
-      const targetVx = ix*moveSpeed;
-      const targetVy = iy*moveSpeed;
-      player.vx = lerp(player.vx, targetVx, lerpFast);
-      player.vy = lerp(player.vy, targetVy, lerpFast);
+      let targetVx = ix*moveSpeed;
+      let targetVy = iy*moveSpeed;
+      if (dashActive){
+        targetVx = state.dashVx;
+        targetVy = state.dashVy;
+        player.vx = targetVx;
+        player.vy = targetVy;
+      } else {
+        player.vx = lerp(player.vx, targetVx, lerpFast);
+        player.vy = lerp(player.vy, targetVy, lerpFast);
+      }
 
       player.x += player.vx*dt;
       player.y += player.vy*dt;
@@ -3749,6 +3925,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       applyAura(dt);
       updateDogs(dt);
       updateSameCircle(dt);
+      updateDashTrail(dt);
+      updateLightning(dt);
 
       // bullets
       const candidates = [];
@@ -3969,7 +4147,6 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
         // anti-sticky player collision + damage
         if (circleHit(player.x,player.y, player.r, e.x,e.y, e.r)){
-          // always separate a bit (even during invuln)
           const overlap = (player.r + e.r) - Math.hypot(player.x - e.x, player.y - e.y);
           let push = pushAway(player.x, player.y, e.x, e.y, Math.max(6, overlap * 0.6));
           if (e.type === "triad"){
@@ -3988,10 +4165,17 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
               y: ny * pushStrength + ty * tangStrength,
             };
           }
-          player.x += push.x;
-          player.y += push.y;
-          player.vx += push.x * 18;
-          player.vy += push.y * 18;
+          if (state.dashT > 0){
+            e.x -= push.x * 0.35;
+            e.y -= push.y * 0.35;
+            e.vx -= push.x * 6;
+            e.vy -= push.y * 6;
+          } else {
+            player.x += push.x;
+            player.y += push.y;
+            player.vx += push.x * 18;
+            player.vy += push.y * 18;
+          }
 
           if (player.invuln<=0){
             applyDamageToPlayer(e.dmg);
@@ -4228,13 +4412,28 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       elRerolls.textContent = `Reroll ${player.rerolls}`;
       if (elThreat) elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;
       if (elActionHint){
-        const hasActionSkill = hasUnique("british_citizenship") || hasUnique("max_shirt");
+        const hasActionSkill = hasUnique("british_citizenship") || hasUnique("max_shirt") || hasUnique("patriarch_doll");
         if (hasActionSkill){
           elActionHint.style.display = "";
           elActionHint.textContent = isTouch ? "Кнопка действия: двойной тап" : "Кнопка действия: Space";
         } else {
           elActionHint.style.display = "none";
           elActionHint.textContent = "";
+        }
+      }
+      if (activeItemsEl){
+        const items = [];
+        for (const id of player.uniqueOrder){
+          if (!player.unique.has(id)) continue;
+          const u = UNIQUE[id];
+          if (u && u.action) items.push(u.title);
+        }
+        if (!items.length){
+          activeItemsEl.style.display = "none";
+          activeItemsEl.innerHTML = "";
+        } else {
+          activeItemsEl.style.display = "block";
+          activeItemsEl.innerHTML = `<div class="title">Активные предметы</div>${items.map((t)=>`<div class="item">${t}</div>`).join("")}`;
         }
       }
     }
@@ -4782,6 +4981,40 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         ctx.stroke();
       }
 
+      // lightning
+      if (lightningStrikes.length){
+        for (const s of lightningStrikes){
+          const alpha = 1 - (s.t / s.life);
+          ctx.save();
+          ctx.globalAlpha = 0.85 * alpha;
+          ctx.lineWidth = 2 + 2 * alpha;
+          ctx.strokeStyle = "rgba(180,220,255,0.95)";
+          ctx.shadowColor = "rgba(180,220,255,0.9)";
+          ctx.shadowBlur = 18;
+          ctx.beginPath();
+          const pts = s.pts || [];
+          if (pts.length){
+            ctx.moveTo(pts[0].x - camX, pts[0].y - camY);
+            for (let i=1; i<pts.length; i++){
+              const p = pts[i];
+              ctx.lineTo(p.x - camX, p.y - camY);
+            }
+            ctx.stroke();
+          }
+          ctx.restore();
+
+          ctx.save();
+          ctx.globalAlpha = 0.9 * alpha;
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.shadowColor = "rgba(180,220,255,0.9)";
+          ctx.shadowBlur = 14;
+          ctx.beginPath();
+          ctx.arc(s.x - camX, s.y - camY, 6 + 6 * alpha, 0, TAU);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
       // particles
       ctx.globalAlpha = 0.8;
       for (const p of particles){
@@ -4861,6 +5094,25 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           ctx.stroke();
           ctx.restore();
         }
+        ctx.globalAlpha = 1;
+      }
+
+      // dash trail
+      if (dashTrail.length){
+        ctx.save();
+        ctx.fillStyle = "rgba(200,230,255,0.9)";
+        ctx.shadowColor = "rgba(180,220,255,0.7)";
+        ctx.shadowBlur = 18;
+        for (const d of dashTrail){
+          const p = 1 - (d.t / d.life);
+          const alpha = 0.22 * p;
+          const r = d.r * (0.75 + 0.25 * p);
+          ctx.globalAlpha = alpha;
+          ctx.beginPath();
+          ctx.arc(d.x - camX, d.y - camY, r, 0, TAU);
+          ctx.fill();
+        }
+        ctx.restore();
         ctx.globalAlpha = 1;
       }
 
