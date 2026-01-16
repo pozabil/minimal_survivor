@@ -629,6 +629,7 @@
     const DOG_SPEED = 290;
     const DOG_TURN_RATE = 4.5;
     const DOG_HIT_COOLDOWN = 0.18;
+    const DOG_BALTIKA_AVOID_R = 96;
     const DOG_BROWN_COLORS = ["rgba(130,85,55,0.95)", "rgba(150,95,60,0.95)", "rgba(110,70,45,0.95)"];
     const DOG_GRAY_COLOR = "rgba(150,150,155,0.95)";
     const DOG_GRAY_CHANCE = 0.12;
@@ -2203,6 +2204,10 @@ btnPause.addEventListener("click", (e)=>{
       return DOG_BROWN_COLORS[Math.floor(Math.random() * DOG_BROWN_COLORS.length)];
     }
 
+    function getDogAttackRange(){
+      return player.magnet * 1.25;
+    }
+
     function spawnDog(){
       if (dogs.length) return;
       const a = randf(0, TAU);
@@ -2221,7 +2226,7 @@ btnPause.addEventListener("click", (e)=>{
 
     function pickDogTarget(excludeId){
       const candidates = [];
-      const range = player.magnet;
+      const range = getDogAttackRange();
       gridQueryCircle(player.x, player.y, range + ENEMY_MAX_R, candidates);
       let valid = 0;
       let choice = null;
@@ -2243,10 +2248,6 @@ btnPause.addEventListener("click", (e)=>{
         dog.hitCd = Math.max(0, dog.hitCd - dt);
         if (!dog.target || dog.target.dead || dog.target.dying){
           dog.target = pickDogTarget();
-        } else {
-          const dxp = dog.target.x - player.x;
-          const dyp = dog.target.y - player.y;
-          if ((dxp*dxp + dyp*dyp) > player.magnet*player.magnet) dog.target = pickDogTarget();
         }
 
         let tx = player.x;
@@ -2254,6 +2255,19 @@ btnPause.addEventListener("click", (e)=>{
         if (dog.target){
           tx = dog.target.x;
           ty = dog.target.y;
+        } else if (hasUnique("baltika9")){
+          const dxp = dog.x - player.x;
+          const dyp = dog.y - player.y;
+          const avoid = DOG_BALTIKA_AVOID_R;
+          if ((dxp*dxp + dyp*dyp) < avoid*avoid){
+            if (dxp === 0 && dyp === 0){
+              tx = dog.x + Math.cos(dog.ang);
+              ty = dog.y + Math.sin(dog.ang);
+            } else {
+              tx = dog.x + dxp;
+              ty = dog.y + dyp;
+            }
+          }
         }
 
         const desired = Math.atan2(ty - dog.y, tx - dog.x);
