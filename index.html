@@ -430,6 +430,7 @@
           <button class="btn" id="btnResume">Resume</button>
           <button class="btn" id="btnRestart2">Restart</button>
           <button class="btn" id="btnCopy">Copy stats</button>
+          <button class="btn" id="btnRecords">Рекорды</button>
           <button class="btn danger" id="btnHang" style="display:none;">Повеситься</button>
         </div>
       </div>
@@ -444,6 +445,17 @@
     <div class="toolbar">
       <button class="btn" id="restart">Restart</button>
       <button class="btn" id="copyStats">Copy stats</button>
+      <button class="btn" id="btnRecordsOver">Рекорды</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="records">
+  <div class="panel">
+    <h2>Рекорды</h2>
+    <div class="list" id="recordsList"></div>
+    <div class="toolbar">
+      <button class="btn" id="btnRecordsClose">Закрыть</button>
     </div>
   </div>
 </div>
@@ -537,12 +549,18 @@
     const btnResume = document.getElementById("btnResume");
     const btnRestart2 = document.getElementById("btnRestart2");
     const btnCopy = document.getElementById("btnCopy");
+    const btnRecords = document.getElementById("btnRecords");
     const btnHang = document.getElementById("btnHang");
 
     const gameoverOverlay = document.getElementById("gameover");
     const summaryEl = document.getElementById("summary");
     const restartBtn = document.getElementById("restart");
     const copyBtn = document.getElementById("copyStats");
+    const btnRecordsOver = document.getElementById("btnRecordsOver");
+
+    const recordsOverlay = document.getElementById("records");
+    const recordsListEl = document.getElementById("recordsList");
+    const btnRecordsClose = document.getElementById("btnRecordsClose");
 
     const btnPause = document.getElementById("btnPause");
     const actionBar = document.getElementById("actionBar");
@@ -795,6 +813,10 @@
       if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
 
       if (e.code==="Escape"){
+        if (recordsOverlay.style.display === "grid"){
+          hideRecords();
+          return;
+        }
         if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid") return;
         togglePauseMenu();
         return;
@@ -834,7 +856,8 @@ const overlaysBlockInput = () =>
   (pickerOverlay.style.display === "grid") ||
   (startOverlay.style.display === "grid") ||
   (gameoverOverlay.style.display === "grid") ||
-  (pauseMenu.style.display === "grid");
+  (pauseMenu.style.display === "grid") ||
+  (recordsOverlay.style.display === "grid");
 
 function placeJoystick(cx, cy){
   // keep fully on-screen
@@ -3464,6 +3487,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
     btnRestart2.addEventListener("click", ()=>resetGame());
     btnCopy.addEventListener("click", ()=>copyStats());
+    btnRecords.addEventListener("click", ()=>showRecords());
     btnHang.addEventListener("click", ()=>{
       if (!hasUnique("rope")) return;
       handlePlayerDeath("(он все таки смог)");
@@ -3702,12 +3726,76 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       `;
     }
 
+    const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkills" };
+    let recordsReturnToPause = false;
+
+    function readRecord(key){
+      try {
+        const value = Number(localStorage.getItem(key));
+        return Number.isFinite(value) ? value : 0;
+      } catch {
+        return 0;
+      }
+    }
+    function writeRecord(key, value){
+      try {
+        localStorage.setItem(key, String(value));
+      } catch {}
+    }
+    function loadRecords(){
+      return {
+        level: readRecord(RECORD_KEYS.level),
+        time: readRecord(RECORD_KEYS.time),
+        kills: readRecord(RECORD_KEYS.kills),
+      };
+    }
+    function saveRecords(records){
+      writeRecord(RECORD_KEYS.level, records.level);
+      writeRecord(RECORD_KEYS.time, records.time);
+      writeRecord(RECORD_KEYS.kills, records.kills);
+    }
+    function updateRecordsOnDeath(){
+      const records = loadRecords();
+      const next = { ...records };
+      const time = Math.floor(state.t);
+      if (player.lvl > next.level) next.level = player.lvl;
+      if (time > next.time) next.time = time;
+      if (state.kills > next.kills) next.kills = state.kills;
+      saveRecords(next);
+      return next;
+    }
+    function renderRecords(){
+      const records = loadRecords();
+      const levelText = records.level > 0 ? records.level : "--";
+      const timeText = records.time > 0 ? fmtTime(records.time) : "--";
+      const killsText = records.kills > 0 ? records.kills : "--";
+      recordsListEl.innerHTML = `
+        <div class="item"><div class="k">Макс. уровень</div><div class="v">${levelText}</div></div>
+        <div class="item"><div class="k">Макс. время</div><div class="v">${timeText}</div></div>
+        <div class="item"><div class="k">Макс. убийств</div><div class="v">${killsText}</div></div>
+      `;
+    }
+    function showRecords(){
+      recordsReturnToPause = pauseMenu.style.display === "grid";
+      if (recordsReturnToPause) pauseMenu.style.display = "none";
+      renderRecords();
+      recordsOverlay.style.display = "grid";
+    }
+    function hideRecords(){
+      recordsOverlay.style.display = "none";
+      if (recordsReturnToPause){
+        pauseMenu.style.display = "grid";
+        recordsReturnToPause = false;
+      }
+    }
+
     function gameOver(){
       state.dead = true;
       state.paused = true;
       pickerOverlay.style.display = "none";
       pauseMenu.style.display = "none";
       gameoverOverlay.style.display = "grid";
+      updateRecordsOnDeath();
       summaryEl.textContent = `Time: ${fmtTime(state.t)} · Hero: ${player.heroName} · Level: ${player.lvl} · Kills: ${state.kills} · Damage: ${Math.round(state.dmgDone)}${state.deathReason ? ` · Cause: ${state.deathReason}` : ""}`;
     }
 
@@ -3727,6 +3815,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
     restartBtn.addEventListener("click", ()=>resetGame());
     copyBtn.addEventListener("click", ()=>copyStats());
+    btnRecordsOver.addEventListener("click", ()=>showRecords());
+    btnRecordsClose.addEventListener("click", ()=>hideRecords());
 
     function resetGame(){
       location.reload();
