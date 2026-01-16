@@ -3088,7 +3088,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       regen:    { title:"Регенерация",    max: 10, desc:(lv)=>`+1.0 HP/сек (ур. ${lv+1}/10)`, apply:()=>{ player.regen += 1.0; } },
       magnet:   { title:"Магнит",         max: 8,  desc:(lv)=>`+40 радиус подбора XP (ур. ${lv+1}/8)`,  apply:()=>{ player.magnet += 40; } },
 
-      orbital:  { title:"Орбиталка",      max: 11, desc:(lv)=>`Орбиталок +${lv === 0 ? 2 : 1} (ур. ${lv+1}/11)`, apply:()=>{ player.orbitals = Math.min(12, player.orbitals > 0 ? (player.orbitals + 1) : 2); } },
+      orbital:  { title:"Орбиталка",      max: 11, desc:(lv)=>`Орбиталок +${lv === 0 ? 2 : 1} (ур. ${lv+1}/11)`, apply:()=>{ const lv = getLevel("orbital"); const add = (lv === 0) ? 2 : 1; player.orbitals = Math.min(12, player.orbitals + add); } },
       orbitalDmg:{title:"Орбиталки: урон",max: 12, desc:(lv)=>`+25% orbital damage (ур. ${lv+1}/12)`, apply:()=>{ player.orbitalDamage *= 1.25; } },
       orbitalRadius:{title:"Орбиталки: радиус",max: 10, desc:(lv)=>`+16 orbital radius (ур. ${lv+1}/10)`, apply:()=>{ player.orbitalRadius += 16; } },
 
