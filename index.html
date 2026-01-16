@@ -344,7 +344,7 @@
   <div class="panel">
     <h2>Выбери персонажа</h2>
     <div class="choices" id="chars"></div>
-    <div class="hint">Скаут — усиленные сундуки, Танк — щит после попаданий, Маг — больше XP и стартовая орбиталка.</div>
+    <div class="hint">Скаут — усиленные сундуки, Танк — доп. неуязвимость после попаданий, Маг — больше XP и стартовая орбиталка.</div>
   </div>
 </div>
 
@@ -584,6 +584,7 @@
     const INVULN_BULLET_MIN = 0.05;
     const INVULN_CONTACT_BASE = 0.4;
     const INVULN_CONTACT_MIN = 0.1;
+    const TANK_INVULN_BONUS_CAP = 0.35;
     const TOTEM_SPAWN_EVERY = 75;
     const TOTEM_SPAWN_MIN_INTERVAL = 50;
     const TOTEM_SPAWN_LV_STEP = 10;
@@ -956,7 +957,6 @@ btnPause.addEventListener("click", (e)=>{
       xpGainMult: 1.0,
       xpNeedMult: 1.0,
       damageTakenMult: 1.0,
-      shieldAfterHit: 0.0,
       chestBonusReroll: 0,
       chestBonusRare: 0.0,
 
@@ -1131,7 +1131,6 @@ btnPause.addEventListener("click", (e)=>{
           player.baseDamage = 15;
 
           player.xpGainMult = 1.0;
-          player.shieldAfterHit = 0.0;
           player.chestBonusReroll = 1;
           player.chestBonusRare = 0.10;
         }
@@ -1139,8 +1138,8 @@ btnPause.addEventListener("click", (e)=>{
       {
         id:"tank",
         name:"Танк",
-        desc:"HP + реген. “щит” после урона.",
-        perk:"Перки: после попадания +0.35с доп. неуязвимости.",
+        desc:"HP + реген. Доп. неуязвимость после урона.",
+        perk:"Перки: после попадания неуязвимость x2 (макс +0.35с).",
         apply(){
           player.heroId="tank"; player.heroName="Танк"; player.heroPerkText=this.perk;
           player.hpMax = BASE_HP * 1.4;
@@ -1153,7 +1152,6 @@ btnPause.addEventListener("click", (e)=>{
           player.fireRate = 4.1;
 
           player.xpGainMult = 1.0;
-          player.shieldAfterHit = 0.35;
           player.chestBonusReroll = 0;
           player.chestBonusRare = 0.0;
         }
@@ -1177,7 +1175,6 @@ btnPause.addEventListener("click", (e)=>{
 
           player.xpGainMult = 1.10;
           player.orbitalSpeed = 2.4 * 1.20;
-          player.shieldAfterHit = 0.0;
           player.chestBonusReroll = 0;
           player.chestBonusRare = 0.0;
         }
@@ -1678,6 +1675,10 @@ btnPause.addEventListener("click", (e)=>{
     function getInvulnDuration(base, min, lv = player.lvl){
       const steps = Math.floor(Math.max(0, lv) / INVULN_LV_STEP);
       return Math.max(min, base - steps * INVULN_STEP);
+    }
+    function getInvulnAfterHit(base){
+      if (player.heroId === "tank") return base + Math.min(base, TANK_INVULN_BONUS_CAP);
+      return base;
     }
     function getTotemEffectGain(lv = player.lvl){
       const bonus = Math.floor(Math.max(0, lv) / TOTEM_EFFECT_GAIN_LV_STEP) * TOTEM_EFFECT_GAIN_STEP;
@@ -2589,7 +2590,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         const mult = 1 - (dp / e.explodeR); // 0..1
         const dmg = e.explodeDmg * (0.55 + 0.45 * mult) * (player.damageTakenMult || 1);
         player.hp -= dmg;
-        player.invuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN) + player.shieldAfterHit;
+        const baseInvuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN);
+        player.invuln = getInvulnAfterHit(baseInvuln);
 
         const push = pushAway(player.x, player.y, e.x, e.y, 18 + 22 * mult);
         player.x += push.x;
@@ -3786,7 +3788,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         if (circleHit(b.x,b.y,b.r, player.x,player.y, player.r)){
           if (player.invuln<=0){
             applyDamageToPlayer(b.dmg);
-            player.invuln = getInvulnDuration(INVULN_BULLET_BASE, INVULN_BULLET_MIN) + player.shieldAfterHit;
+            const baseInvuln = getInvulnDuration(INVULN_BULLET_BASE, INVULN_BULLET_MIN);
+            player.invuln = getInvulnAfterHit(baseInvuln);
             if (b.explodeR){
               const push = pushAway(player.x, player.y, b.x, b.y, b.explodePush || 16);
               player.x += push.x;
@@ -3932,7 +3935,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
           if (player.invuln<=0){
             applyDamageToPlayer(e.dmg);
-            player.invuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN) + player.shieldAfterHit;
+            const baseInvuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN);
+            player.invuln = getInvulnAfterHit(baseInvuln);
             burst(player.x,player.y, randi(12,20), 260, 0.35);
             if (player.hp<=0){
               if (handlePlayerDeath(`contact ${enemyLabel(e.type, e.bossKind)}`)) return;
@@ -4348,20 +4352,44 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
           const ang = Math.atan2(uy, ux);
 
+          const arrowTip = 16;
+          const arrowBack = -12;
+          const arrowWing = 9;
+          const baseFill = "rgba(255,220,120,0.95)";
+          const baseStroke = "rgba(255,255,255,0.55)";
+
           ctx.save();
           ctx.translate(ax, ay);
           ctx.rotate(ang);
+
+          if (isSpecial){
+            const scale = 1.4;
+            ctx.globalAlpha = 0.7;
+            ctx.fillStyle = "rgba(255,70,70,0.9)";
+            ctx.beginPath();
+            ctx.moveTo(arrowTip * scale * 1.25, 0);
+            ctx.lineTo(arrowBack * scale, arrowWing * scale * 1.125);
+            ctx.lineTo(arrowBack * scale, -arrowWing * scale * 1.125);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.globalAlpha = 0.8;
+            ctx.strokeStyle = "rgba(255,160,160,0.9)";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+
           ctx.globalAlpha = 0.90;
-          ctx.fillStyle = isSpecial ? "rgba(255,120,120,0.95)" : "rgba(255,220,120,0.95)";
+          ctx.fillStyle = baseFill;
           ctx.beginPath();
-          ctx.moveTo(16, 0);
-          ctx.lineTo(-12, 9);
-          ctx.lineTo(-12, -9);
+          ctx.moveTo(arrowTip, 0);
+          ctx.lineTo(arrowBack, arrowWing);
+          ctx.lineTo(arrowBack, -arrowWing);
           ctx.closePath();
           ctx.fill();
 
           ctx.globalAlpha = 0.65;
-          ctx.strokeStyle = isSpecial ? "rgba(255,120,120,0.85)" : "rgba(255,255,255,0.55)";
+          ctx.strokeStyle = baseStroke;
           ctx.lineWidth = 2;
           ctx.stroke();
           ctx.restore();
