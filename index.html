@@ -138,6 +138,11 @@
     }
     .btn:hover{ background:rgba(255,255,255,.14); }
     .btn:disabled{ opacity:.45; cursor:not-allowed; }
+    .btn.danger{
+      background: rgba(255,100,100,.16);
+      box-shadow: inset 0 0 0 1px rgba(255,140,140,.25);
+    }
+    .btn.danger:hover{ background: rgba(255,100,100,.24); }
 
 
     .pauseBtn{
@@ -151,6 +156,30 @@
       font-weight:800;
       line-height:1;
     }
+    .actionBar{
+      position: fixed;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 180px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.10);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+      overflow: hidden;
+      display: none;
+      z-index: 6;
+      pointer-events: none;
+    }
+    .actionBar .fill{
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 0%;
+      background: linear-gradient(180deg, rgba(255,230,140,0.9), rgba(255,140,120,0.95));
+      box-shadow: 0 -6px 16px rgba(255,180,120,0.45);
+    }
     @media (min-width:901px){
       .pauseBtn{ display:none !important; }
     }
@@ -163,6 +192,22 @@
       padding:12px;
     }
     .box h3{ margin:0 0 8px; font-size:14px; opacity:.95; }
+    .tabs{ display:flex; gap:8px; margin-bottom:8px; }
+    .tab{
+      pointer-events:auto;
+      border:0; cursor:pointer;
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+      color:#fff;
+      font-size:12px;
+      font-weight:700;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+    .tab.active{
+      background: rgba(120,220,255,.22);
+      box-shadow: inset 0 0 0 1px rgba(120,220,255,.35);
+    }
     .small{ font-size:13px; opacity:.9; }
     .list{
       display:flex;
@@ -179,6 +224,9 @@
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
       font-size:13px; opacity:.95;
     }
+    .invItem{ flex-direction:column; align-items:flex-start; gap:6px; }
+    .invHead{ display:flex; justify-content:space-between; gap:8px; width:100%; align-items:baseline; }
+    .invDesc{ font-size:12px; opacity:.85; }
     .buildGroup{ display:flex; flex-direction:column; gap:6px; }
     .buildGroupHead{ align-items:center; cursor:pointer; }
     .buildGroupHead .label{ display:flex; align-items:center; gap:8px; }
@@ -234,6 +282,7 @@
 <canvas id="c"></canvas>
 
 <button class="btn pauseBtn" id="btnPause" aria-label="Pause">⏸</button>
+<div class="actionBar" id="actionBar"><div class="fill" id="actionBarFill"></div></div>
 
 <div class="hud">
   <div class="row">
@@ -247,7 +296,8 @@
       <span id="fps">FPS --</span><span>·</span>
       <span id="wep">W: Bullets</span><span>·</span>
       <span id="rerolls">Reroll 2</span><span>·</span>
-      <span id="threat">Threat 1.0</span>
+      <span id="threat">Threat 1.0</span><span>·</span>
+      <span id="actionHint" style="display:none;"></span>
     </div>
   </div>
 
@@ -317,8 +367,12 @@
 
     <div class="grid2">
       <div class="box">
-        <h3>Апгрейды</h3>
+        <div class="tabs">
+          <button class="tab active" id="tabUpgrades">Апгрейды</button>
+          <button class="tab" id="tabInventory">Инвентарь</button>
+        </div>
         <div class="list" id="buildList"></div>
+        <div class="list" id="invList" style="display:none;"></div>
       </div>
 
       <div class="box">
@@ -329,6 +383,7 @@
           <button class="btn" id="btnResume">Resume</button>
           <button class="btn" id="btnRestart2">Restart</button>
           <button class="btn" id="btnCopy">Copy stats</button>
+          <button class="btn danger" id="btnHang" style="display:none;">Повеситься</button>
         </div>
       </div>
     </div>
@@ -392,6 +447,7 @@
     const elWep  = document.getElementById("wep");
     const elRerolls = document.getElementById("rerolls");
     const elThreat = document.getElementById("threat");
+    const elActionHint = document.getElementById("actionHint");
     const elChestRespawn = document.getElementById("chestRespawn");
     const totemTimerEl = document.getElementById("totemTimer");
     const totemWarningEl = document.getElementById("totemWarning");
@@ -425,10 +481,14 @@
 
     const pauseMenu = document.getElementById("pauseMenu");
     const buildListEl = document.getElementById("buildList");
+    const invListEl = document.getElementById("invList");
+    const tabUpgrades = document.getElementById("tabUpgrades");
+    const tabInventory = document.getElementById("tabInventory");
     const buildStatsEl = document.getElementById("buildStats");
     const btnResume = document.getElementById("btnResume");
     const btnRestart2 = document.getElementById("btnRestart2");
     const btnCopy = document.getElementById("btnCopy");
+    const btnHang = document.getElementById("btnHang");
 
     const gameoverOverlay = document.getElementById("gameover");
     const summaryEl = document.getElementById("summary");
@@ -436,6 +496,8 @@
     const copyBtn = document.getElementById("copyStats");
 
     const btnPause = document.getElementById("btnPause");
+    const actionBar = document.getElementById("actionBar");
+    const actionBarFill = document.getElementById("actionBarFill");
 
     // Mobile joystick
     const joy = document.getElementById("joy");
@@ -485,6 +547,22 @@
     const AURA_WAVE_VEL_MULT = 4;
     const AURA_WAVE_TRAVEL_TIME = 0.35;
     const AURA_WAVE_THICKNESS = 18;
+    const UNIQUE_CHEST_EVERY = 4;
+    const DASH_DISTANCE = 120;
+    const DASH_COOLDOWN = 2;
+    const DASH_INVULN = 0.35;
+    const SAME_CIRCLE_INTERVAL = 6;
+    const SAME_CIRCLE_LIFE = 2;
+    const SAME_CIRCLE_RADIUS = 120;
+    const SAME_CIRCLE_DAMAGE_MULT = 2.5;
+    const MAX_SHIRT_SLOW_DURATION = 3;
+    const MAX_SHIRT_COOLDOWN = 30;
+    const MAX_SHIRT_SLOW_SCALE = 0.5;
+    const MAX_SHIRT_KILL_CD_REDUCE = 0.2;
+    const DOG_RADIUS = 8.5;
+    const DOG_SPEED = 290;
+    const DOG_TURN_RATE = 4.5;
+    const DOG_HIT_COOLDOWN = 0.18;
     const XP_BONUS_NORMAL = 0.0005;
     const XP_BONUS_ELITE = 0.002;
     const XP_BONUS_BOSS = 0.01;
@@ -632,6 +710,16 @@
 
     // Input
     const keys = new Set();
+    let dashQueued = false;
+    let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+
+    function triggerAction(){
+      if (state.paused || state.dead) return;
+      if (hasUnique("max_shirt")) tryActivateMaxShirt();
+      if (hasUnique("british_citizenship")) dashQueued = true;
+    }
     addEventListener("keydown",(e)=>{
       if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
 
@@ -646,6 +734,11 @@
         if (e.key==="2") pickChoice(1);
         if (e.key==="3") pickChoice(2);
         if (e.key.toLowerCase()==="r") doReroll();
+      }
+
+      if (e.code === "Space"){
+        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || pauseMenu.style.display==="grid") return;
+        triggerAction();
       }
 
       keys.add(e.code);
@@ -708,6 +801,19 @@ canvas.addEventListener("pointerdown", (e)=>{
 
   // не давать стартовать джойстик при тапе по кнопке паузы (и другим UI при желании)
   if (e.target.closest("#btnPause")) return;
+  if (hasUnique("british_citizenship") || hasUnique("max_shirt")){
+    const now = performance.now();
+    const dtTap = now - lastTapTime;
+    const dist = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY);
+    if (dtTap < 280 && dist < 40){
+      triggerAction();
+      lastTapTime = 0;
+    } else {
+      lastTapTime = now;
+      lastTapX = e.clientX;
+      lastTapY = e.clientY;
+    }
+  }
 
   joyPointerId = e.pointerId;
   canvas.setPointerCapture(e.pointerId);
@@ -757,11 +863,16 @@ btnPause.addEventListener("click", (e)=>{
       difficulty: 1,
       chestTimer: 35,
       chestAlive: false,
+      chestCount: 0,
+      uniqueChestCount: 0,
+      maxShirtCd: 0,
+      maxShirtSlowT: 0,
       totemTimer: TOTEM_SPAWN_FIRST,
       totemTimerMax: TOTEM_SPAWN_FIRST,
       healQueue: [],
       healActive: null,
       xpEnemyBonus: 0,
+      sameCircleCd: 0,
       auraWaveT: 0,
       auraWaveActive: false,
       auraWaveR: 0,
@@ -775,7 +886,7 @@ btnPause.addEventListener("click", (e)=>{
     };
 
     // UI state
-    const ui = { buildFromPicker: false };
+    const ui = { buildFromPicker: false, buildTab: "upgrades" };
 
     // Player
     const BASE_HP = 50;
@@ -787,6 +898,7 @@ btnPause.addEventListener("click", (e)=>{
       vx:0, vy:0,
       speed:260,
       baseSpeed:260,
+      flatSpeed:0,
       hpMax: BASE_HP,
       hp: BASE_HP,
       regen:0,
@@ -839,9 +951,19 @@ btnPause.addEventListener("click", (e)=>{
       rerollCap: 4,
 
       xpGainMult: 1.0,
+      xpNeedMult: 1.0,
+      damageTakenMult: 1.0,
       shieldAfterHit: 0.0,
       chestBonusReroll: 0,
       chestBonusRare: 0.0,
+
+      unique: new Set(),
+      uniqueSeen: new Set(),
+      uniqueOrder: [],
+
+      dashCd: 0,
+      lastDirX: 1,
+      lastDirY: 0,
     };
 
     function getChestInterval(){
@@ -891,6 +1013,40 @@ btnPause.addEventListener("click", (e)=>{
     function getOrbitalSize(){
       return ORBITAL_BASE_SIZE * (player.orbitalRadius / ORBITAL_BASE_DISTANCE);
     }
+    function getMoveSpeed(){
+      const flat = player.flatSpeed || 0;
+      const base = player.speed;
+      const bonus = (hasUnique("peace_pipe") && totem.active && totem.inZone) ? 1.02 : 1;
+      return base * bonus + flat;
+    }
+    function getBaseMoveSpeed(){
+      const flat = player.flatSpeed || 0;
+      const base = player.baseSpeed || player.speed || 1;
+      const bonus = (hasUnique("peace_pipe") && totem.active && totem.inZone) ? 1.02 : 1;
+      return base * bonus + flat;
+    }
+    function triggerDash(){
+      if (!hasUnique("british_citizenship")) return;
+      if (player.dashCd > 0) return;
+      const dx = player.lastDirX || 1;
+      const dy = player.lastDirY || 0;
+      const d = Math.hypot(dx, dy) || 1;
+      const ux = dx / d;
+      const uy = dy / d;
+      player.x += ux * DASH_DISTANCE;
+      player.y += uy * DASH_DISTANCE;
+      player.vx += ux * 120;
+      player.vy += uy * 120;
+      player.invuln = Math.max(player.invuln, DASH_INVULN);
+      player.dashCd = DASH_COOLDOWN;
+    }
+    function tryActivateMaxShirt(){
+      if (!hasUnique("max_shirt")) return false;
+      if (state.maxShirtCd > 0 || state.maxShirtSlowT > 0) return false;
+      state.maxShirtSlowT = MAX_SHIRT_SLOW_DURATION;
+      state.maxShirtCd = MAX_SHIRT_COOLDOWN;
+      return true;
+    }
     function getTurretHpMax(){
       const lv = getLevel("turretLevel");
       return player.hpMax * 1.4 * Math.pow(1.12, lv);
@@ -926,6 +1082,8 @@ btnPause.addEventListener("click", (e)=>{
     const drops = [];
     const particles = [];
     const floaters = [];
+    const clones = [];
+    const dogs = [];
     const chests = [];
     const totem = {
       active: false,
@@ -1033,6 +1191,7 @@ btnPause.addEventListener("click", (e)=>{
         div.innerHTML = `<div class="t">${c.name}</div><div class="d">${c.desc}</div><div class="d" style="margin-top:8px; opacity:.75">${c.perk}</div>`;
         div.addEventListener("click", ()=>{
           c.apply();
+          addUniqueItem("dog");
           startOverlay.style.display = "none";
           state.paused = false;
         });
@@ -1163,12 +1322,29 @@ btnPause.addEventListener("click", (e)=>{
 
       // armor cap 60%
       const arm = clamp(player.armor || 0, 0, 0.60);
-      const dmg = raw * (1 - arm);
+      const dmg = raw * (1 - arm) * (player.damageTakenMult || 1);
 
       player.hp -= dmg;
       if (player.hp < 0) player.hp = 0;
 
       return dmg;
+    }
+    function tryConsumeSpareTire(){
+      if (!hasUnique("spare_tire")) return false;
+      player.unique.delete("spare_tire");
+      const reviveHp = Math.max(1, Math.ceil(player.hpMax * 0.25));
+      player.hp = reviveHp;
+      player.invuln = Math.max(player.invuln, 1.2);
+      burst(player.x, player.y, randi(14,18), 240, 0.45);
+      if (pauseMenu.style.display === "grid") updateBuildUI();
+      return true;
+    }
+    function handlePlayerDeath(reason){
+      if (tryConsumeSpareTire()) return false;
+      player.hp = 0;
+      if (reason) setDeathReason(reason);
+      gameOver();
+      return true;
     }
 
 
@@ -1178,7 +1354,7 @@ btnPause.addEventListener("click", (e)=>{
       while(player.xp >= player.xpNeed && !state.dead){
         player.xp -= player.xpNeed;
         player.lvl += 1;
-        player.xpNeed = Math.floor(player.xpNeed * 1.12 + 8);
+        player.xpNeed = Math.floor(player.xpNeed * 1.12 * (player.xpNeedMult || 1) + 8);
         state.chestTimer = Math.min(state.chestTimer, getChestInterval());
         openUpgradePicker("level");
       }
@@ -1444,6 +1620,10 @@ btnPause.addEventListener("click", (e)=>{
       if (state.chestAlive) return;
       if (chests.length > 0) { state.chestAlive = true; return; }
       state.chestAlive = true;
+      state.chestCount += 1;
+      const isSpecial = (state.chestCount % UNIQUE_CHEST_EVERY === 0) && hasRemainingUnique();
+      if (isSpecial) state.uniqueChestCount += 1;
+      const chestR = isSpecial ? 22 : 16;
 
       const useTotem = totem.active;
       for (let tries = 0; tries < 20; tries++){
@@ -1453,7 +1633,7 @@ btnPause.addEventListener("click", (e)=>{
           const x = totem.x + Math.cos(a)*d;
           const y = totem.y + Math.sin(a)*d;
           if (Math.hypot(x - player.x, y - player.y) < 260) continue;
-          chests.push({ x, y, r: 16, t: 0, bob: randf(0, TAU) });
+          chests.push({ x, y, r: chestR, t: 0, bob: randf(0, TAU), special: isSpecial });
           return;
         } else {
           const a = randf(0, TAU);
@@ -1461,24 +1641,25 @@ btnPause.addEventListener("click", (e)=>{
           const x = player.x + Math.cos(a)*d;
           const y = player.y + Math.sin(a)*d;
           if (Math.hypot(x - player.x, y - player.y) < 260) continue;
-          chests.push({ x, y, r: 16, t: 0, bob: randf(0, TAU) });
+          chests.push({ x, y, r: chestR, t: 0, bob: randf(0, TAU), special: isSpecial });
           return;
         }
       }
       if (useTotem){
-        chests.push({ x: totem.x, y: totem.y, r: 16, t: 0, bob: 0 });
+        chests.push({ x: totem.x, y: totem.y, r: chestR, t: 0, bob: 0, special: isSpecial });
       } else {
-        chests.push({ x: player.x + 420, y: player.y, r: 16, t: 0, bob: 0 });
+        chests.push({ x: player.x + 420, y: player.y, r: chestR, t: 0, bob: 0, special: isSpecial });
       }
     }
     function pickUpChest(){
       if (!chests.length) { state.chestAlive = false; return; }
+      const c = chests[0];
       chests.length = 0;
       state.chestAlive = false;
       if (player.chestBonusReroll > 0){
         player.rerolls = Math.min(player.rerollCap, player.rerolls + player.chestBonusReroll);
       }
-      openUpgradePicker("chest");
+      openUpgradePicker(c && c.special ? "unique" : "chest");
     }
 
     // Totem
@@ -1506,6 +1687,7 @@ btnPause.addEventListener("click", (e)=>{
       totem.y = player.y + Math.sin(a) * d;
       const lvlScale = 1 + Math.min(0.8, Math.max(0, player.lvl - 1) * 0.005);
       totem.r = randf(TOTEM_RADIUS_MIN, TOTEM_RADIUS_MAX) * lvlScale;
+      if (hasUnique("nose_ring")) totem.r *= 1.08;
       totem.t = 0;
       totem.life = getTotemLife();
       totem.lifeMax = totem.life;
@@ -1528,6 +1710,23 @@ btnPause.addEventListener("click", (e)=>{
         if (e.dead || e.dying) continue;
         if (e.type==="boss") continue;
         const d = (e.x-player.x)**2 + (e.y-player.y)**2;
+        if (d < bestD){ bestD = d; best = e; }
+      }
+      return best;
+    }
+    function findNearestEnemyFrom(x, y){
+      let best = null, bestD = Infinity;
+      for (const e of enemies){
+        if (e.dead || e.dying) continue;
+        if (e.type==="boss"){
+          const d = (e.x-x)**2 + (e.y-y)**2;
+          if (d < bestD*1.1){ bestD = d; best = e; }
+        }
+      }
+      for (const e of enemies){
+        if (e.dead || e.dying) continue;
+        if (e.type==="boss") continue;
+        const d = (e.x-x)**2 + (e.y-y)**2;
         if (d < bestD){ bestD = d; best = e; }
       }
       return best;
@@ -1638,6 +1837,63 @@ btnPause.addEventListener("click", (e)=>{
       player.novaTimer = 1 / player.novaRate;
     }
 
+    function cloneShoot(c, dt){
+      c.shotTimer -= dt;
+      if (c.shotTimer > 0) return;
+      const target = findNearestEnemyFrom(c.x, c.y);
+      if (!target) return;
+
+      const baseAngle = Math.atan2(target.y - c.y, target.x - c.x);
+      const shots = player.multishot;
+      const spread = (shots === 2) ? 0.08 : player.spread;
+
+      for(let i=0;i<shots;i++){
+        const t = (shots===1) ? 0 : (i/(shots-1))*2 - 1;
+        const a = baseAngle + t*spread + randf(-0.01,0.01);
+        bullets.push({
+          x: c.x, y: c.y,
+          vx: Math.cos(a)*player.bulletSpeed,
+          vy: Math.sin(a)*player.bulletSpeed,
+          r: player.bulletSize,
+          dmg: player.damage,
+          pierce: player.pierce,
+          life: 3.2,
+          t: 0,
+          ricochetLeft: getRicochetBounces(),
+          ricochetChance: player.ricochetChance,
+          lastHitId: null,
+        });
+      }
+      c.shotTimer = 1 / player.fireRate;
+    }
+
+    function cloneShootNova(c, dt){
+      if (player.novaCount <= 0) return;
+      c.novaTimer -= dt;
+      if (c.novaTimer > 0) return;
+
+      const shots = Math.max(1, player.novaCount * 3);
+      const offset = randf(0, TAU);
+      for(let i=0;i<shots;i++){
+        const a = offset + i*(TAU/shots);
+        bullets.push({
+          x: c.x, y: c.y,
+          vx: Math.cos(a)*player.novaSpeed,
+          vy: Math.sin(a)*player.novaSpeed,
+          r: Math.max(4, player.bulletSize * 1.15),
+          dmg: player.novaDamage,
+          pierce: 1,
+          life: 3.0,
+          t: 0,
+          isNova: true,
+          ricochetLeft: getRicochetBounces(),
+          ricochetChance: player.ricochetChance,
+          lastHitId: null,
+        });
+      }
+      c.novaTimer = 1 / player.novaRate;
+    }
+
     function spawnTurret(){
       if (getTurretLevel() <= 0) return;
       if (turrets.length >= getTurretMax()) return;
@@ -1737,6 +1993,85 @@ btnPause.addEventListener("click", (e)=>{
         }
       }
     }
+
+    function spawnDog(){
+      if (dogs.length) return;
+      const a = randf(0, TAU);
+      const d = player.r + 12;
+      dogs.push({
+        x: player.x + Math.cos(a) * d,
+        y: player.y + Math.sin(a) * d,
+        r: DOG_RADIUS,
+        ang: a,
+        hitCd: 0,
+        target: null,
+      });
+    }
+
+    function pickDogTarget(excludeId){
+      const candidates = [];
+      const range = player.magnet;
+      gridQueryCircle(player.x, player.y, range + ENEMY_MAX_R, candidates);
+      let valid = 0;
+      let choice = null;
+      for (const e of candidates){
+        if (!e || e.dead || e.dying) continue;
+        if (excludeId && e.id === excludeId) continue;
+        const dx = e.x - player.x;
+        const dy = e.y - player.y;
+        if ((dx*dx + dy*dy) > range*range) continue;
+        valid += 1;
+        if (Math.random() < 1 / valid) choice = e;
+      }
+      return choice;
+    }
+
+    function updateDogs(dt){
+      if (!dogs.length) return;
+      for (const dog of dogs){
+        dog.hitCd = Math.max(0, dog.hitCd - dt);
+        if (!dog.target || dog.target.dead || dog.target.dying){
+          dog.target = pickDogTarget();
+        } else {
+          const dxp = dog.target.x - player.x;
+          const dyp = dog.target.y - player.y;
+          if ((dxp*dxp + dyp*dyp) > player.magnet*player.magnet) dog.target = pickDogTarget();
+        }
+
+        let tx = player.x;
+        let ty = player.y;
+        if (dog.target){
+          tx = dog.target.x;
+          ty = dog.target.y;
+        }
+
+        const desired = Math.atan2(ty - dog.y, tx - dog.x);
+        let delta = desired - dog.ang;
+        while (delta > Math.PI) delta -= TAU;
+        while (delta < -Math.PI) delta += TAU;
+        const maxTurn = DOG_TURN_RATE * dt;
+        delta = clamp(delta, -maxTurn, maxTurn);
+        dog.ang += delta;
+
+        const speed = dog.target ? DOG_SPEED * 1.25 : DOG_SPEED;
+        const vx = Math.cos(dog.ang) * speed;
+        const vy = Math.sin(dog.ang) * speed;
+        dog.x += vx * dt;
+        dog.y += vy * dt;
+
+        if (dog.target && dog.hitCd <= 0 && circleHit(dog.x, dog.y, dog.r, dog.target.x, dog.target.y, dog.target.r)){
+          let dmg = player.damage * 2;
+          if (dog.target.type === "shield") dmg *= 0.65;
+          dog.target.hp -= dmg;
+          dog.target.hitFlash = Math.max(dog.target.hitFlash, 0.09);
+          recordDamage(dmg);
+          if (dog.target.hp <= 0) killEnemy(dog.target);
+          const lastId = dog.target.id;
+          dog.target = pickDogTarget(lastId);
+          dog.hitCd = DOG_HIT_COOLDOWN;
+        }
+      }
+    }
     function applyAura(dt){
       if (!player.aura) return;
 
@@ -1821,6 +2156,184 @@ btnPause.addEventListener("click", (e)=>{
             e._auraWaveId = state.auraWaveId;
           }
         }
+      }
+    }
+
+    function updateCloneOrbitals(c, dt){
+      if (player.orbitals <= 0) return;
+      c.orbitalAngle = (c.orbitalAngle || 0) + player.orbitalSpeed * dt;
+      const candidates = [];
+      const orbSize = getOrbitalSize();
+
+      for(let k=0;k<player.orbitals;k++){
+        const a = c.orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
+        const ox = c.x + Math.cos(a)*player.orbitalRadius;
+        const oy = c.y + Math.sin(a)*player.orbitalRadius;
+
+        gridQueryCircle(ox, oy, orbSize + ENEMY_MAX_R, candidates);
+        for (let i=candidates.length-1; i>=0; i--){
+          const e = candidates[i];
+          if (e.dead || e.dying) continue;
+          if (!e._ohClone) e._ohClone = new Float32Array(24);
+          e._ohClone[k] = Math.max(0, (e._ohClone[k]||0) - dt);
+          if (e._ohClone[k] > 0) continue;
+
+          if (circleHit(ox,oy, orbSize, e.x,e.y,e.r)){
+            e._ohClone[k] = player.orbitalHitCD;
+            const dmg = player.orbitalDamage;
+            e.hp -= dmg;
+            e.hitFlash = 0.09;
+            recordDamage(dmg);
+
+            if (Math.random() < ORBITAL_KNOCKBACK_CHANCE){
+              const dx = e.x-ox, dy = e.y-oy;
+              const d = Math.hypot(dx,dy) || 1;
+              e.vx += (dx/d) * ORBITAL_KNOCKBACK_FORCE;
+              e.vy += (dy/d) * ORBITAL_KNOCKBACK_FORCE;
+            }
+
+            if (e.hp <= 0) killEnemy(e);
+          }
+        }
+      }
+    }
+
+    function applyCloneAura(c, dt){
+      if (!player.aura) return;
+
+      const waveLv = getLevel("auraWave");
+      if (waveLv > 0){
+        c.auraWaveT -= dt;
+        if (c.auraWaveT <= 0){
+          c.auraWaveT = getAuraWaveCooldown();
+          c.auraWaveActive = true;
+          c.auraWaveR = 0;
+          c.auraWaveMaxR = player.auraRadius;
+          c.auraWaveX = c.x;
+          c.auraWaveY = c.y;
+          c.auraWaveId = (c.auraWaveId || 0) + 1;
+        }
+      }
+
+      let wavePrevR = c.auraWaveR || 0;
+      if (c.auraWaveActive){
+        const speed = c.auraWaveMaxR / Math.max(0.1, AURA_WAVE_TRAVEL_TIME);
+        c.auraWaveR += speed * dt;
+        if (c.auraWaveR >= c.auraWaveMaxR + AURA_WAVE_THICKNESS){
+          c.auraWaveActive = false;
+        }
+        c.auraWaveX = c.x;
+        c.auraWaveY = c.y;
+      }
+
+      const radius = player.auraRadius;
+      const candidates = [];
+      gridQueryCircle(c.x, c.y, radius + ENEMY_MAX_R, candidates);
+      for (let i=candidates.length-1; i>=0; i--){
+        const e = candidates[i];
+        if (e.dead || e.dying) continue;
+        const dx = e.x - c.x;
+        const dy = e.y - c.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > radius + e.r) continue;
+
+        const dmg = player.auraDps * dt;
+        e.hp -= dmg;
+        e.auraFlash = Math.max(e.auraFlash || 0, 0.05);
+        recordDamage(dmg);
+        if (player.auraSlow > 0){ e._slowT = Math.max(e._slowT||0, 0.25); e._slowMult = 1 - clamp(player.auraSlow, 0, 0.55); }
+        if (e.hp <= 0){ killEnemy(e); continue; }
+      }
+
+      if (c.auraWaveActive){
+        const waveCandidates = [];
+        const waveR = c.auraWaveR;
+        const minR = Math.min(wavePrevR, waveR);
+        const maxR = Math.max(wavePrevR, waveR);
+        const waveX = c.auraWaveX;
+        const waveY = c.auraWaveY;
+        const range = maxR + AURA_WAVE_THICKNESS + ENEMY_MAX_R;
+        const force = getAuraWaveForce();
+        if (force > 0){
+          gridQueryCircle(waveX, waveY, range, waveCandidates);
+          for (let i=waveCandidates.length-1; i>=0; i--){
+            const e = waveCandidates[i];
+            if (e.dead || e.dying) continue;
+            if (e._auraWaveCloneId === c.auraWaveId) continue;
+            const dx = e.x - waveX;
+            const dy = e.y - waveY;
+            const dist = Math.hypot(dx, dy);
+            const inner = Math.max(0, minR - AURA_WAVE_THICKNESS - e.r);
+            const outer = maxR + AURA_WAVE_THICKNESS + e.r;
+            if (dist < inner || dist > outer) continue;
+
+            let mult = 1;
+            if (e.type === "boss") mult = AURA_WAVE_BOSS_MULT;
+            else if (e.elite) mult = AURA_WAVE_ELITE_MULT;
+
+            const band = AURA_WAVE_THICKNESS + e.r;
+            const waveBand = clamp(1 - Math.abs(dist - waveR) / Math.max(1, band), 0, 1);
+            const smooth = waveBand * waveBand * (3 - 2 * waveBand);
+            const push = pushAway(e.x, e.y, waveX, waveY, force * mult * smooth);
+            e.x += push.x * AURA_WAVE_POS_MULT;
+            e.y += push.y * AURA_WAVE_POS_MULT;
+            e.vx += push.x * AURA_WAVE_VEL_MULT;
+            e.vy += push.y * AURA_WAVE_VEL_MULT;
+            e._auraWaveCloneId = c.auraWaveId;
+          }
+        }
+      }
+    }
+
+    function updateSameCircle(dt){
+      if (hasUnique("same_circle")){
+        state.sameCircleCd -= dt;
+        if (state.sameCircleCd <= 0){
+          clones.push({
+            x: player.x,
+            y: player.y,
+            t: 0,
+            life: SAME_CIRCLE_LIFE,
+            shotTimer: 0,
+            novaTimer: 0,
+            orbitalAngle: randf(0, TAU),
+            auraWaveT: 0,
+            auraWaveActive: false,
+            auraWaveR: 0,
+            auraWaveMaxR: 0,
+            auraWaveX: player.x,
+            auraWaveY: player.y,
+            auraWaveId: 0,
+          });
+          state.sameCircleCd = SAME_CIRCLE_INTERVAL;
+        }
+      }
+      for (let i=clones.length-1; i>=0; i--){
+        const c = clones[i];
+        c.t += dt;
+        cloneShoot(c, dt);
+        cloneShootNova(c, dt);
+        updateCloneOrbitals(c, dt);
+        applyCloneAura(c, dt);
+        if (c.t >= c.life){
+          explodeSameCircle(c);
+          clones.splice(i,1);
+        }
+      }
+    }
+
+    function explodeSameCircle(c){
+      const dmg = player.damage * SAME_CIRCLE_DAMAGE_MULT;
+      burst(c.x, c.y, randi(18, 26), 300, 0.5);
+      for (let i=enemies.length-1; i>=0; i--){
+        const e = enemies[i];
+        if (!e || e.dead || e.dying) continue;
+        const d = Math.hypot(e.x - c.x, e.y - c.y);
+        if (d > SAME_CIRCLE_RADIUS + e.r) continue;
+        e.hp -= dmg;
+        e.hitFlash = Math.max(e.hitFlash, 0.12);
+        recordDamage(dmg);
+        if (e.hp <= 0) killEnemy(e);
       }
     }
 
@@ -2060,7 +2573,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       const dp = Math.hypot(dxp, dyp);
       if (dp < e.explodeR && player.invuln <= 0){
         const mult = 1 - (dp / e.explodeR); // 0..1
-        const dmg = e.explodeDmg * (0.55 + 0.45 * mult);
+        const dmg = e.explodeDmg * (0.55 + 0.45 * mult) * (player.damageTakenMult || 1);
         player.hp -= dmg;
         player.invuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN) + player.shieldAfterHit;
 
@@ -2071,10 +2584,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         player.vy += push.y * 22;
 
         if (player.hp <= 0){
-          player.hp = 0;
-          setDeathReason("bomber explosion");
-          gameOver();
-          return;
+          if (handlePlayerDeath("bomber explosion")) return;
         }
       }
 
@@ -2126,6 +2636,9 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
       e.dead = true;
       state.kills += 1;
+      if (hasUnique("max_shirt") && state.maxShirtCd > 0){
+        state.maxShirtCd = Math.max(0, state.maxShirtCd - MAX_SHIRT_KILL_CD_REDUCE);
+      }
       burst(e.x,e.y, randi(10,16), 220, 0.35);
       dropXp(e.x,e.y, e.xp);
 
@@ -2275,7 +2788,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       regen:    { title:"Регенерация",    max: 10, desc:(lv)=>`+1.0 HP/сек (ур. ${lv+1}/10)`, apply:()=>{ player.regen += 1.0; } },
       magnet:   { title:"Магнит",         max: 8,  desc:(lv)=>`+40 радиус подбора XP (ур. ${lv+1}/8)`,  apply:()=>{ player.magnet += 40; } },
 
-      orbital:  { title:"Орбиталка",      max: 12, desc:(lv)=>`+1 orbital (ур. ${lv+1}/12)`, apply:()=>{ player.orbitals = Math.min(12, player.orbitals + 1); } },
+      orbital:  { title:"Орбиталка",      max: 11, desc:(lv)=>`Орбиталок +${lv === 0 ? 2 : 1} (ур. ${lv+1}/11)`, apply:()=>{ player.orbitals = Math.min(12, player.orbitals > 0 ? (player.orbitals + 1) : 2); } },
       orbitalDmg:{title:"Орбиталки: урон",max: 12, desc:(lv)=>`+25% orbital damage (ур. ${lv+1}/12)`, apply:()=>{ player.orbitalDamage *= 1.25; } },
       orbitalRadius:{title:"Орбиталки: радиус",max: 10, desc:(lv)=>`+16 orbital radius (ур. ${lv+1}/10)`, apply:()=>{ player.orbitalRadius += 16; } },
 
@@ -2284,9 +2797,98 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       auraDps:  { title:"Аура: DPS",      max: 12, desc:(lv)=>`+30% aura DPS (ур. ${lv+1}/12)`, apply:()=>{ player.auraDps *= 1.30; } },
       auraWave: { title:"Аура: волна",    max: 5,  desc:(lv)=>`Волна каждые ${fmtNum(getAuraWaveCooldown(lv + 1), 1)}с · сила +${AURA_WAVE_FORCE_STEP} (ур. ${lv+1}/5)`, apply:()=>{ if (getLevel("auraWave") === 0) state.auraWaveT = getAuraWaveCooldown(1); } },
     };
+    const UNIQUE = {
+      spare_tire: {
+        title:"Запасное колесо",
+        rarity:"epic",
+        desc:"Позволяет получить смертельный урон и выжить. Одноразовый предмет.",
+        apply(){},
+      },
+      same_circle: {
+        title:"They're the Same Circle",
+        rarity:"epic",
+        desc:"Периодически оставляет бессмертную копию на некоторое время, которая затем взрывается.",
+        apply(){ state.sameCircleCd = SAME_CIRCLE_INTERVAL; },
+      },
+      british_citizenship: {
+        title:"Британское гражданство",
+        rarity:"rare",
+        desc:"Дает рывок с неуязвимостью. Активируется кнопкой действия.",
+        apply(){},
+      },
+      crutch: {
+        title:"Костыль",
+        rarity:"rare",
+        desc:"Вы и так знаете что это. +55 к скорости передвижения, +25% к сорости атаки.",
+        apply(){
+          player.flatSpeed += 55;
+          player.fireRate *= 1.25;
+        },
+      },
+      rope: {
+        title:"Веревка",
+        rarity:"common",
+        desc:"Колобок повесился.",
+        apply(){},
+      },
+      phenibut: {
+        title:"Пачка фенибута",
+        rarity:"common",
+        desc:"Вы думаете что вы стали умнее. Для получения уровня требуется на 5% меньше опыта.",
+        apply(){ player.xpNeedMult *= 0.95; },
+      },
+      max_shirt: {
+        title:"Рубашка Больного Макса",
+        rarity:"rare",
+        desc:"Замедляет время на 3 сек. КД 30 сек, заряжается убийствами. Активируется кнопкой действия.",
+        apply(){},
+      },
+      dog: {
+        title:"Собака",
+        rarity:"common",
+        desc:"Собака лучший друг круга.",
+        apply(){ spawnDog(); },
+      },
+      rf_passport: {
+        title:"Паспорт РФ",
+        rarity:"common",
+        desc:"Жизнь научила терпеть. Вы получаете на 10% меньше урона.",
+        apply(){ player.damageTakenMult *= 0.9; },
+      },
+      nose_ring: {
+        title:"Кольцо в носу",
+        rarity:"common",
+        desc:"Кольцо - это антенна. Вы издалека начинаете чувствовать силу тотема. Увеличивает раздиус тотема на 8%",
+        apply(){
+          if (totem.active) totem.r *= 1.08;
+        },
+      },
+      peace_pipe: {
+        title:"Трубка мира",
+        rarity:"common",
+        desc:"Духи древних сопровождают вас, вы чувствуете себя лучше. Немного увеличивает регенирацию и скорость передвижения в зоне тотема.",
+        apply(){},
+      },
+    };
     const upgradeList = Object.keys(U);
+    const uniqueList = Object.keys(UNIQUE);
     const getLevel = (id)=>player.u[id]||0;
     const atMax = (id)=>getLevel(id)>=U[id].max;
+    function hasUnique(id){
+      return player.unique.has(id);
+    }
+    function hasRemainingUnique(){
+      const remaining = uniqueList.filter((id)=>!player.uniqueSeen.has(id) && !player.unique.has(id));
+      return remaining.length >= 3;
+    }
+    function addUniqueItem(id){
+      const item = UNIQUE[id];
+      if (!item || player.unique.has(id)) return;
+      player.unique.add(id);
+      player.uniqueOrder.push(id);
+      if (item.apply) item.apply();
+      if (pauseMenu.style.display === "grid") updateBuildUI();
+    }
     function getNovaMagnetRadius(){
       const enabled = getLevel("novaMagnet") > 0;
       if (!enabled) return 0;
@@ -2330,13 +2932,13 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         if (!isEligible(id)) continue;
 
         let w = 1;
-        const weaponish = (id==="fireRate"||id==="damage"||id==="pierce"||id==="multishot"||id==="crit"||id==="critMultUp"||id==="bulletSize"||id==="orbital"||id==="orbitalDmg"||id==="orbitalSpeedUp"||id==="aura"||id==="auraDps"||id==="auraSlow"||id==="auraWave"||id==="nova"||id==="novaDamage"||id==="novaRate"||id==="novaSpeed"||id==="novaMagnet"||id==="turret"||id==="turretLevel"||id==="turretHeal"||id==="ricochetChance"||id==="ricochetBounces");
+        const weaponish = (id==="fireRate"||id==="damage"||id==="pierce"||id==="multishot"||id==="crit"||id==="critMultUp"||id==="bulletSize"||id==="orbital"||id==="orbitalDmg"||id==="orbitalSpeedUp"||id==="aura"||id==="auraDps"||id==="auraSlow"||id==="auraWave"||id==="nova"||id==="novaDamage"||id==="novaRate"||id==="novaSpeed"||id==="novaMagnet"||id==="turret"||id==="turretLevel"||id==="turretHeal"||id==="ricochetChance"||id==="ricochetBounces"||id==="dog");
         const survival = (id==="hp"||id==="regen"||id==="speed"||id==="magnet"||id==="armor"||id==="dodge"||id==="lifesteal"||id==="xpGain"||id==="rerollCap"||id==="auraRadius"||id==="orbitalRadius"||id==="bulletSpeed");
 
         if (rarity === "rare"){
           w *= weaponish ? 2.2 : (survival ? 1.3 : 1.0);
         } else if (rarity === "epic"){
-          w *= (id==="multishot"||id==="pierce"||id==="orbital"||id==="aura"||id==="damage"||id==="fireRate"||id==="critMultUp"||id==="lifesteal"||id==="nova"||id==="novaDamage"||id==="novaMagnet"||id==="turret"||id==="turretLevel"||id==="turretHeal"||id==="ricochetChance"||id==="ricochetBounces") ? 3.0 : 1.1;
+          w *= (id==="multishot"||id==="pierce"||id==="orbital"||id==="aura"||id==="damage"||id==="fireRate"||id==="critMultUp"||id==="lifesteal"||id==="nova"||id==="novaDamage"||id==="novaMagnet"||id==="turret"||id==="turretLevel"||id==="turretHeal"||id==="ricochetChance"||id==="ricochetBounces"||id==="dog") ? 3.0 : 1.1;
         } else {
           w *= (id==="speed"||id==="fireRate"||id==="damage"||id==="hp"||id==="magnet") ? 1.3 : 1.0;
         }
@@ -2379,6 +2981,10 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     function buildChoices(source){
       pickerSource = source;
       currentChoices = [];
+      if (source === "unique"){
+        buildUniqueChoices();
+        return;
+      }
       for (let slot=0; slot<3; slot++){
         const rarity = rollRarity(source);
         const pool = buildChoicePool(rarity).filter(([id]) => !currentChoices.some(c => c.id === id));
@@ -2395,6 +3001,60 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
     }
 
+    function buildUniqueChoices(){
+      const pool = uniqueList.filter((id)=>!player.uniqueSeen.has(id) && !player.unique.has(id));
+      const rarityPools = {
+        common: [],
+        rare: [],
+        epic: [],
+      };
+      const firstUniqueChest = state.uniqueChestCount === 1;
+      for (const id of pool){
+        const rarity = UNIQUE[id]?.rarity || "common";
+        if (firstUniqueChest && rarity !== "common") continue;
+        if (rarityPools[rarity]) rarityPools[rarity].push(id);
+      }
+      currentChoices = [];
+      let epicAllowed = true;
+      const rarityWeights = {
+        common: firstUniqueChest ? 1 : 0.55,
+        rare: firstUniqueChest ? 0 : 0.35,
+        epic: firstUniqueChest ? 0 : 0.10,
+      };
+      function pickRarity(){
+        const weights = [
+          ["common", rarityWeights.common],
+          ["rare", rarityWeights.rare],
+          ["epic", rarityWeights.epic],
+        ];
+        let sum = 0;
+        for (const [rarity, w] of weights){
+          if (!epicAllowed && rarity === "epic") continue;
+          if (!rarityPools[rarity].length) continue;
+          sum += w;
+        }
+        if (sum <= 0) return null;
+        let r = Math.random() * sum;
+        for (const [rarity, w] of weights){
+          if (!epicAllowed && rarity === "epic") continue;
+          if (!rarityPools[rarity].length) continue;
+          r -= w;
+          if (r <= 0) return rarity;
+        }
+        return null;
+      }
+      for (let slot=0; slot<3; slot++){
+        const rarity = pickRarity();
+        if (!rarity) break;
+        const list = rarityPools[rarity];
+        const idx = randi(0, list.length - 1);
+        const id = list.splice(idx, 1)[0];
+        currentChoices.push({ id, rarity, kind:"unique" });
+        if (rarity === "epic") epicAllowed = false;
+      }
+      for (const c of currentChoices) player.uniqueSeen.add(c.id);
+    }
+
     function openUpgradePicker(source){
       state.paused = true;
       ui.buildFromPicker = false;
@@ -2403,23 +3063,36 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       pauseMenu.style.display = "none";
       pickerOverlay.style.display = "grid";
 
+      const isUnique = source === "unique";
       pickerTitle.textContent = source === "chest"
         ? "Сундук — выбери улучшение (шанс rare/epic выше)"
-        : "Уровень повышен — выбери улучшение";
+        : (source === "unique" ? "Особый сундук — выбери уникальный предмет" : "Уровень повышен — выбери улучшение");
 
-      pickerHint.textContent = "Клик по карточке или 1/2/3. Reroll (R) тратит жетон. Skip закрывает. Build — посмотреть билд.";
+      pickerHint.textContent = isUnique
+        ? "Уникальные предметы появляются только один раз. Skip закрывает."
+        : "Клик по карточке или 1/2/3. Reroll (R) тратит жетон. Skip закрывает. Build — посмотреть билд.";
 
       buildChoices(source);
       renderChoices();
-      btnReroll.disabled = player.rerolls <= 0;
+      btnReroll.style.display = isUnique ? "none" : "";
+      btnReroll.disabled = isUnique || player.rerolls <= 0;
       updateRerollsUI();
     }
 
     function renderChoices(){
       choicesWrap.innerHTML = "";
+      if (!currentChoices.length){
+        const msg = (pickerSource === "unique")
+          ? "Уникальные предметы закончились."
+          : "Нет доступных улучшений.";
+        choicesWrap.innerHTML = `<div class="small" style="opacity:.8">${msg}</div>`;
+        return;
+      }
       currentChoices.forEach((c, i)=>{
-        const u = U[c.id];
-        const lv = getLevel(c.id);
+        const isUnique = c.kind === "unique";
+        const u = isUnique ? UNIQUE[c.id] : U[c.id];
+        const lv = isUnique ? 0 : getLevel(c.id);
+        const desc = isUnique ? u.desc : u.desc(lv);
         const div = document.createElement("div");
         div.className = "choice";
         div.innerHTML = `
@@ -2427,7 +3100,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
             ${i+1}. ${u.title}
             <span class="pill ${c.rarity}">${c.rarity.toUpperCase()}</span>
           </div>
-          <div class="d">${u.desc(lv)}</div>
+          <div class="d">${desc}</div>
         `;
         div.addEventListener("click", ()=>pickChoice(i));
         choicesWrap.appendChild(div);
@@ -2439,6 +3112,14 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       const c = currentChoices[i];
       if (!c) return;
       const id = c.id;
+      if (c.kind === "unique"){
+        addUniqueItem(id);
+        pickerOverlay.style.display = "none";
+        ui.buildFromPicker = false;
+        btnResume.textContent = "Resume";
+        state.paused = false;
+        return;
+      }
       if (!isEligible(id)) return;
 
       U[id].apply();
@@ -2452,6 +3133,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
     function doReroll(){
       if (pickerOverlay.style.display!=="grid") return;
+      if (pickerSource === "unique") return;
       if (player.rerolls <= 0) return;
       player.rerolls -= 1;
       buildChoices(pickerSource);
@@ -2478,6 +3160,17 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       pauseMenu.style.display = "grid";
     });
 
+    function setBuildTab(tab){
+      ui.buildTab = tab;
+      tabUpgrades.classList.toggle("active", tab === "upgrades");
+      tabInventory.classList.toggle("active", tab === "inventory");
+      buildListEl.style.display = tab === "upgrades" ? "flex" : "none";
+      invListEl.style.display = tab === "inventory" ? "flex" : "none";
+    }
+
+    tabUpgrades.addEventListener("click", ()=>setBuildTab("upgrades"));
+    tabInventory.addEventListener("click", ()=>setBuildTab("inventory"));
+
     function togglePauseMenu(){
       if (state.dead) return;
       state.paused = !state.paused;
@@ -2500,6 +3193,10 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
     btnRestart2.addEventListener("click", ()=>resetGame());
     btnCopy.addEventListener("click", ()=>copyStats());
+    btnHang.addEventListener("click", ()=>{
+      if (!hasUnique("rope")) return;
+      handlePlayerDeath("(он все таки смог)");
+    });
 
     function fmtPct(v){
       if (!Number.isFinite(v)) return "--";
@@ -2571,7 +3268,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         case "auraWave":
           return `Аура: волна ${fmtNum(getAuraWaveCooldown(), 1)}с · сила ${fmtNum(getAuraWaveForce())}`;
         case "speed":
-          return `Скорость: ${fmtNum(player.speed)}`;
+          return `Скорость: ${fmtNum(getMoveSpeed())}`;
         case "hp":
           return `HP max: ${fmtNum(player.hpMax)}`;
         case "regen":
@@ -2590,8 +3287,33 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
           return `Аура: радиус ${fmtNum(player.auraRadius)}`;
         case "auraDps":
           return `Аура: DPS ${fmtNum(player.auraDps)}`;
+        case "dog":
+          return `Собака: урон ${fmtNum(player.damage)}`;
         default:
           return "";
+      }
+    }
+
+    function updateInventoryUI(){
+      invListEl.innerHTML = "";
+      const ids = player.uniqueOrder.filter((id)=>player.unique.has(id));
+      if (!ids.length){
+        invListEl.innerHTML = `<div class="small" style="opacity:.8">Пока нет уникальных предметов.</div>`;
+        return;
+      }
+      for (const id of ids){
+        const item = UNIQUE[id];
+        if (!item) continue;
+        const row = document.createElement("div");
+        row.className = "item invItem";
+        row.innerHTML = `
+          <div class="invHead">
+            <div class="k">${item.title}</div>
+            <span class="pill ${item.rarity}">${item.rarity.toUpperCase()}</span>
+          </div>
+          <div class="invDesc">${item.desc}</div>
+        `;
+        invListEl.appendChild(row);
       }
     }
 
@@ -2684,6 +3406,10 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         }
       }
 
+      updateInventoryUI();
+      setBuildTab(ui.buildTab || "upgrades");
+      btnHang.style.display = hasUnique("rope") ? "inline-flex" : "none";
+
       const wparts = [];
       wparts.push("Bullets");
       if (player.orbitals>0) wparts.push(`Orbit x${player.orbitals}`);
@@ -2699,7 +3425,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         <div class="item"><div class="k">Kills</div><div class="v">${state.kills}</div></div>
         <div class="item"><div class="k">DPS (2s)</div><div class="v">${getDps()}</div></div>
         <div class="item"><div class="k">HP</div><div class="v">${Math.ceil(player.hp)} / ${player.hpMax}</div></div>
-        <div class="item"><div class="k">Speed</div><div class="v">${Math.round(player.speed)}</div></div>
+        <div class="item"><div class="k">Speed</div><div class="v">${Math.round(getMoveSpeed())}</div></div>
         <div class="item"><div class="k">Rerolls</div><div class="v">${player.rerolls}</div></div>
         <div class="item"><div class="k">Weapons</div><div class="v">${wparts.join(" + ")}</div></div>
       `;
@@ -2745,6 +3471,14 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       const dtBase = clamp(dtRaw, 0, 0.05);
 
       if (!state.paused && !state.dead){
+        if (hasUnique("max_shirt")){
+          if (state.maxShirtSlowT > 0){
+            state.maxShirtSlowT = Math.max(0, state.maxShirtSlowT - dtRaw);
+          }
+          if (state.maxShirtCd > 0){
+            state.maxShirtCd = Math.max(0, state.maxShirtCd - dtRaw);
+          }
+        }
         const hpRatio = player.hpMax > 0 ? (player.hp / player.hpMax) : 1;
         if (!state.slowMoLocked && state.slowMoCd <= 0 && hpRatio > 0 && hpRatio <= LOW_HP_SLOW_THRESHOLD){
           state.slowMoT = LOW_HP_SLOW_DURATION;
@@ -2761,7 +3495,10 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         }
       }
 
-      const slowScale = state.slowMoT > 0 ? LOW_HP_SLOW_SCALE : 1;
+      const slowScale = Math.min(
+        state.slowMoT > 0 ? LOW_HP_SLOW_SCALE : 1,
+        state.maxShirtSlowT > 0 ? MAX_SHIRT_SLOW_SCALE : 1
+      );
       const dt = dtBase * slowScale;
 
       fpsAcc += (dtRaw>0?1/dtRaw:0);
@@ -2835,8 +3572,19 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       const ilen = Math.hypot(ix,iy) || 1;
       ix/=ilen; iy/=ilen;
 
-      const targetVx = ix*player.speed;
-      const targetVy = iy*player.speed;
+      if (Math.hypot(ix, iy) > 0.2){
+        player.lastDirX = ix;
+        player.lastDirY = iy;
+      }
+      player.dashCd = Math.max(0, player.dashCd - dt);
+      if (dashQueued){
+        dashQueued = false;
+        triggerDash();
+      }
+
+      const moveSpeed = getMoveSpeed();
+      const targetVx = ix*moveSpeed;
+      const targetVy = iy*moveSpeed;
       player.vx = lerp(player.vx, targetVx, lerpFast);
       player.vy = lerp(player.vy, targetVy, lerpFast);
 
@@ -2862,9 +3610,9 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       }
 
       const spd = Math.hypot(player.vx, player.vy) || 0;
-      const ratio = clamp(spd / Math.max(1, player.speed), 0, 1);
-      const baseSpd = player.baseSpeed || player.speed || 1;
-      const speedBonus = player.speed / baseSpd;
+      const ratio = clamp(spd / Math.max(1, moveSpeed), 0, 1);
+      const baseSpd = getBaseMoveSpeed();
+      const speedBonus = moveSpeed / baseSpd;
       const targetScale = GAME_SCALE * (1 - CAMERA_ZOOM_OUT * speedBonus * ratio);
       cameraScale = lerp(cameraScale, targetScale, lerpFast);
 
@@ -2891,13 +3639,15 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           const dps = TOTEM_DPS_BASE + getTotemDpsRamp() * totem.effect;
           const dmg = applyDamageToPlayer(dps * dt);
           if (dmg > 0 && player.hp <= 0){
-            player.hp = 0;
-            setDeathReason("totem");
-            gameOver();
-            return;
+            if (handlePlayerDeath("totem")) return;
           }
         } else if (inZone){
           totem.effect = Math.max(0, totem.effect - dt * TOTEM_EFFECT_DECAY);
+          if (hasUnique("peace_pipe") && player.hp > 0){
+            const regenLv = getLevel("regen");
+            const bonus = 1 + Math.round(0.5 * regenLv);
+            player.hp = Math.min(player.hpMax, player.hp + bonus * dt);
+          }
         }
 
         if (totem.life <= 0){
@@ -2938,6 +3688,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       shootNova(dt);
       updateOrbitals(dt);
       applyAura(dt);
+      updateDogs(dt);
+      updateSameCircle(dt);
 
       // bullets
       const candidates = [];
@@ -3033,11 +3785,8 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
             }
             enemyBullets.splice(i,1);
             if (player.hp<=0){
-              player.hp=0;
               const label = enemyLabel(b.srcType, b.srcBossKind);
-              setDeathReason(`bullet ${label}`);
-              gameOver();
-              return;
+              if (handlePlayerDeath(`bullet ${label}`)) return;
             }
           } else enemyBullets.splice(i,1);
         }
@@ -3172,10 +3921,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
             player.invuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN) + player.shieldAfterHit;
             burst(player.x,player.y, randi(12,20), 260, 0.35);
             if (player.hp<=0){
-              player.hp=0;
-              setDeathReason(`contact ${enemyLabel(e.type, e.bossKind)}`);
-              gameOver();
-              return;
+              if (handlePlayerDeath(`contact ${enemyLabel(e.type, e.bossKind)}`)) return;
             }
           }
         }
@@ -3383,6 +4129,15 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           chestText.textContent = `${Math.max(0, Math.ceil(chestLeft))}s`;
         }
       }
+      if (actionBar && actionBarFill){
+        if (hasUnique("max_shirt")){
+          actionBar.style.display = "block";
+          const pct = clamp(1 - (state.maxShirtCd / MAX_SHIRT_COOLDOWN), 0, 1);
+          actionBarFill.style.height = `${pct*100}%`;
+        } else {
+          actionBar.style.display = "none";
+        }
+      }
 
       elWep.textContent = "W: Bullets"
         + (player.orbitals>0?` + Orbit x${player.orbitals}`:"")
@@ -3394,6 +4149,16 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
 
       elRerolls.textContent = `Reroll ${player.rerolls}`;
       if (elThreat) elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;
+      if (elActionHint){
+        const hasActionSkill = hasUnique("british_citizenship") || hasUnique("max_shirt");
+        if (hasActionSkill){
+          elActionHint.style.display = "";
+          elActionHint.textContent = isTouch ? "Кнопка действия: двойной тап" : "Кнопка действия: Space";
+        } else {
+          elActionHint.style.display = "none";
+          elActionHint.textContent = "";
+        }
+      }
     }
 
     function render(){
@@ -3521,64 +4286,73 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         const c = chests[0];
         const sx=c.x-camX, sy=c.y-camY;
         const bob = Math.sin(c.t*3 + c.bob)*3;
+        const isSpecial = !!c.special;
+        const glowCol = isSpecial ? "rgba(255,90,90,1)" : "rgba(255,220,120,1)";
+        const fillCol = isSpecial ? "rgba(255,90,90,0.95)" : "rgba(255,220,120,0.95)";
+        const strokeCol = isSpecial ? "rgba(255,200,200,0.55)" : "rgba(255,255,255,0.35)";
+        const stripeCol = isSpecial ? "rgba(255,230,230,0.55)" : "rgba(255,255,255,0.55)";
+        const chestW = c.r * 2.25;
+        const chestH = c.r * 1.625;
+        const chestR = Math.max(5, c.r * 0.45);
+        const glowR = c.r * 1.25;
 
         ctx.globalAlpha = 0.15;
-        ctx.fillStyle = "rgba(255,220,120,1)";
+        ctx.fillStyle = glowCol;
         ctx.beginPath();
-        ctx.arc(sx, sy+10, 20, 0, TAU);
+        ctx.arc(sx, sy+10, glowR, 0, TAU);
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        ctx.fillStyle = "rgba(255,220,120,0.95)";
+        ctx.fillStyle = fillCol;
         ctx.beginPath();
-        ctx.roundRect(sx-18, sy-13 + bob, 36, 26, 7);
+        ctx.roundRect(sx - chestW * 0.5, sy - chestH * 0.5 + bob, chestW, chestH, chestR);
         ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.35)";
+        ctx.strokeStyle = strokeCol;
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        ctx.fillStyle = "rgba(255,255,255,0.55)";
-        ctx.fillRect(sx-2, sy-13 + bob, 4, 26);
+        ctx.fillStyle = stripeCol;
+        ctx.fillRect(sx-2, sy - chestH * 0.5 + bob, 4, chestH);
 
-// direction arrow to chest (when it's off-screen)
-const onScreen = (sx >= 0 && sx <= w && sy >= 0 && sy <= h);
-if (!onScreen){
-  const dxC = c.x - player.x;
-  const dyC = c.y - player.y;
-  const distC = Math.hypot(dxC, dyC) || 1;
-  const ux = dxC / distC;
-  const uy = dyC / distC;
+        // direction arrow to chest (when it's off-screen)
+        const onScreen = (sx >= 0 && sx <= w && sy >= 0 && sy <= h);
+        if (!onScreen){
+          const dxC = c.x - player.x;
+          const dyC = c.y - player.y;
+          const distC = Math.hypot(dxC, dyC) || 1;
+          const ux = dxC / distC;
+          const uy = dyC / distC;
 
-  const margin = 26;
-  const cx = w * 0.5;
-  const cy = h * 0.5;
-  const reach = Math.max(40, Math.min(cx, cy) - margin);
-  let ax = cx + ux * reach;
-  let ay = cy + uy * reach;
-  ax = clamp(ax, margin, w - margin);
-  ay = clamp(ay, margin, h - margin);
+          const margin = isSpecial ? 30 : 26;
+          const cx = w * 0.5;
+          const cy = h * 0.5;
+          const reach = Math.max(isSpecial ? 46 : 40, Math.min(cx, cy) - margin);
+          let ax = cx + ux * reach;
+          let ay = cy + uy * reach;
+          ax = clamp(ax, margin, w - margin);
+          ay = clamp(ay, margin, h - margin);
 
-  const ang = Math.atan2(uy, ux);
+          const ang = Math.atan2(uy, ux);
 
-  ctx.save();
-  ctx.translate(ax, ay);
-  ctx.rotate(ang);
-  ctx.globalAlpha = 0.90;
-  ctx.fillStyle = "rgba(255,220,120,0.95)";
-  ctx.beginPath();
-  ctx.moveTo(16, 0);
-  ctx.lineTo(-12, 9);
-  ctx.lineTo(-12, -9);
-  ctx.closePath();
-  ctx.fill();
+          ctx.save();
+          ctx.translate(ax, ay);
+          ctx.rotate(ang);
+          ctx.globalAlpha = 0.90;
+          ctx.fillStyle = isSpecial ? "rgba(255,120,120,0.95)" : "rgba(255,220,120,0.95)";
+          ctx.beginPath();
+          ctx.moveTo(16, 0);
+          ctx.lineTo(-12, 9);
+          ctx.lineTo(-12, -9);
+          ctx.closePath();
+          ctx.fill();
 
-  ctx.globalAlpha = 0.55;
-  ctx.strokeStyle = "rgba(255,255,255,0.55)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.restore();
-  ctx.globalAlpha = 1;
-}
+          ctx.globalAlpha = 0.65;
+          ctx.strokeStyle = isSpecial ? "rgba(255,120,120,0.85)" : "rgba(255,255,255,0.55)";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+          ctx.globalAlpha = 1;
+        }
       }
 
       // drops
@@ -3629,6 +4403,20 @@ if (!onScreen){
         ctx.beginPath();
         ctx.arc(sx,sy, player.auraRadius, 0, TAU);
         ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      if (player.aura && clones.length){
+        ctx.save();
+        ctx.globalAlpha = 0.08;
+        ctx.fillStyle = "rgba(200,230,255,0.75)";
+        for (const sc of clones){
+          const sx = sc.x - camX;
+          const sy = sc.y - camY;
+          ctx.beginPath();
+          ctx.arc(sx, sy, player.auraRadius, 0, TAU);
+          ctx.fill();
+        }
+        ctx.restore();
         ctx.globalAlpha = 1;
       }
       if (state.auraWaveActive){
@@ -3682,6 +4470,24 @@ if (!onScreen){
           ctx.fillStyle="rgba(255,245,210,0.95)";
           ctx.arc(sx,sy,b.r,0,TAU);
           ctx.fill();
+        }
+      }
+
+      // dog
+      if (dogs.length){
+        for (const d of dogs){
+          const sx = d.x - camX;
+          const sy = d.y - camY;
+          ctx.save();
+          ctx.translate(sx, sy);
+          ctx.rotate(d.ang);
+          ctx.beginPath();
+          ctx.fillStyle = "rgba(130,85,55,0.95)";
+          ctx.arc(0, 0, d.r, 0, TAU);
+          ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.85)";
+          ctx.fillRect(-d.r * 0.6, -d.r * 0.2, d.r * 1.2, d.r * 0.4);
+          ctx.restore();
         }
       }
 
@@ -3902,6 +4708,23 @@ if (!onScreen){
           ctx.fill();
         }
       }
+      if (player.orbitals>0 && clones.length){
+        const orbSize = getOrbitalSize();
+        for (const sc of clones){
+          const base = sc.orbitalAngle || 0;
+          for(let k=0;k<player.orbitals;k++){
+            const a = base + (k/Math.max(1,player.orbitals))*TAU;
+            const ox = sc.x + Math.cos(a)*player.orbitalRadius;
+            const oy = sc.y + Math.sin(a)*player.orbitalRadius;
+            const sx=ox-camX, sy=oy-camY;
+
+            ctx.beginPath();
+            ctx.fillStyle="rgba(180,210,255,0.7)";
+            ctx.arc(sx,sy, orbSize, 0, TAU);
+            ctx.fill();
+          }
+        }
+      }
 
       // magnet radius
       {
@@ -3914,6 +4737,28 @@ if (!onScreen){
         ctx.beginPath();
         ctx.arc(sx, sy, player.magnet, 0, TAU);
         ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      // same circle clones
+      if (clones.length){
+        for (const sc of clones){
+          const sx = sc.x - camX;
+          const sy = sc.y - camY;
+          const t = clamp(sc.t / Math.max(0.001, sc.life), 0, 1);
+          const alpha = 0.45 + 0.25 * (1 - t);
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = "rgba(200,230,255,0.75)";
+          ctx.beginPath();
+          ctx.arc(sx, sy, player.r * 0.95, 0, TAU);
+          ctx.fill();
+          ctx.globalAlpha = 0.8;
+          ctx.strokeStyle = "rgba(120,200,255,0.6)";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        }
         ctx.globalAlpha = 1;
       }
 
