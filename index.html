@@ -1033,6 +1033,7 @@ btnPause.addEventListener("click", (e)=>{
       slowMoCd: 0,
       slowMoLocked: false,
       pendingLevelUps: 0,
+      maxDps: 0,
     };
 
     // UI state
@@ -3799,7 +3800,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       `;
     }
 
-    const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkills" };
+    const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkills", dps: "maxdps" };
     let recordsReturnToPause = false;
     let restartReturnToPause = false;
     let restartReturnToPlay = false;
@@ -3822,12 +3823,14 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         level: readRecord(RECORD_KEYS.level),
         time: readRecord(RECORD_KEYS.time),
         kills: readRecord(RECORD_KEYS.kills),
+        dps: readRecord(RECORD_KEYS.dps),
       };
     }
     function saveRecords(records){
       writeRecord(RECORD_KEYS.level, records.level);
       writeRecord(RECORD_KEYS.time, records.time);
       writeRecord(RECORD_KEYS.kills, records.kills);
+      writeRecord(RECORD_KEYS.dps, records.dps);
     }
     function updateRecordsOnDeath(){
       const records = loadRecords();
@@ -3836,6 +3839,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if (player.lvl > next.level) next.level = player.lvl;
       if (time > next.time) next.time = time;
       if (state.kills > next.kills) next.kills = state.kills;
+      if ((state.maxDps || 0) > next.dps) next.dps = state.maxDps || 0;
       saveRecords(next);
       return next;
     }
@@ -3844,10 +3848,12 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       const levelText = records.level > 0 ? records.level : "--";
       const timeText = records.time > 0 ? fmtTime(records.time) : "--";
       const killsText = records.kills > 0 ? records.kills : "--";
+      const dpsText = records.dps > 0 ? records.dps : "--";
       recordsListEl.innerHTML = `
         <div class="item"><div class="k">Макс. уровень</div><div class="v">${levelText}</div></div>
         <div class="item"><div class="k">Макс. время</div><div class="v">${timeText}</div></div>
         <div class="item"><div class="k">Макс. убийств</div><div class="v">${killsText}</div></div>
+        <div class="item"><div class="k">Макс. DPS (2s)</div><div class="v">${dpsText}</div></div>
       `;
     }
     function showRecords(){
@@ -4578,7 +4584,9 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
         elEnemiesCount.textContent = `Enemies ${alive}`;
       }
       if (elShots) elShots.textContent = `Bullets ${bullets.length + enemyBullets.length}`;
-      elDps.textContent = `Dmg ${getDps()}`;
+      const dpsNow = getDps();
+      elDps.textContent = `Dmg ${dpsNow}`;
+      if (dpsNow > state.maxDps) state.maxDps = dpsNow;
       elTime.textContent = fmtTime(state.t);
       if (totemTimerEl){
         if (totem.active && totem.grace > 0){
