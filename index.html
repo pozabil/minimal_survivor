@@ -827,6 +827,38 @@
       return String(mm).padStart(2,"0")+":"+String(ss).padStart(2,"0");
     }
 
+    // Simple circle batching to reduce per-entity beginPath/fill calls
+    const batch = {
+      bullets: [],
+      enemyBullets: new Map(),
+      orbitals: [],
+      orbitalsClone: [],
+    };
+    function batchCirclePush(arr, x, y, r){
+      arr.push(x, y, r);
+    }
+    function batchCircleDraw(arr, fillStyle){
+      if (!arr.length) return;
+      ctx.fillStyle = fillStyle;
+      ctx.beginPath();
+      for (let i=0; i<arr.length; i+=3){
+        const x = arr[i];
+        const y = arr[i+1];
+        const r = arr[i+2];
+        ctx.moveTo(x + r, y);
+        ctx.arc(x, y, r, 0, TAU);
+      }
+      ctx.fill();
+    }
+    function batchMapPush(map, key, x, y, r){
+      let arr = map.get(key);
+      if (!arr){ arr = []; map.set(key, arr); }
+      arr.push(x, y, r);
+    }
+    function batchMapClear(map){
+      for (const arr of map.values()) arr.length = 0;
+    }
+
     // roundRect polyfill
     if (!CanvasRenderingContext2D.prototype.roundRect){
       CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
@@ -2703,7 +2735,7 @@ btnPause.addEventListener("click", (e)=>{
                 e.shotSpeed, e.shotDmg,
                 e.shotSize || 4,
                 e.shotLife || 3.0,
-                { color: e.bulletColor, explodeR: e.explodeR, explodePush: e.explodePush }
+                { color: e.bulletColor, glow: e.bulletGlow, explodeR: e.explodeR, explodePush: e.explodePush }
               );
             }
             e.burstCd = e.burstCooldown || 1.0;
@@ -2732,7 +2764,7 @@ btnPause.addEventListener("click", (e)=>{
           e.shotSpeed, e.shotDmg,
           e.shotSize || 4,
           e.shotLife || 3.0,
-          { color: e.bulletColor, explodeR: e.explodeR, explodePush: e.explodePush }
+          { color: e.bulletColor, glow: e.bulletGlow, explodeR: e.explodeR, explodePush: e.explodePush }
         );
         e.burstLeft -= 1;
         e.shotTimer = e.burstGap || 0.12;
@@ -4697,6 +4729,11 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       ctx.fillStyle = "#0b0e14";
       ctx.fillRect(0,0,w,h);
 
+      batch.bullets.length = 0;
+      batch.orbitals.length = 0;
+      batch.orbitalsClone.length = 0;
+      batchMapClear(batch.enemyBullets);
+
       // grid
       const g = 52;
       const gx0 = Math.floor(camX/g)*g;
@@ -4932,16 +4969,22 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       // enemy bullets
       for (const b of enemyBullets){
         const sx=b.x-camX, sy=b.y-camY;
+        const col = b.color || "rgba(255,140,160,0.9)";
         if (b.glow){
           ctx.save();
           ctx.shadowColor = b.glow;
           ctx.shadowBlur = b.glowBlur || 14;
+          ctx.beginPath();
+          ctx.fillStyle = col
+          ctx.arc(sx,sy,b.r,0,TAU);
+          ctx.fill();
+          ctx.restore();
+        } else {
+          batchMapPush(batch.enemyBullets, col, sx, sy, b.r);
         }
-        ctx.beginPath();
-        ctx.fillStyle = b.color || "rgba(255,140,160,0.9)";
-        ctx.arc(sx,sy,b.r,0,TAU);
-        ctx.fill();
-        if (b.glow) ctx.restore();
+      }
+      for (const [col, arr] of batch.enemyBullets){
+        batchCircleDraw(arr, col);
       }
 
       // aura
@@ -5029,12 +5072,10 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           ctx.fill();
           ctx.restore();
         } else {
-          ctx.beginPath();
-          ctx.fillStyle="rgba(255,245,210,0.95)";
-          ctx.arc(sx,sy,b.r,0,TAU);
-          ctx.fill();
+          batchCirclePush(batch.bullets, sx, sy, b.r);
         }
       }
+      batchCircleDraw(batch.bullets, "rgba(255,245,210,0.95)");
 
       // dog
       if (dogs.length){
@@ -5298,12 +5339,9 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           const ox = player.x + Math.cos(a)*player.orbitalRadius;
           const oy = player.y + Math.sin(a)*player.orbitalRadius;
           const sx=ox-camX, sy=oy-camY;
-
-          ctx.beginPath();
-          ctx.fillStyle="rgba(210,230,255,0.95)";
-          ctx.arc(sx,sy, orbSize, 0, TAU);
-          ctx.fill();
+          batchCirclePush(batch.orbitals, sx, sy, orbSize);
         }
+        batchCircleDraw(batch.orbitals, "rgba(210,230,255,0.95)");
       }
       if (player.orbitals>0 && clones.length){
         const orbSize = getOrbitalSize();
@@ -5314,13 +5352,10 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
             const ox = sc.x + Math.cos(a)*player.orbitalRadius;
             const oy = sc.y + Math.sin(a)*player.orbitalRadius;
             const sx=ox-camX, sy=oy-camY;
-
-            ctx.beginPath();
-            ctx.fillStyle="rgba(180,210,255,0.7)";
-            ctx.arc(sx,sy, orbSize, 0, TAU);
-            ctx.fill();
+            batchCirclePush(batch.orbitalsClone, sx, sy, orbSize);
           }
         }
+        batchCircleDraw(batch.orbitalsClone, "rgba(180,210,255,0.7)");
       }
 
       // magnet radius
