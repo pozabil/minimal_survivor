@@ -648,7 +648,8 @@
     const TURRET_SPAWN_RADIUS = 280;
     const TURRET_MIN_DIST = 120;
     const ORBITAL_BASE_DISTANCE = 48;
-    const ORBITAL_BASE_SIZE = 7 * 1.25;
+    const ORBITAL_BASE_SIZE = 7.5;
+    const ORBITAL_SIZE_EXP = 0.85;
     const ORBITAL_KNOCKBACK_CHANCE = 0.12;
     const ORBITAL_KNOCKBACK_FORCE = 120;
     const AURA_WAVE_COOLDOWN_BASE = 2.6;
@@ -1200,7 +1201,7 @@ btnPause.addEventListener("click", (e)=>{
       return TURRET_FIRE_RATE * Math.pow(1.12, lv);
     }
     function getOrbitalSize(){
-      return ORBITAL_BASE_SIZE * (player.orbitalRadius / ORBITAL_BASE_DISTANCE);
+      return ORBITAL_BASE_SIZE * Math.pow(player.orbitalRadius / ORBITAL_BASE_DISTANCE, ORBITAL_SIZE_EXP);
     }
     function getMoveSpeed(){
       const flat = player.flatSpeed || 0;
