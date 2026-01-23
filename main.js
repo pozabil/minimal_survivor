@@ -182,7 +182,6 @@
     const XP_BONUS_NORMAL = 0.0005;
     const XP_BONUS_ELITE = 0.002;
     const XP_BONUS_BOSS = 0.01;
-    const BOSS_HP_EXTRA = 1.25;
     const TURRET_AGGRO_BASE = 220;
     const TURRET_RANGE = 520;
     const TURRET_FIRE_RATE = 1.8;
@@ -781,9 +780,9 @@ btnPause.addEventListener("click", (e)=>{
       return getLevel("turretHeal") > 0;
     }
     const ELITE_MODS = [
-      { id:"swift",   hp:1.25, spd:1.35, dmg:1.10, color:"rgba(120,255,220,0.9)" },
-      { id:"bruiser", hp:1.80, spd:0.90, dmg:1.20, color:"rgba(255,140,140,0.95)" },
-      { id:"rage",    hp:1.35, spd:1.10, dmg:1.45, color:"rgba(210,160,255,0.95)" },
+      { id:"swift",   hp:1.35, spd:1.38, dmg:1.15, color:"rgba(120,255,220,0.9)" },
+      { id:"bruiser", hp:2.05, spd:0.90, dmg:1.25, color:"rgba(255,140,140,0.95)" },
+      { id:"rage",    hp:1.45, spd:1.12, dmg:1.52, color:"rgba(210,160,255,0.95)" },
     ];
     function applyElite(e, mod, reward, scale){
       const s = scale || 1;
@@ -1145,7 +1144,7 @@ btnPause.addEventListener("click", (e)=>{
         splitter: { r:15, hp:78,  spd:118, dmg:12, xp:18 }, // при смерти делится на миньонов
         minion:   { r:10, hp:26,  spd:170, dmg:9,  xp:6  }, // спавнится от splitter
 
-        boss:     { r:30, hp:1200,spd:85,  dmg:26, xp:180, shotRate:0.45, shotSpeed:320, shotDmg:14 },
+        boss:     { r:30, hp:1800,spd:85,  dmg:26, xp:180, shotRate:0.45, shotSpeed:320, shotDmg:14 },
       };
       return base[type];
     }
@@ -1221,7 +1220,7 @@ btnPause.addEventListener("click", (e)=>{
 
       const normalHpBoost = 0.09 + (player.lvl - 1) * 0.032 + (state.t / 60) * 0.0095;
       const scale = (type==="boss")
-        ? (1 + Math.min(3.2, state.difficulty*0.08) + tier*0.35)
+        ? (1 + state.difficulty*0.12 + tier*0.44)
         : (1 + Math.min(3.2, normalHpBoost));
 
       let eliteMod = null;
@@ -1243,7 +1242,11 @@ btnPause.addEventListener("click", (e)=>{
         }
       }
 
-      const hpMult = (type === "boss" ? BOSS_HP_EXTRA : 1);
+      let hpMult = 1;
+      if (type === "boss"){
+        if (extra?.bossKind === "colossus") hpMult = 1.25;
+        if (extra?.bossKind === "sniper") hpMult = 0.85;
+      }
       const baseEnemy = {
         type,
         x: ex, y: ey,
@@ -1375,7 +1378,6 @@ btnPause.addEventListener("click", (e)=>{
       { id:"spiral",   name:"Spiral Eye", unlock:3 },
       { id:"summoner", name:"Summoner",   unlock:4 },
 
-      // новые боссы
       { id:"mortar",   name:"Mortar",     unlock:5 },
       { id:"warden",   name:"Warden",     unlock:6 },
       { id:"vortex",   name:"Vortex",     unlock:7 },
@@ -1387,12 +1389,13 @@ btnPause.addEventListener("click", (e)=>{
       const available = BOSS_KINDS.filter(b => b.unlock <= maxUnlock);
       return available[randi(0, available.length-1)];
     }
-    function spawnBoss(){
+    function spawnBoss(kindId=null){
       if (spawn.bossActive >= spawn.maxBosses) return;
+      const kind = kindId ? BOSS_KINDS.find((b)=>b.id===kindId) : pickBossKind();
+      if (!kind) return;
       spawn.bossActive += 1;
       spawn.bossCount += 1;
       spawn.bossTier = Math.max(spawn.bossTier, spawn.bossCount - 1);
-      const kind = pickBossKind();
       spawnEnemy(false, "boss", { bossKind: kind.id, bossTier: spawn.bossTier });
       bossWrap.style.display = "block";
     }
@@ -2317,10 +2320,16 @@ btnPause.addEventListener("click", (e)=>{
       if (kind === "sniper") {
         const spd = e.shotSpeed * (1.15 + tier*0.03);
         const dmg = e.shotDmg   * (1.35 + tier*0.08);
-        shootBullet(e.x, e.y, aim, spd, dmg, 5, 3.6);
+        const trailExtra = {
+          trail: "sniper",
+          color: "rgba(120,220,255,0.95)",
+          glow: "rgba(120,220,255,0.85)",
+          trailColor: "rgba(120,220,255,0.6)",
+        };
+        shootBullet(e.x, e.y, aim, spd, dmg, 5, 3.6, trailExtra);
         if (tier >= 2) {
-          shootBullet(e.x, e.y, aim + 0.22, spd*0.95, dmg*0.65, 4, 3.0);
-          shootBullet(e.x, e.y, aim - 0.22, spd*0.95, dmg*0.65, 4, 3.0);
+          shootBullet(e.x, e.y, aim + 0.22, spd*0.95, dmg*0.65, 4, 3.0, trailExtra);
+          shootBullet(e.x, e.y, aim - 0.22, spd*0.95, dmg*0.65, 4, 3.0, trailExtra);
         }
         e.shotTimer = 1 / (e.shotRate * 0.9);
         return;
@@ -4496,6 +4505,35 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       // enemy bullets
       for (const b of enemyBullets){
         const sx=b.x-camX, sy=b.y-camY;
+        if (b.trail === "sniper"){
+          const spd = Math.hypot(b.vx, b.vy) || 1;
+          const ux = b.vx / spd;
+          const uy = b.vy / spd;
+          const stepDist = Math.max(5, b.r * 1.9);
+          const steps = 3;
+          const headCol = b.color || "rgba(120,220,255,0.95)";
+          const tailCol = b.trailColor || "rgba(200,230,255,0.75)";
+          const glowCol = b.glow || "rgba(180,220,255,0.7)";
+          ctx.save();
+          ctx.fillStyle = tailCol;
+          ctx.shadowColor = glowCol;
+          ctx.shadowBlur = 14;
+          for (let i=1; i<=steps; i++){
+            const p = 1 - i / (steps + 1);
+            ctx.globalAlpha = 0.18 + 0.12 * p;
+            const r = b.r * (0.65 + 0.2 * p);
+            ctx.beginPath();
+            ctx.arc(sx - ux * stepDist * i, sy - uy * stepDist * i, r, 0, TAU);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 0.95;
+          ctx.beginPath();
+          ctx.fillStyle = headCol;
+          ctx.arc(sx, sy, b.r, 0, TAU);
+          ctx.fill();
+          ctx.restore();
+          continue;
+        }
         const col = b.color || "rgba(255,140,160,0.9)";
         if (b.glow){
           ctx.save();
