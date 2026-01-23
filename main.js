@@ -365,7 +365,6 @@
 
     function triggerAction(){
       if (state.paused || state.dead) return;
-      if (hasUnique("patriarch_doll")) tryActivatePatriarchDoll();
       if (hasUnique("max_shirt")) tryActivateMaxShirt();
       if (hasUnique("british_citizenship")) triggerDash();
     }
@@ -460,7 +459,7 @@ canvas.addEventListener("pointerdown", (e)=>{
 
   // не давать стартовать джойстик при тапе по кнопке паузы (и другим UI при желании)
   if (e.target.closest("#btnPause")) return;
-  if (hasUnique("british_citizenship") || hasUnique("max_shirt") || hasUnique("patriarch_doll")){
+  if (hasAnyActionSkill()){
     const now = performance.now();
     const dtTap = now - lastTapTime;
     const dist = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY);
@@ -2723,8 +2722,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       patriarch_doll: {
         title:"Куколь патриарха",
         rarity:"rare",
-        action:true,
-        desc:"Если ты есть Бог, помоги, отец мой небесный, я заколебался. Активируется кнопкой действия.",
+        desc:"Если ты есть Бог, помоги, отец мой небесный, я заколебался.",
         apply(){},
       },
       baltika9: {
@@ -2771,6 +2769,13 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     const atMax = (id)=>getLevel(id)>=U[id].max;
     function hasUnique(id){
       return player.unique.has(id);
+    }
+    function hasAnyActionSkill(){
+      for (const id of player.unique){
+        const u = UNIQUE[id];
+        if (u && u.action) return true;
+      }
+      return false;
     }
     function hasRemainingUnique(){
       const remaining = uniqueList.filter((id)=>!player.uniqueSeen.has(id) && !player.unique.has(id));
@@ -3709,6 +3714,12 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       updateSameCircle(dt);
       updateDashTrail(dt);
       updateLightning(dt);
+      if (hasUnique("patriarch_doll") && state.patriarchDollCd <= 0){
+        const didHit = tryActivatePatriarchDoll();
+        if (!didHit){
+          state.patriarchDollCd = PATRIARCH_DOLL_COOLDOWN;
+        }
+      }
 
       // bullets
       const candidates = [];
@@ -4208,7 +4219,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       elRerolls.textContent = `Reroll ${player.rerolls}`;
       if (elThreat) elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;
       if (elActionHint){
-        const hasActionSkill = hasUnique("british_citizenship") || hasUnique("max_shirt") || hasUnique("patriarch_doll");
+        const hasActionSkill = hasAnyActionSkill();
         if (hasActionSkill){
           elActionHint.style.display = "";
           elActionHint.textContent = isTouch ? "Кнопка действия: двойной тап" : "Кнопка действия: Space";
