@@ -51,6 +51,10 @@
     const bossList = document.getElementById("bossList");
 
     // Overlays
+    const mainMenuOverlay = document.getElementById("mainMenu");
+    const btnFreePlay = document.getElementById("btnFreePlay");
+    const btnMenuRecords = document.getElementById("btnMenuRecords");
+
     const startOverlay = document.getElementById("start");
     const charsWrap = document.getElementById("chars");
 
@@ -379,7 +383,7 @@
           hideRecords();
           return;
         }
-        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
+        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
         togglePauseMenu();
         return;
       }
@@ -392,7 +396,7 @@
       }
 
       if (e.code === "Space"){
-        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || pauseMenu.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
+        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || pauseMenu.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
         triggerAction();
       }
 
@@ -417,6 +421,7 @@ let joyPointerId = null;
 const overlaysBlockInput = () =>
   (pickerOverlay.style.display === "grid") ||
   (startOverlay.style.display === "grid") ||
+  (mainMenuOverlay.style.display === "grid") ||
   (gameoverOverlay.style.display === "grid") ||
   (pauseMenu.style.display === "grid") ||
   (recordsOverlay.style.display === "grid") ||
@@ -503,7 +508,7 @@ canvas.addEventListener("pointercancel", (e)=>{
 // Pause button (mobile)
 btnPause.addEventListener("click", (e)=>{
   e.preventDefault();
-  if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
+  if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
   togglePauseMenu();
 });
     }
@@ -911,8 +916,14 @@ btnPause.addEventListener("click", (e)=>{
       if (chance > 0 && Math.random() < chance) addUniqueItem("dog");
     }
 
+    function openMainMenu(){
+      state.paused = true;
+      mainMenuOverlay.style.display = "grid";
+    }
+
     function openStart(){
       state.paused = true;
+      mainMenuOverlay.style.display = "none";
       startOverlay.style.display = "grid";
       charsWrap.innerHTML = "";
       characters.forEach((c)=>{
@@ -928,6 +939,12 @@ btnPause.addEventListener("click", (e)=>{
         charsWrap.appendChild(div);
       });
     }
+
+    btnFreePlay.addEventListener("click", ()=>{
+      mainMenuOverlay.style.display = "none";
+      openStart();
+    });
+    btnMenuRecords.addEventListener("click", ()=>showRecords());
 
     // Drops/particles
     function dropXp(x,y,amount){
@@ -3357,6 +3374,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
     const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkills", dps: "maxdps" };
     let recordsReturnToPause = false;
+    let recordsReturnToMenu = false;
     let restartReturnToPause = false;
     let restartReturnToPlay = false;
 
@@ -3413,7 +3431,9 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     }
     function showRecords(){
       recordsReturnToPause = pauseMenu.style.display === "grid";
+      recordsReturnToMenu = mainMenuOverlay.style.display === "grid";
       if (recordsReturnToPause) pauseMenu.style.display = "none";
+      if (recordsReturnToMenu) mainMenuOverlay.style.display = "none";
       renderRecords();
       recordsOverlay.style.display = "grid";
     }
@@ -3421,8 +3441,11 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       recordsOverlay.style.display = "none";
       if (recordsReturnToPause){
         pauseMenu.style.display = "grid";
-        recordsReturnToPause = false;
+      } else if (recordsReturnToMenu){
+        mainMenuOverlay.style.display = "grid";
       }
+      recordsReturnToPause = false;
+      recordsReturnToMenu = false;
     }
 
     function showRestartConfirm(){
@@ -5045,7 +5068,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
     }
 
     // start
-    openStart();
+    openMainMenu();
     requestAnimationFrame((now)=>{ last = now; requestAnimationFrame(step); });
 
   } catch (err) {
