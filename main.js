@@ -54,6 +54,7 @@
     const mainMenuOverlay = document.getElementById("mainMenu");
     const btnFreePlay = document.getElementById("btnFreePlay");
     const btnMenuRecords = document.getElementById("btnMenuRecords");
+    const btnMenuSettings = document.getElementById("btnMenuSettings");
 
     const startOverlay = document.getElementById("start");
     const charsWrap = document.getElementById("chars");
@@ -76,6 +77,7 @@
     const btnRestart2 = document.getElementById("btnRestart2");
     const btnCopy = document.getElementById("btnCopy");
     const btnRecords = document.getElementById("btnRecords");
+    const btnSettings = document.getElementById("btnSettings");
     const btnHang = document.getElementById("btnHang");
 
     const restartConfirmOverlay = document.getElementById("restartConfirm");
@@ -91,6 +93,10 @@
     const recordsOverlay = document.getElementById("records");
     const recordsListEl = document.getElementById("recordsList");
     const btnRecordsClose = document.getElementById("btnRecordsClose");
+
+    const settingsOverlay = document.getElementById("settings");
+    const btnSettingsClose = document.getElementById("btnSettingsClose");
+    const optShowDamageNumbers = document.getElementById("optShowDamageNumbers");
 
     const btnPause = document.getElementById("btnPause");
     const actionBar = document.getElementById("actionBar");
@@ -149,6 +155,8 @@
     const AURA_WAVE_VEL_MULT = 4;
     const AURA_WAVE_TRAVEL_TIME = 0.42;
     const AURA_WAVE_THICKNESS = 18;
+    const AURA_TICKS_PER_SEC = 5;
+    const AURA_TICK_INTERVAL = 1 / AURA_TICKS_PER_SEC;
     const UNIQUE_CHEST_EVERY = 4;
     const DASH_DISTANCE = 140;
     const DASH_DURATION = 0.2;
@@ -192,6 +200,8 @@
     const TURRET_DAMAGE = 10;
     const TURRET_BULLET_SPEED = 420;
     const TURRET_BULLET_SIZE = 4;
+    const PIERCE_DAMAGE_FALLOFF = 0.8;
+    const PIERCE_DAMAGE_MIN_RATIO = 0.2;
     const TURRET_SIZE_MULT = 1.20;
     const TURRET_SIZE_LV_BONUS = 0.04;
     const INVULN_LV_STEP = 4;
@@ -379,6 +389,10 @@
           hideRestartConfirm();
           return;
         }
+        if (settingsOverlay.style.display === "grid"){
+          hideSettings();
+          return;
+        }
         if (recordsOverlay.style.display === "grid"){
           hideRecords();
           return;
@@ -425,6 +439,7 @@ const overlaysBlockInput = () =>
   (gameoverOverlay.style.display === "grid") ||
   (pauseMenu.style.display === "grid") ||
   (recordsOverlay.style.display === "grid") ||
+  (settingsOverlay.style.display === "grid") ||
   (restartConfirmOverlay.style.display === "grid");
 
 function placeJoystick(cx, cy){
@@ -508,7 +523,7 @@ canvas.addEventListener("pointercancel", (e)=>{
 // Pause button (mobile)
 btnPause.addEventListener("click", (e)=>{
   e.preventDefault();
-  if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
+  if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || settingsOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
   togglePauseMenu();
 });
     }
@@ -547,6 +562,7 @@ btnPause.addEventListener("click", (e)=>{
       auraWaveX: 0,
       auraWaveY: 0,
       auraWaveId: 0,
+      auraTickT: 0,
       slowMoT: 0,
       slowMoCd: 0,
       slowMoLocked: false,
@@ -556,6 +572,45 @@ btnPause.addEventListener("click", (e)=>{
 
     // UI state
     const ui = { buildFromPicker: false, buildTab: "upgrades" };
+
+    // Storage + options
+    const STORAGE_NS = {
+      options: "options.",
+      records: "records.",
+    };
+    const OPTION_KEYS = { showDamageNumbers: "showDamageNumbers", showDamageTakenLegacy: "showDamageTaken" };
+
+    function readBoolKey(ns, key, fallback){
+      try {
+        const raw = localStorage.getItem(ns + key);
+        if (raw === null) return fallback;
+        if (raw === "1" || raw === "true") return true;
+        if (raw === "0" || raw === "false") return false;
+        return Boolean(Number(raw));
+      } catch {
+        return fallback;
+      }
+    }
+    function writeBoolKey(ns, key, value){
+      try { localStorage.setItem(ns + key, value ? "1" : "0"); } catch {}
+    }
+    function loadOptions(){
+      return {
+        showDamageNumbers: readBoolKey(
+          STORAGE_NS.options,
+          OPTION_KEYS.showDamageNumbers,
+          readBoolKey(STORAGE_NS.options, OPTION_KEYS.showDamageTakenLegacy, false)
+        ),
+      };
+    }
+    function saveOptions(next){
+      writeBoolKey(STORAGE_NS.options, OPTION_KEYS.showDamageNumbers, !!next.showDamageNumbers);
+    }
+    const options = loadOptions();
+
+    function applyOptionsToUI(){
+      if (optShowDamageNumbers) optShowDamageNumbers.checked = !!options.showDamageNumbers;
+    }
 
     // Player
     const BASE_HP = 50;
@@ -770,7 +825,7 @@ btnPause.addEventListener("click", (e)=>{
         if (e.type === "shield") dmg *= 0.65;
         e.hp -= dmg;
         e.hitFlash = Math.max(e.hitFlash, 0.12);
-        recordDamage(dmg);
+        recordDamage(dmg, e.x, e.y);
         burst(e.x, e.y, randi(8, 12), 260, 0.25);
         if (e.hp <= 0) killEnemy(e);
       }
@@ -945,6 +1000,16 @@ btnPause.addEventListener("click", (e)=>{
       openStart();
     });
     btnMenuRecords.addEventListener("click", ()=>showRecords());
+    if (btnMenuSettings) btnMenuSettings.addEventListener("click", ()=>showSettings());
+    if (btnSettings) btnSettings.addEventListener("click", ()=>showSettings());
+    if (btnSettingsClose) btnSettingsClose.addEventListener("click", hideSettings);
+    if (optShowDamageNumbers){
+      optShowDamageNumbers.addEventListener("change", (e)=>{
+        options.showDamageNumbers = e.target.checked;
+        saveOptions(options);
+      });
+    }
+    applyOptionsToUI();
 
     // Drops/particles
     function dropXp(x,y,amount){
@@ -1058,19 +1123,43 @@ btnPause.addEventListener("click", (e)=>{
         t: 0,
         life: 0.9,
         text: `+${value}`,
+        color: "rgba(120,255,140,0.95)",
+      });
+    }
+    function spawnDamageFloat(amount, x, y, color, size){
+      const value = Math.round(amount);
+      if (value <= 0) return;
+      const bx = Number.isFinite(x) ? x : player.x;
+      const by = Number.isFinite(y) ? y : player.y;
+      floaters.push({
+        x: bx + randf(-10, 10),
+        y: by + randf(-16, -4),
+        vx: randf(-22, 22),
+        vy: randf(-70, -50),
+        t: 0,
+        life: 0.9,
+        text: `-${value}`,
+        color: color || "rgba(220,60,60,0.95)",
+        size: Number.isFinite(size) ? size : null,
       });
     }
 
-    function recordDamage(amount){
+    function recordDamage(amount, x, y, showNumber=false, color=null, size=null){
       state.dmgDone += amount;
+      if (options.showDamageNumbers && showNumber && Number.isFinite(x) && Number.isFinite(y)){
+        spawnDamageFloat(amount, x, y, color, size);
+      }
       // lifesteal
       if (player.lifeSteal > 0 && amount > 0){
-        const chance = 0.01 * player.lifeSteal;
-        if (Math.random() < chance){
-          const before = player.hp;
-          player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.01);
-          const healed = player.hp - before;
-          if (healed > 0) spawnHealFloat(healed);
+        const minLsDamage = player.hpMax * 0.08;
+        if (amount > minLsDamage){
+          const chance = 0.01 * player.lifeSteal;
+          if (Math.random() < chance){
+            const before = player.hp;
+            player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.01);
+            const healed = player.hp - before;
+            if (healed > 0) spawnHealFloat(healed);
+          }
         }
       }
       state.lastDmgWindow.push([state.t, amount]);
@@ -1106,6 +1195,7 @@ btnPause.addEventListener("click", (e)=>{
 
       player.hp -= dmg;
       if (player.hp < 0) player.hp = 0;
+      if (options.showDamageNumbers) spawnDamageFloat(dmg, player.x, player.y);
 
       return dmg;
     }
@@ -1623,6 +1713,7 @@ btnPause.addEventListener("click", (e)=>{
           vy: Math.sin(a)*player.bulletSpeed,
           r: player.bulletSize,
           dmg: player.damage * getWoundedDamageMult(),
+          baseDmg: player.damage * getWoundedDamageMult(),
           pierce: player.pierce,
           life: 3.2, // было 1.6
           t: 0,
@@ -1650,6 +1741,7 @@ btnPause.addEventListener("click", (e)=>{
           vy: Math.sin(a)*player.novaSpeed,
           r: Math.max(4, player.bulletSize * 1.15),
           dmg: player.novaDamage * getWoundedDamageMult(),
+          baseDmg: player.novaDamage * getWoundedDamageMult(),
           pierce: 1,
           life: 3.0,
           t: 0,
@@ -1681,6 +1773,7 @@ btnPause.addEventListener("click", (e)=>{
           vy: Math.sin(a)*player.bulletSpeed,
           r: player.bulletSize,
           dmg: player.damage * getWoundedDamageMult(),
+          baseDmg: player.damage * getWoundedDamageMult(),
           pierce: player.pierce,
           life: 3.2,
           t: 0,
@@ -1707,6 +1800,7 @@ btnPause.addEventListener("click", (e)=>{
           vy: Math.sin(a)*player.novaSpeed,
           r: Math.max(4, player.bulletSize * 1.15),
           dmg: player.novaDamage * getWoundedDamageMult(),
+          baseDmg: player.novaDamage * getWoundedDamageMult(),
           pierce: 1,
           life: 3.0,
           t: 0,
@@ -1765,6 +1859,7 @@ btnPause.addEventListener("click", (e)=>{
               vy: Math.sin(ang) * TURRET_BULLET_SPEED,
               r: TURRET_BULLET_SIZE,
               dmg: getTurretDamage(),
+              baseDmg: getTurretDamage(),
               pierce: 1,
               life: 2.6,
               t: 0,
@@ -1804,7 +1899,7 @@ btnPause.addEventListener("click", (e)=>{
             const dmg = player.orbitalDamage * getWoundedDamageMult();
             e.hp -= dmg;
             e.hitFlash = 0.09;
-            recordDamage(dmg);
+            recordDamage(dmg, e.x, e.y);
 
             if (Math.random() < ORBITAL_KNOCKBACK_CHANCE){
               const dx = e.x-ox, dy = e.y-oy;
@@ -1909,7 +2004,7 @@ btnPause.addEventListener("click", (e)=>{
           if (dog.target.type === "shield") dmg *= 0.65;
           dog.target.hp -= dmg;
           dog.target.hitFlash = Math.max(dog.target.hitFlash, 0.09);
-          recordDamage(dmg);
+          recordDamage(dmg, dog.target.x, dog.target.y);
           if (dog.target.hp <= 0) killEnemy(dog.target);
           const lastId = dog.target.id;
           dog.target = pickDogTarget(lastId);
@@ -1946,22 +2041,34 @@ btnPause.addEventListener("click", (e)=>{
       }
 
       const radius = player.auraRadius;
-      const candidates = [];
-      gridQueryCircle(player.x, player.y, radius + ENEMY_MAX_R, candidates);
-      for (let i=candidates.length-1; i>=0; i--){
-        const e = candidates[i];
-        if (e.dead || e.dying) continue;
-        const dx = e.x - player.x;
-        const dy = e.y - player.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > radius + e.r) continue;
+      state.auraTickT -= dt;
+      let auraTicks = 0;
+      if (state.auraTickT <= 0){
+        auraTicks = Math.floor(-state.auraTickT / AURA_TICK_INTERVAL) + 1;
+        state.auraTickT += auraTicks * AURA_TICK_INTERVAL;
+      }
+      if (auraTicks > 0){
+        const candidates = [];
+        const dmgPerTick = player.auraDps * getWoundedDamageMult() * AURA_TICK_INTERVAL;
+        gridQueryCircle(player.x, player.y, radius + ENEMY_MAX_R, candidates);
+        for (let i=candidates.length-1; i>=0; i--){
+          const e = candidates[i];
+          if (e.dead || e.dying) continue;
+          const dx = e.x - player.x;
+          const dy = e.y - player.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > radius + e.r) continue;
 
-        const dmg = player.auraDps * getWoundedDamageMult() * dt;
-        e.hp -= dmg;
-        e.auraFlash = Math.max(e.auraFlash || 0, 0.05);
-        recordDamage(dmg);
-        if (player.auraSlow > 0){ e._slowT = Math.max(e._slowT||0, 0.25); e._slowMult = 1 - clamp(player.auraSlow, 0, 0.55); }
-        if (e.hp <= 0){ killEnemy(e); continue; }
+          for (let t=0; t<auraTicks; t++){
+            if (e.dead || e.dying) break;
+            const dmg = dmgPerTick;
+            e.hp -= dmg;
+            e.auraFlash = Math.max(e.auraFlash || 0, 0.05);
+            recordDamage(dmg, e.x, e.y);
+            if (player.auraSlow > 0){ e._slowT = Math.max(e._slowT||0, 0.25); e._slowMult = 1 - clamp(player.auraSlow, 0, 0.55); }
+            if (e.hp <= 0){ killEnemy(e); break; }
+          }
+        }
       }
 
       if (state.auraWaveActive){
@@ -2032,7 +2139,7 @@ btnPause.addEventListener("click", (e)=>{
             const dmg = player.orbitalDamage * getWoundedDamageMult();
             e.hp -= dmg;
             e.hitFlash = 0.09;
-            recordDamage(dmg);
+            recordDamage(dmg, e.x, e.y);
 
             if (Math.random() < ORBITAL_KNOCKBACK_CHANCE){
               const dx = e.x-ox, dy = e.y-oy;
@@ -2076,22 +2183,35 @@ btnPause.addEventListener("click", (e)=>{
       }
 
       const radius = player.auraRadius;
-      const candidates = [];
-      gridQueryCircle(c.x, c.y, radius + ENEMY_MAX_R, candidates);
-      for (let i=candidates.length-1; i>=0; i--){
-        const e = candidates[i];
-        if (e.dead || e.dying) continue;
-        const dx = e.x - c.x;
-        const dy = e.y - c.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > radius + e.r) continue;
+      c.auraTickT = Number.isFinite(c.auraTickT) ? c.auraTickT : 0;
+      c.auraTickT -= dt;
+      let auraTicks = 0;
+      if (c.auraTickT <= 0){
+        auraTicks = Math.floor(-c.auraTickT / AURA_TICK_INTERVAL) + 1;
+        c.auraTickT += auraTicks * AURA_TICK_INTERVAL;
+      }
+      if (auraTicks > 0){
+        const candidates = [];
+        const dmgPerTick = player.auraDps * getWoundedDamageMult() * AURA_TICK_INTERVAL;
+        gridQueryCircle(c.x, c.y, radius + ENEMY_MAX_R, candidates);
+        for (let i=candidates.length-1; i>=0; i--){
+          const e = candidates[i];
+          if (e.dead || e.dying) continue;
+          const dx = e.x - c.x;
+          const dy = e.y - c.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > radius + e.r) continue;
 
-        const dmg = player.auraDps * getWoundedDamageMult() * dt;
-        e.hp -= dmg;
-        e.auraFlash = Math.max(e.auraFlash || 0, 0.05);
-        recordDamage(dmg);
-        if (player.auraSlow > 0){ e._slowT = Math.max(e._slowT||0, 0.25); e._slowMult = 1 - clamp(player.auraSlow, 0, 0.55); }
-        if (e.hp <= 0){ killEnemy(e); continue; }
+          for (let t=0; t<auraTicks; t++){
+            if (e.dead || e.dying) break;
+            const dmg = dmgPerTick;
+            e.hp -= dmg;
+            e.auraFlash = Math.max(e.auraFlash || 0, 0.05);
+            recordDamage(dmg, e.x, e.y);
+            if (player.auraSlow > 0){ e._slowT = Math.max(e._slowT||0, 0.25); e._slowMult = 1 - clamp(player.auraSlow, 0, 0.55); }
+            if (e.hp <= 0){ killEnemy(e); break; }
+          }
+        }
       }
 
       if (c.auraWaveActive){
@@ -2157,6 +2277,7 @@ btnPause.addEventListener("click", (e)=>{
             auraWaveX: player.x,
             auraWaveY: player.y,
             auraWaveId: 0,
+            auraTickT: 0,
           });
           state.sameCircleCd = SAME_CIRCLE_INTERVAL;
         }
@@ -2205,7 +2326,7 @@ btnPause.addEventListener("click", (e)=>{
         if (d > SAME_CIRCLE_RADIUS + e.r) continue;
         e.hp -= dmg;
         e.hitFlash = Math.max(e.hitFlash, 0.12);
-        recordDamage(dmg);
+        recordDamage(dmg, e.x, e.y);
         if (force > 0){
           let mult = 1;
           if (e.type === "boss") mult = AURA_WAVE_BOSS_MULT;
@@ -3375,12 +3496,17 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkills", dps: "maxdps" };
     let recordsReturnToPause = false;
     let recordsReturnToMenu = false;
+    let settingsReturnToPause = false;
+    let settingsReturnToMenu = false;
     let restartReturnToPause = false;
     let restartReturnToPlay = false;
 
     function readRecord(key){
       try {
-        const value = Number(localStorage.getItem(key));
+        const nsKey = STORAGE_NS.records + key;
+        let raw = localStorage.getItem(nsKey);
+        if (raw === null) raw = localStorage.getItem(key);
+        const value = Number(raw);
         return Number.isFinite(value) ? value : 0;
       } catch {
         return 0;
@@ -3388,7 +3514,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     }
     function writeRecord(key, value){
       try {
-        localStorage.setItem(key, String(value));
+        localStorage.setItem(STORAGE_NS.records + key, String(value));
       } catch {}
     }
     function loadRecords(){
@@ -3446,6 +3572,24 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
       recordsReturnToPause = false;
       recordsReturnToMenu = false;
+    }
+    function showSettings(){
+      settingsReturnToPause = pauseMenu.style.display === "grid";
+      settingsReturnToMenu = mainMenuOverlay.style.display === "grid";
+      if (settingsReturnToPause) pauseMenu.style.display = "none";
+      if (settingsReturnToMenu) mainMenuOverlay.style.display = "none";
+      applyOptionsToUI();
+      settingsOverlay.style.display = "grid";
+    }
+    function hideSettings(){
+      settingsOverlay.style.display = "none";
+      if (settingsReturnToPause){
+        pauseMenu.style.display = "grid";
+      } else if (settingsReturnToMenu){
+        mainMenuOverlay.style.display = "grid";
+      }
+      settingsReturnToPause = false;
+      settingsReturnToMenu = false;
     }
 
     function showRestartConfirm(){
@@ -3570,7 +3714,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       const lvl = player.lvl;
       const bossReduce = Math.floor((lvl - 1) / 5);
       spawn.bossEvery = Math.max(60, 120 - bossReduce * 5);
-      spawn.maxBosses = (lvl >= 20) ? (2 + Math.floor((lvl - 20) / 10)) : 1;
+      spawn.maxBosses = (lvl >= 20) ? (2 + Math.floor((lvl - 20) / 15)) : 1;
       if (spawn.nextBossAt > state.t + spawn.bossEvery){
         spawn.nextBossAt = state.t + spawn.bossEvery;
       }
@@ -3767,7 +3911,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           const e=candidates[j];
           if (e.dead || e.dying) continue;
           if (b.lastHitId && e.id === b.lastHitId) continue;
-          if (!b.isNova && b.hitIds && b.hitIds.has(e.id)) continue;
+          if (b.hitIds && b.hitIds.has(e.id)) continue;
           if (!circleHit(b.x,b.y,b.r, e.x,e.y,e.r)) continue;
 
           const isCrit = Math.random() < player.critChance;
@@ -3776,11 +3920,10 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           if (e.type === "shield") dmg *= 0.65;
           e.hp -= dmg;
           e.hitFlash = 0.09;
-          recordDamage(dmg);
-          if (!b.isNova){
-            if (!b.hitIds) b.hitIds = new Set();
-            b.hitIds.add(e.id);
-          }
+          const dmgSize = (e.type === "boss") ? 32 : null;
+          recordDamage(dmg, e.x, e.y, isCrit, "rgba(255,190,90,0.95)", dmgSize);
+          if (!b.hitIds) b.hitIds = new Set();
+          b.hitIds.add(e.id);
 
           let didRicochet = false;
           if ((b.ricochetLeft || 0) > 0 && (b.ricochetChance || 0) > 0 && Math.random() < b.ricochetChance){
@@ -3801,8 +3944,13 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           }
 
           if (!b.isNova){
-            b.pierce -= 1;
-            if (b.pierce<=0 && !didRicochet) bullets.splice(i,1);
+            if (!didRicochet) b.pierce -= 1;
+            if (b.pierce<=0 && !didRicochet){
+              bullets.splice(i,1);
+            } else if (!didRicochet) {
+              const minDmg = (b.baseDmg || b.dmg) * PIERCE_DAMAGE_MIN_RATIO;
+              b.dmg = Math.max(b.dmg * PIERCE_DAMAGE_FALLOFF, minDmg);
+            }
           }
 
           if (e.hp<=0) killEnemy(e);
@@ -5033,7 +5181,9 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       // heal floaters
       if (floaters.length){
         ctx.save();
-        ctx.font = "700 16px system-ui,-apple-system,Segoe UI,Roboto,Arial";
+        const baseSize = 16;
+        const baseFont = "system-ui,-apple-system,Segoe UI,Roboto,Arial";
+        ctx.font = `700 ${baseSize}px ${baseFont}`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         for (const f of floaters){
@@ -5041,7 +5191,12 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           const sy = f.y - camY;
           const a = 1 - (f.t / f.life);
           ctx.globalAlpha = 0.9 * a;
-          ctx.fillStyle = "rgba(120,255,140,0.95)";
+          if (f.size && f.size !== baseSize){
+            ctx.font = `700 ${f.size}px ${baseFont}`;
+          } else if (ctx.font !== `700 ${baseSize}px ${baseFont}`){
+            ctx.font = `700 ${baseSize}px ${baseFont}`;
+          }
+          ctx.fillStyle = f.color || "rgba(120,255,140,0.95)";
           ctx.fillText(f.text, sx, sy);
         }
         ctx.restore();

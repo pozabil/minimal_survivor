@@ -81,7 +81,7 @@
       <button class="btn" id="btnMenuProgress" disabled>Прохождение</button>
       <button class="btn primary" id="btnFreePlay">Свободная игра</button>
       <button class="btn" id="btnMenuRecords">Рекорды</button>
-      <button class="btn" id="btnMenuSettings" disabled>Настройки</button>
+      <button class="btn" id="btnMenuSettings">Настройки</button>
       <button class="btn" id="btnMenuInventory" disabled>Инвентарь</button>
     </div>
   </div>
@@ -131,6 +131,7 @@
           <button class="btn" id="btnRestart2">Restart</button>
           <button class="btn" id="btnCopy">Copy stats</button>
           <button class="btn" id="btnRecords">Рекорды</button>
+          <button class="btn" id="btnSettings">Настройки</button>
           <button class="btn danger" id="btnHang" style="display:none;">Повеситься</button>
         </div>
       </div>
@@ -139,10 +140,10 @@
 </div>
 
 <div class="overlay" id="restartConfirm">
-  <div class="panel">
+  <div class="panel menuPanel">
     <h2>Перезапустить игру?</h2>
     <div style="opacity:.9; margin:8px 0 14px;">Прогресс будет потерян.</div>
-    <div class="toolbar">
+    <div class="toolbar center">
       <button class="btn danger" id="btnRestartYes">Перезапустить</button>
       <button class="btn" id="btnRestartNo">Отмена</button>
     </div>
@@ -162,11 +163,26 @@
 </div>
 
 <div class="overlay" id="records">
-  <div class="panel">
+  <div class="panel menuPanel">
     <h2>Рекорды</h2>
     <div class="list" id="recordsList"></div>
     <div class="toolbar">
       <button class="btn" id="btnRecordsClose">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="settings">
+  <div class="panel menuPanel">
+    <h2>Настройки</h2>
+    <div class="list" id="settingsList">
+      <label class="settingRow">
+        <span>Показывать числа урона</span>
+        <input type="checkbox" id="optShowDamageNumbers" />
+      </label>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="btnSettingsClose">Закрыть</button>
     </div>
   </div>
 </div>
