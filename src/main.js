@@ -123,12 +123,13 @@ import {
 } from "./scripts/config.js";
 import { clamp, lerp } from "./utils/math.js";
 import { randf, randi } from "./utils/rand.js";
-import { circleHit, circleRectHit, resolveCircleRect, pushAway } from "./utils/collision.js";
+import { circleHit, circleRectHit, pushAway } from "./utils/collision.js";
 import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "./utils/format.js";
 import { createUpgrades } from "./scripts/upgrades.js";
 import { createUnique } from "./scripts/unique.js";
 import { initState } from "./core/init.js";
 import { startLoop } from "./core/loop.js";
+import { updateMovement } from "./systems/movement.js";
 
 (() => {
   "use strict";
@@ -3560,61 +3561,19 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         }
       }
 
-      // move input
-      let ix=0, iy=0;
-      if (keys.has("KeyW") || keys.has("ArrowUp")) iy -= 1;
-      if (keys.has("KeyS") || keys.has("ArrowDown")) iy += 1;
-      if (keys.has("KeyA") || keys.has("ArrowLeft")) ix -= 1;
-      if (keys.has("KeyD") || keys.has("ArrowRight")) ix += 1;
-      if (isTouch){ ix += joyVec.x; iy += joyVec.y; }
-
-      const ilen = Math.hypot(ix,iy) || 1;
-      ix/=ilen; iy/=ilen;
-
-      if (Math.hypot(ix, iy) > 0.2){
-        player.lastDirX = ix;
-        player.lastDirY = iy;
-      }
-      player.dashCd = Math.max(0, player.dashCd - dt);
-      const dashActive = state.dashT > 0;
-      if (dashActive){
-        state.dashT = Math.max(0, state.dashT - dt);
-      }
-
       const moveSpeed = getMoveSpeed();
-      let targetVx = ix*moveSpeed;
-      let targetVy = iy*moveSpeed;
-      if (dashActive){
-        targetVx = state.dashVx;
-        targetVy = state.dashVy;
-        player.vx = targetVx;
-        player.vy = targetVy;
-      } else {
-        player.vx = lerp(player.vx, targetVx, lerpFast);
-        player.vy = lerp(player.vy, targetVy, lerpFast);
-      }
-
-      player.x += player.vx*dt;
-      player.y += player.vy*dt;
-
-      if (turrets.length){
-        for (const tur of turrets){
-          const push = resolveCircleRect(player.x, player.y, player.r, tur.x, tur.y, tur.size, tur.size);
-          if (push){
-            player.x += push.x;
-            player.y += push.y;
-            const pd = Math.hypot(push.x, push.y) || 1;
-            const nx = push.x / pd;
-            const ny = push.y / pd;
-            const vdot = player.vx * nx + player.vy * ny;
-            if (vdot < 0){
-              player.vx -= vdot * nx;
-              player.vy -= vdot * ny;
-            }
-          }
-        }
-      }
-
+      updateMovement({
+        dt,
+        keys,
+        isTouch,
+        joyVec,
+        player,
+        state,
+        turrets,
+        lerpFast,
+        moveSpeed,
+        clamp,
+      });
       const spd = Math.hypot(player.vx, player.vy) || 0;
       const ratio = clamp(spd / Math.max(1, moveSpeed), 0, 1);
       const baseSpd = getBaseMoveSpeed();
