@@ -127,6 +127,7 @@ import { randf, randi } from "../utils/rand.js";
 import { circleHit, circleRectHit, resolveCircleRect, pushAway } from "../utils/collision.js";
 import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "../utils/format.js";
 import { createUpgrades } from "./upgrades.js";
+import { createUnique } from "./unique.js";
 
 (() => {
   "use strict";
@@ -2768,104 +2769,13 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       fmtNum,
       getAuraWaveCooldown,
     });
-    const UNIQUE = {
-      spare_tire: {
-        title:"Запасное колесо",
-        rarity:"epic",
-        desc:"Позволяет получить смертельный урон и выжить. Одноразовый предмет.",
-        apply(){},
-      },
-      same_circle: {
-        title:"They're the Same Circle",
-        rarity:"epic",
-        desc:"Периодически оставляет бессмертную копию на некоторое время, которая затем взрывается.",
-        apply(){ state.sameCircleCd = SAME_CIRCLE_INTERVAL; },
-      },
-      british_citizenship: {
-        title:"Британское гражданство",
-        rarity:"rare",
-        action:true,
-        desc:"Дает рывок с неуязвимостью. Активируется кнопкой действия.",
-        apply(){},
-      },
-      crutch: {
-        title:"Костыль",
-        rarity:"rare",
-        desc:"Вы и так знаете что это. +55 к скорости передвижения, +25% к сорости атаки.",
-        apply(){
-          player.flatSpeed += 55;
-          player.fireRate *= 1.25;
-        },
-      },
-      rope: {
-        title:"Веревка",
-        rarity:"common",
-        desc:"Колобок повесился.",
-        apply(){},
-      },
-      phenibut: {
-        title:"Пачка фенибута",
-        rarity:"common",
-        desc:"Вы думаете что вы стали умнее. Для получения уровня требуется на 5% меньше опыта.",
-        apply(){ player.xpNeedMult *= 0.95; },
-      },
-      max_shirt: {
-        title:"Рубашка Больного Макса",
-        rarity:"rare",
-        action:true,
-        desc:"Замедляет время на 3 сек. КД 30 сек, заряжается убийствами. Активируется кнопкой действия.",
-        apply(){},
-      },
-      patriarch_doll: {
-        title:"Куколь патриарха",
-        rarity:"rare",
-        desc:"Если ты есть Бог, помоги, отец мой небесный, я заколебался.",
-        apply(){},
-      },
-      baltika9: {
-        title:"Балтика-9",
-        rarity:"common",
-        desc:"Вкус терпкий, да и эффект так себе. Немного снижает скорость бега и атаки, увеличивает броню и урон при ранениях.",
-        apply(){
-          player.speed *= 0.95;
-          if (player.baseSpeed) player.baseSpeed *= 0.95;
-          player.fireRate *= 0.95;
-          player.armor = clamp((player.armor || 0) + 0.08, 0, 0.60);
-        },
-      },
-      cheap_bullets: {
-        title:"Дешевые пули",
-        rarity:"common",
-        desc:"Вместо рикошета эти дешевые пули разлетаются на две части.",
-        apply(){},
-      },
-      dog: {
-        title:"Питомец",
-        rarity:"common",
-        desc:"Питомец лучший друг круга.",
-        apply(){ spawnDog(); },
-      },
-      rf_passport: {
-        title:"Паспорт РФ",
-        rarity:"common",
-        desc:"Жизнь научила терпеть. Вы получаете на 10% меньше урона.",
-        apply(){ player.damageTakenMult *= 0.9; },
-      },
-      nose_ring: {
-        title:"Кольцо в носу",
-        rarity:"common",
-        desc:"Кольцо - это антенна. Вы издалека начинаете чувствовать силу тотема. Увеличивает раздиус тотема на 8%",
-        apply(){
-          if (totem.active) totem.r *= 1.08;
-        },
-      },
-      peace_pipe: {
-        title:"Трубка мира",
-        rarity:"common",
-        desc:"Духи древних сопровождают вас, вы чувствуете себя лучше. Немного увеличивает регенирацию и скорость передвижения в зоне тотема.",
-        apply(){},
-      },
-    };
+    const UNIQUE = createUnique({
+      player,
+      state,
+      totem,
+      clamp,
+      spawnDog,
+    });
     const upgradeList = Object.keys(UPGRADES);
     const uniqueList = Object.keys(UNIQUE);
     const atMax = (id)=>getLevel(id)>=UPGRADES[id].max;
