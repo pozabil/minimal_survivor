@@ -1,3 +1,132 @@
+import {
+  TAU,
+  ENEMY_MAX_R,
+  COLOSSUS_HP_STEP,
+  COLOSSUS_SHRINK_STEP,
+  COLOSSUS_SPAWN_STAGES,
+  GRID_SIZE,
+  BURST_TELEGRAPH,
+  HEAL_OVER_TIME,
+  CAMERA_ZOOM_OUT,
+  TURRET_SPAWN_RADIUS,
+  TURRET_MIN_DIST,
+  ORBITAL_BASE_DISTANCE,
+  ORBITAL_BASE_SIZE,
+  ORBITAL_SIZE_EXP,
+  ORBITAL_KNOCKBACK_CHANCE,
+  ORBITAL_KNOCKBACK_FORCE,
+  AURA_WAVE_COOLDOWN_BASE,
+  AURA_WAVE_COOLDOWN_STEP,
+  AURA_WAVE_BASE_FORCE,
+  AURA_WAVE_FORCE_STEP,
+  AURA_WAVE_BOSS_MULT,
+  AURA_WAVE_ELITE_MULT,
+  AURA_WAVE_HIT_COOLDOWN,
+  AURA_WAVE_POS_MULT,
+  AURA_WAVE_VEL_MULT,
+  AURA_WAVE_TRAVEL_TIME,
+  AURA_WAVE_THICKNESS,
+  AURA_TICK_INTERVAL,
+  UNIQUE_CHEST_EVERY,
+  DASH_DISTANCE,
+  DASH_DURATION,
+  DASH_COOLDOWN,
+  DASH_INVULN,
+  DASH_TRAIL_LIFE,
+  DASH_TRAIL_INTERVAL,
+  DASH_TRAIL_MAX,
+  SAME_CIRCLE_INTERVAL,
+  SAME_CIRCLE_LIFE,
+  SAME_CIRCLE_RADIUS,
+  SAME_CIRCLE_DAMAGE_MULT,
+  MAX_SHIRT_SLOW_DURATION,
+  MAX_SHIRT_COOLDOWN,
+  MAX_SHIRT_SLOW_SCALE,
+  MAX_SHIRT_KILL_CD_REDUCE,
+  PATRIARCH_DOLL_COOLDOWN,
+  PATRIARCH_DOLL_DAMAGE_MULT,
+  PATRIARCH_DOLL_TARGETS_MIN,
+  PATRIARCH_DOLL_TARGETS_MAX,
+  LIGHTNING_STRIKE_LIFE,
+  LIGHTNING_STRIKE_SEGMENTS_MIN,
+  LIGHTNING_STRIKE_SEGMENTS_MAX,
+  LIGHTNING_STRIKE_JITTER,
+  LIGHTNING_STRIKE_HEIGHT_MIN,
+  LIGHTNING_STRIKE_HEIGHT_MAX,
+  DOG_RADIUS,
+  DOG_SPEED,
+  DOG_TURN_RATE,
+  DOG_HIT_COOLDOWN,
+  DOG_CRIT_CHANCE,
+  DOG_BALTIKA_AVOID_R,
+  DOG_BROWN_COLORS,
+  DOG_GRAY_COLOR,
+  DOG_GRAY_CHANCE,
+  XP_BONUS_NORMAL,
+  XP_BONUS_ELITE,
+  XP_BONUS_BOSS,
+  TURRET_AGGRO_BASE,
+  TURRET_RANGE,
+  TURRET_FIRE_RATE,
+  TURRET_DAMAGE,
+  TURRET_BULLET_SPEED,
+  TURRET_BULLET_SIZE,
+  PIERCE_DAMAGE_FALLOFF,
+  PIERCE_DAMAGE_MIN_RATIO,
+  TURRET_SIZE_MULT,
+  TURRET_SIZE_LV_BONUS,
+  INVULN_LV_STEP,
+  INVULN_STEP,
+  INVULN_BULLET_BASE,
+  INVULN_BULLET_MIN,
+  INVULN_CONTACT_BASE,
+  INVULN_CONTACT_MIN,
+  TANK_INVULN_BONUS_CAP,
+  TOTEM_SPAWN_EVERY,
+  TOTEM_SPAWN_MIN_INTERVAL,
+  TOTEM_SPAWN_LV_STEP,
+  TOTEM_SPAWN_STEP,
+  TOTEM_SPAWN_FIRST,
+  TOTEM_LIFE_BASE,
+  TOTEM_LIFE_STEP,
+  TOTEM_LIFE_LV_STEP,
+  TOTEM_LIFE_CAP,
+  TOTEM_GRACE,
+  TOTEM_SPAWN_MIN,
+  TOTEM_SPAWN_MAX,
+  TOTEM_RADIUS_MIN,
+  TOTEM_RADIUS_MAX,
+  TOTEM_EFFECT_GAIN_BASE,
+  TOTEM_EFFECT_GAIN_STEP,
+  TOTEM_EFFECT_GAIN_LV_STEP,
+  TOTEM_EFFECT_GAIN_CAP,
+  TOTEM_EFFECT_DECAY,
+  TOTEM_DPS_BASE,
+  TOTEM_DPS_RAMP_BASE,
+  TOTEM_DPS_RAMP_GROWTH,
+  TOTEM_DPS_RAMP_LV_STEP,
+  TOTEM_DPS_RAMP_CAP,
+  TOTEM_EFFECT_MAX,
+  LOW_HP_SLOW_THRESHOLD,
+  LOW_HP_SLOW_RESET,
+  LOW_HP_SLOW_DURATION,
+  LOW_HP_SLOW_SCALE,
+  LOW_HP_SLOW_COOLDOWN,
+  JOY_HALF,
+  JOY_MARGIN,
+  STORAGE_NS,
+  OPTION_KEYS,
+  BASE_HP,
+  ELITE_MODS,
+  BOSS_KINDS,
+  BOSS_NAME,
+  RECORD_KEYS,
+} from "./config.js";
+import { clamp, lerp } from "../utils/math.js";
+import { randf, randi } from "../utils/rand.js";
+import { circleHit, circleRectHit, resolveCircleRect, pushAway } from "../utils/collision.js";
+import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "../utils/format.js";
+
 (() => {
   "use strict";
 
@@ -123,124 +252,6 @@
     addEventListener("resize", resize, { passive:true });
     resize();
 
-    // Utils
-    const TAU = Math.PI*2;
-    const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
-    const lerp  = (a,b,t)=>a+(b-a)*t;
-    const randf = (a,b)=>a+Math.random()*(b-a);
-    const randi = (a,b)=>(a+Math.random()*(b-a+1))|0;
-    const ENEMY_MAX_R = 60;
-    const COLOSSUS_HP_STEP = 0.20;
-    const COLOSSUS_SHRINK_STEP = 0.10;
-    const COLOSSUS_SPAWN_STAGES = 4;
-    const GRID_SIZE = 140;
-    const BURST_TELEGRAPH = 0.25;
-    const HEAL_OVER_TIME = 0.25;
-    const CAMERA_ZOOM_OUT = 0.05;
-    const TURRET_SPAWN_RADIUS = 280;
-    const TURRET_MIN_DIST = 120;
-    const ORBITAL_BASE_DISTANCE = 48;
-    const ORBITAL_BASE_SIZE = 7.5;
-    const ORBITAL_SIZE_EXP = 0.85;
-    const ORBITAL_KNOCKBACK_CHANCE = 0.12;
-    const ORBITAL_KNOCKBACK_FORCE = 120;
-    const AURA_WAVE_COOLDOWN_BASE = 2.6;
-    const AURA_WAVE_COOLDOWN_STEP = 0.1;
-    const AURA_WAVE_BASE_FORCE = 60;
-    const AURA_WAVE_FORCE_STEP = 10;
-    const AURA_WAVE_BOSS_MULT = 0.0;
-    const AURA_WAVE_ELITE_MULT = 0.25;
-    const AURA_WAVE_HIT_COOLDOWN = 0.05;
-    const AURA_WAVE_POS_MULT = 0.05;
-    const AURA_WAVE_VEL_MULT = 4;
-    const AURA_WAVE_TRAVEL_TIME = 0.42;
-    const AURA_WAVE_THICKNESS = 18;
-    const AURA_TICKS_PER_SEC = 5;
-    const AURA_TICK_INTERVAL = 1 / AURA_TICKS_PER_SEC;
-    const UNIQUE_CHEST_EVERY = 4;
-    const DASH_DISTANCE = 140;
-    const DASH_DURATION = 0.2;
-    const DASH_COOLDOWN = 2;
-    const DASH_INVULN = 0.35;
-    const DASH_TRAIL_LIFE = 0.24;
-    const DASH_TRAIL_INTERVAL = 0.01;
-    const DASH_TRAIL_MAX = 36;
-    const SAME_CIRCLE_INTERVAL = 6;
-    const SAME_CIRCLE_LIFE = 2;
-    const SAME_CIRCLE_RADIUS = 120;
-    const SAME_CIRCLE_DAMAGE_MULT = 2.5;
-    const MAX_SHIRT_SLOW_DURATION = 2.4;
-    const MAX_SHIRT_COOLDOWN = 30;
-    const MAX_SHIRT_SLOW_SCALE = 0.5;
-    const MAX_SHIRT_KILL_CD_REDUCE = 0.2;
-    const PATRIARCH_DOLL_COOLDOWN = 3;
-    const PATRIARCH_DOLL_DAMAGE_MULT = 3;
-    const PATRIARCH_DOLL_TARGETS_MIN = 8;
-    const PATRIARCH_DOLL_TARGETS_MAX = 16;
-    const LIGHTNING_STRIKE_LIFE = 0.22;
-    const LIGHTNING_STRIKE_SEGMENTS_MIN = 4;
-    const LIGHTNING_STRIKE_SEGMENTS_MAX = 6;
-    const LIGHTNING_STRIKE_JITTER = 18;
-    const LIGHTNING_STRIKE_HEIGHT_MIN = 180;
-    const LIGHTNING_STRIKE_HEIGHT_MAX = 320;
-    const DOG_RADIUS = 8.5;
-    const DOG_SPEED = 290;
-    const DOG_TURN_RATE = 4.5;
-    const DOG_HIT_COOLDOWN = 0.18;
-    const DOG_BALTIKA_AVOID_R = 96;
-    const DOG_BROWN_COLORS = ["rgba(130,85,55,0.95)", "rgba(150,95,60,0.95)", "rgba(110,70,45,0.95)"];
-    const DOG_GRAY_COLOR = "rgba(150,150,155,0.95)";
-    const DOG_GRAY_CHANCE = 0.12;
-    const XP_BONUS_NORMAL = 0.0005;
-    const XP_BONUS_ELITE = 0.002;
-    const XP_BONUS_BOSS = 0.01;
-    const TURRET_AGGRO_BASE = 220;
-    const TURRET_RANGE = 520;
-    const TURRET_FIRE_RATE = 1.8;
-    const TURRET_DAMAGE = 10;
-    const TURRET_BULLET_SPEED = 420;
-    const TURRET_BULLET_SIZE = 4;
-    const PIERCE_DAMAGE_FALLOFF = 0.8;
-    const PIERCE_DAMAGE_MIN_RATIO = 0.2;
-    const TURRET_SIZE_MULT = 1.20;
-    const TURRET_SIZE_LV_BONUS = 0.04;
-    const INVULN_LV_STEP = 4;
-    const INVULN_STEP = 0.01;
-    const INVULN_BULLET_BASE = 0.35;
-    const INVULN_BULLET_MIN = 0.05;
-    const INVULN_CONTACT_BASE = 0.4;
-    const INVULN_CONTACT_MIN = 0.1;
-    const TANK_INVULN_BONUS_CAP = 0.15;
-    const TOTEM_SPAWN_EVERY = 75;
-    const TOTEM_SPAWN_MIN_INTERVAL = 50;
-    const TOTEM_SPAWN_LV_STEP = 10;
-    const TOTEM_SPAWN_STEP = 5;
-    const TOTEM_SPAWN_FIRST = 45;
-    const TOTEM_LIFE_BASE = 25;
-    const TOTEM_LIFE_STEP = 1;
-    const TOTEM_LIFE_LV_STEP = 10;
-    const TOTEM_LIFE_CAP = 40;
-    const TOTEM_GRACE = 5;
-    const TOTEM_SPAWN_MIN = 640;
-    const TOTEM_SPAWN_MAX = 960;
-    const TOTEM_RADIUS_MIN = 420;
-    const TOTEM_RADIUS_MAX = 600;
-    const TOTEM_EFFECT_GAIN_BASE = 1.0;
-    const TOTEM_EFFECT_GAIN_STEP = 1.0;
-    const TOTEM_EFFECT_GAIN_LV_STEP = 10;
-    const TOTEM_EFFECT_GAIN_CAP = 10;
-    const TOTEM_EFFECT_DECAY = 0.8;
-    const TOTEM_DPS_BASE = 1;
-    const TOTEM_DPS_RAMP_BASE = 2;
-    const TOTEM_DPS_RAMP_GROWTH = 1.08;
-    const TOTEM_DPS_RAMP_LV_STEP = 4;
-    const TOTEM_DPS_RAMP_CAP = 5;
-    const TOTEM_EFFECT_MAX = 90;
-    const LOW_HP_SLOW_THRESHOLD = 0.08;
-    const LOW_HP_SLOW_RESET = 0.12;
-    const LOW_HP_SLOW_DURATION = 4.0;
-    const LOW_HP_SLOW_SCALE = 0.5;
-    const LOW_HP_SLOW_COOLDOWN = 16.0;
     const enemyGrid = new Map();
 
     function gridKey(cx, cy){ return cx + "," + cy; }
@@ -271,57 +282,6 @@
       return out;
     }
 
-    function circleHit(ax,ay,ar,bx,by,br){
-      const dx=ax-bx, dy=ay-by;
-      return dx*dx + dy*dy <= (ar+br)*(ar+br);
-    }
-    function circleRectHit(cx, cy, cr, rx, ry, rw, rh){
-      const hx = rw * 0.5;
-      const hy = rh * 0.5;
-      const dx = Math.abs(cx - rx);
-      const dy = Math.abs(cy - ry);
-      if (dx > hx + cr || dy > hy + cr) return false;
-      if (dx <= hx || dy <= hy) return true;
-      const ax = dx - hx;
-      const ay = dy - hy;
-      return ax*ax + ay*ay <= cr*cr;
-    }
-    function resolveCircleRect(cx, cy, cr, rx, ry, rw, rh){
-      const hx = rw * 0.5;
-      const hy = rh * 0.5;
-      const dx = cx - rx;
-      const dy = cy - ry;
-      const clx = clamp(dx, -hx, hx);
-      const cly = clamp(dy, -hy, hy);
-      const closestX = rx + clx;
-      const closestY = ry + cly;
-      const vx = cx - closestX;
-      const vy = cy - closestY;
-      const dist = Math.hypot(vx, vy);
-      if (dist > cr) return null;
-      if (dist > 0){
-        const push = cr - dist;
-        return { x: (vx / dist) * push, y: (vy / dist) * push };
-      }
-      const overlapX = hx + cr - Math.abs(dx);
-      const overlapY = hy + cr - Math.abs(dy);
-      if (overlapX < overlapY) return { x: Math.sign(dx || 1) * overlapX, y: 0 };
-      return { x: 0, y: Math.sign(dy || 1) * overlapY };
-    }
-
-    // anti-sticky push vector from B -> A
-    function pushAway(ax, ay, bx, by, strength){
-      const dx = ax - bx;
-      const dy = ay - by;
-      const d = Math.hypot(dx,dy) || 1;
-      return { x: (dx/d)*strength, y: (dy/d)*strength };
-    }
-
-    function fmtTime(t){
-      const mm = Math.floor(t/60);
-      const ss = Math.floor(t%60);
-      return String(mm).padStart(2,"0")+":"+String(ss).padStart(2,"0");
-    }
 
     // Simple circle batching to reduce per-entity beginPath/fill calls
     const batch = {
@@ -427,9 +387,6 @@
     if (isTouch){
 
 // virtual joystick appears where you touch (left side)
-const JOY_SIZE = 160;
-const JOY_HALF = JOY_SIZE / 2;
-const JOY_MARGIN = 10;
 let joyPointerId = null;
 
 const overlaysBlockInput = () =>
@@ -574,12 +531,6 @@ btnPause.addEventListener("click", (e)=>{
     const ui = { buildFromPicker: false, buildTab: "upgrades" };
 
     // Storage + options
-    const STORAGE_NS = {
-      options: "options.",
-      records: "records.",
-    };
-    const OPTION_KEYS = { showDamageNumbers: "showDamageNumbers", showDamageTakenLegacy: "showDamageTaken" };
-
     function readBoolKey(ns, key, fallback){
       try {
         const raw = localStorage.getItem(ns + key);
@@ -599,7 +550,7 @@ btnPause.addEventListener("click", (e)=>{
         showDamageNumbers: readBoolKey(
           STORAGE_NS.options,
           OPTION_KEYS.showDamageNumbers,
-          readBoolKey(STORAGE_NS.options, OPTION_KEYS.showDamageTakenLegacy, false)
+          false
         ),
       };
     }
@@ -613,7 +564,6 @@ btnPause.addEventListener("click", (e)=>{
     }
 
     // Player
-    const BASE_HP = 50;
     const player = {
       heroId: "scout",
       heroName: "Скаут",
@@ -839,11 +789,6 @@ btnPause.addEventListener("click", (e)=>{
     function hasTurretHeal(){
       return getLevel("turretHeal") > 0;
     }
-    const ELITE_MODS = [
-      { id:"swift",   hp:1.35, spd:1.38, dmg:1.15, color:"rgba(120,255,220,0.9)" },
-      { id:"bruiser", hp:2.05, spd:0.90, dmg:1.25, color:"rgba(255,140,140,0.95)" },
-      { id:"rage",    hp:1.45, spd:1.12, dmg:1.52, color:"rgba(210,160,255,0.95)" },
-    ];
     function applyElite(e, mod, reward, scale){
       const s = scale || 1;
       e.elite = true;
@@ -1478,19 +1423,6 @@ btnPause.addEventListener("click", (e)=>{
       return e;
     }
 
-    const BOSS_KINDS = [
-      { id:"beholder", name:"Beholder",   unlock:0 },
-      { id:"charger",  name:"Charger",    unlock:1 },
-      { id:"sniper",   name:"Sniper",     unlock:2 },
-      { id:"spiral",   name:"Spiral Eye", unlock:3 },
-      { id:"summoner", name:"Summoner",   unlock:4 },
-
-      { id:"mortar",   name:"Mortar",     unlock:5 },
-      { id:"warden",   name:"Warden",     unlock:6 },
-      { id:"vortex",   name:"Vortex",     unlock:7 },
-      { id:"colossus", name:"Colossus",   unlock:8 },
-    ];
-    const BOSS_NAME = Object.fromEntries(BOSS_KINDS.map((b)=>[b.id, b.name]));
     function pickBossKind(){
       const maxUnlock = Math.min(BOSS_KINDS.length - 1, spawn.bossTier);
       const available = BOSS_KINDS.filter(b => b.unlock <= maxUnlock);
@@ -2056,11 +1988,12 @@ btnPause.addEventListener("click", (e)=>{
         dog.y += vy * dt;
 
         if (dog.target && dog.hitCd <= 0 && circleHit(dog.x, dog.y, dog.r, dog.target.x, dog.target.y, dog.target.r)){
-          let dmg = player.damage * 2;
+          const isCrit = Math.random() < DOG_CRIT_CHANCE;
+          let dmg = player.damage * 2 * (isCrit ? player.critMult : 1);
           if (dog.target.type === "shield") dmg *= 0.65;
           dog.target.hp -= dmg;
           dog.target.hitFlash = Math.max(dog.target.hitFlash, 0.09);
-          recordDamage(dmg, dog.target.x, dog.target.y);
+          recordDamage(dmg, dog.target.x, dog.target.y, isCrit, "rgba(255,190,90,0.95)");
           if (dog.target.hp <= 0) killEnemy(dog.target);
           const lastId = dog.target.id;
           dog.target = pickDogTarget(lastId);
@@ -3322,19 +3255,6 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       handlePlayerDeath("(он все таки смог)");
     });
 
-    function fmtPct(v){
-      if (!Number.isFinite(v)) return "--";
-      return `${Math.round(v * 100)}%`;
-    }
-    function fmtNum(v, digits=0){
-      if (!Number.isFinite(v)) return "--";
-      return digits ? v.toFixed(digits) : String(Math.round(v));
-    }
-    function fmtSignedPct(v){
-      if (!Number.isFinite(v)) return "--";
-      const pct = Math.round(v * 100);
-      return `${pct >= 0 ? "+" : ""}${pct}%`;
-    }
     function getBuildEffectText(id){
       switch (id){
         case "fireRate":
@@ -3555,7 +3475,6 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       `;
     }
 
-    const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkills", dps: "maxdps" };
     let recordsReturnToPause = false;
     let recordsReturnToMenu = false;
     let settingsReturnToPause = false;
