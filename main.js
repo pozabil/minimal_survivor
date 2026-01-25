@@ -642,7 +642,7 @@ btnPause.addEventListener("click", (e)=>{
       pierce: 1,
       spread: 0.0,
       multishot: 1,
-      critChance: 0.05,
+      critChance: 0.04,
       critMult: 1.8,
       ricochetChance: 0.0,
       ricochetBounces: 0,
@@ -2842,7 +2842,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       turretLevel:{ title:"Турель: усиление", max: 6, desc:(lv)=>`+12% урон/скорость/HP турели (ур. ${lv+1}/6)`, apply:()=>{} },
       turretHeal:{ title:"Турель: сбор XP", max: 1, desc:()=>`Турель притягивает XP-шарики к игроку`, apply:()=>{} },
       bulletSpeed:{ title:"Скорость пули",max: 10, desc:(lv)=>`+15% bullet speed (ур. ${lv+1}/10)`, apply:()=>{ player.bulletSpeed *= 1.15; } },
-      crit:     { title:"Криты",          max: 10, desc:(lv)=>`+5% crit chance (ур. ${lv+1}/10)`, apply:()=>{ player.critChance = Math.min(0.85, player.critChance + 0.05); } },
+      crit:     { title:"Криты",          max: 8, desc:(lv)=>`+4% crit chance (ур. ${lv+1}/8)`, apply:()=>{ player.critChance = Math.min(0.36, player.critChance + 0.04); } },
 
 
       bulletSize:{ title:"Размер пули",   max: 3,  desc:(lv)=>`+20% bullet size (ур. ${lv+1}/3)`, apply:()=>{ player.bulletSize *= 1.20; } },
