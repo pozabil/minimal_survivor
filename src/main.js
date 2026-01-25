@@ -86,7 +86,6 @@ import {
   TOTEM_SPAWN_MIN_INTERVAL,
   TOTEM_SPAWN_LV_STEP,
   TOTEM_SPAWN_STEP,
-  TOTEM_SPAWN_FIRST,
   TOTEM_LIFE_BASE,
   TOTEM_LIFE_STEP,
   TOTEM_LIFE_LV_STEP,
@@ -121,13 +120,15 @@ import {
   BOSS_KINDS,
   BOSS_NAME,
   RECORD_KEYS,
-} from "./config.js";
-import { clamp, lerp } from "../utils/math.js";
-import { randf, randi } from "../utils/rand.js";
-import { circleHit, circleRectHit, resolveCircleRect, pushAway } from "../utils/collision.js";
-import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "../utils/format.js";
-import { createUpgrades } from "./upgrades.js";
-import { createUnique } from "./unique.js";
+} from "./scripts/config.js";
+import { clamp, lerp } from "./utils/math.js";
+import { randf, randi } from "./utils/rand.js";
+import { circleHit, circleRectHit, resolveCircleRect, pushAway } from "./utils/collision.js";
+import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "./utils/format.js";
+import { createUpgrades } from "./scripts/upgrades.js";
+import { createUnique } from "./scripts/unique.js";
+import { initState } from "./core/init.js";
+import { startLoop } from "./core/loop.js";
 
 (() => {
   "use strict";
@@ -488,49 +489,7 @@ btnPause.addEventListener("click", (e)=>{
     }
 
     // State
-    const state = {
-      t: 0,
-      paused: true,
-      dead: false,
-      deathReason: "",
-      kills: 0,
-      dmgDone: 0,
-      lastDmgWindow: [],
-      difficulty: 1,
-      chestTimer: 35,
-      chestAlive: false,
-      chestCount: 0,
-      uniqueChestCount: 0,
-      maxShirtCd: 0,
-      maxShirtSlowT: 0,
-      patriarchDollCd: 0,
-      dashT: 0,
-      dashVx: 0,
-      dashVy: 0,
-      dashTrailT: 0,
-      totemTimer: TOTEM_SPAWN_FIRST,
-      totemTimerMax: TOTEM_SPAWN_FIRST,
-      healQueue: [],
-      healActive: null,
-      xpEnemyBonus: 0,
-      sameCircleCd: 0,
-      auraWaveT: 0,
-      auraWaveActive: false,
-      auraWaveR: 0,
-      auraWaveMaxR: 0,
-      auraWaveX: 0,
-      auraWaveY: 0,
-      auraWaveId: 0,
-      auraTickT: 0,
-      slowMoT: 0,
-      slowMoCd: 0,
-      slowMoLocked: false,
-      pendingLevelUps: 0,
-      maxDps: 0,
-    };
-
-    // UI state
-    const ui = { buildFromPicker: false, buildTab: "upgrades" };
+    const { state, ui } = initState();
 
     // Storage + options
     function readBoolKey(ns, key, fallback){
@@ -3501,12 +3460,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
     }
 
     // Loop
-    let last = performance.now();
     let fpsAcc=0, fpsN=0, fpsLast=0;
 
-    function step(now){
-      const dtRaw = (now-last)/1000;
-      last = now;
+    function step(now, dtRaw){
       const dtBase = clamp(dtRaw, 0, 0.05);
 
       if (!state.paused && !state.dead){
@@ -3552,8 +3508,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
       if (!state.paused && !state.dead) update(dt);
       render();
-      requestAnimationFrame(step);
     }
+
+    startLoop(step);
 
     function update(dt){
       state.t += dt;
