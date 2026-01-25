@@ -699,7 +699,7 @@ btnPause.addEventListener("click", (e)=>{
     }
     function getRicochetBounces(){
       if (player.ricochetChance <= 0) return 0;
-      return Math.max(1, player.ricochetBounces);
+      return 1 + (player.ricochetBounces || 0);
     }
     function getTurretLevel(){
       return getLevel("turret");
@@ -1670,6 +1670,62 @@ btnPause.addEventListener("click", (e)=>{
         if (d < bestD){ bestD = d; best = e; }
       }
       return best;
+    }
+    function findRicochetTargetWithinAngle(x, y, excludeId, excludeId2, excludeId3, baseAng, maxDelta){
+      const candidates = [];
+      gridQueryCircle(x, y, 260, candidates);
+      let best = null;
+      let bestD = Infinity;
+      for (const e of candidates){
+        if (e.dead || e.dying) continue;
+        if (e.id === excludeId || e.id === excludeId2 || e.id === excludeId3) continue;
+        const ang = Math.atan2(e.y - y, e.x - x);
+        let dAng = Math.abs(ang - baseAng) % TAU;
+        if (dAng > Math.PI) dAng = TAU - dAng;
+        if (dAng > maxDelta) continue;
+        const d = (e.x - x) ** 2 + (e.y - y) ** 2;
+        if (d < bestD){ bestD = d; best = e; }
+      }
+      return best;
+    }
+    function spawnCheapRicochetSplits(b, hitEnemy, target, spd, baseAng){
+      const ricochetLeft = Math.max(0, (b.ricochetLeft || 0) - 1);
+      const shrink = 0.707;
+      const dmgShrink = 0.56;
+      const newR = b.r * shrink;
+      const newDmg = b.dmg * dmgShrink;
+      const newBaseDmg = (b.baseDmg || b.dmg) * dmgShrink;
+      const maxSpread = Math.PI / 3; // <= 60°
+      const target2 = findRicochetTargetWithinAngle(
+        hitEnemy.x, hitEnemy.y,
+        target.id, hitEnemy.id, b.lastHitId,
+        baseAng, maxSpread
+      );
+      const ang2 = target2
+        ? Math.atan2(target2.y - hitEnemy.y, target2.x - hitEnemy.x)
+        : (baseAng + randf(-maxSpread, maxSpread));
+      const spawnSplit = (ang)=>{
+        const hitIds = b.hitIds ? new Set(b.hitIds) : null;
+        bullets.push({
+          x: hitEnemy.x + Math.cos(ang) * (hitEnemy.r + newR + 2),
+          y: hitEnemy.y + Math.sin(ang) * (hitEnemy.r + newR + 2),
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          r: newR,
+          dmg: newDmg,
+          baseDmg: newBaseDmg,
+          pierce: b.pierce,
+          life: b.life,
+          t: b.t,
+          isNova: b.isNova,
+          ricochetLeft,
+          ricochetChance: b.ricochetChance,
+          lastHitId: hitEnemy.id,
+          hitIds,
+        });
+      };
+      spawnSplit(baseAng);
+      spawnSplit(ang2);
     }
     function getEnemyTarget(e){
       if (e.type === "boss") return { x: player.x, y: player.y, turret: null };
@@ -2791,8 +2847,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
       bulletSize:{ title:"Размер пули",   max: 3,  desc:(lv)=>`+20% bullet size (ур. ${lv+1}/3)`, apply:()=>{ player.bulletSize *= 1.20; } },
       critMultUp:{ title:"Криты: множ.",  max: 8,  desc:(lv)=>`+12% crit multiplier (ур. ${lv+1}/8)`, apply:()=>{ player.critMult *= 1.12; } },
-      ricochetChance:{ title:"Рикошет: шанс", max: 8, desc:(lv)=>`+3% шанс рикошета (ур. ${lv+1}/8)`, apply:()=>{ player.ricochetChance = clamp((player.ricochetChance||0) + 0.03, 0, 0.24); if (player.ricochetBounces < 1) player.ricochetBounces = 1; } },
-      ricochetBounces:{ title:"Рикошет: отскоки", max: 5, desc:(lv)=>`+1 отскок (ур. ${lv+1}/5)`, apply:()=>{ player.ricochetBounces = Math.min(5, (player.ricochetBounces||0) + 1); } },
+      ricochetChance:{ title:"Рикошет: шанс", max: 5, desc:(lv)=>`+6% шанс рикошета (ур. ${lv+1}/5)`, apply:()=>{ player.ricochetChance = clamp((player.ricochetChance||0) + 0.06, 0, 0.30); } },
+      ricochetBounces:{ title:"Рикошет: отскоки", max: 3, desc:(lv)=>`+1 отскок (ур. ${lv+1}/3)`, apply:()=>{ player.ricochetBounces = Math.min(3, (player.ricochetBounces||0) + 1); } },
 
       armor:    { title:"Броня",         max: 8,  desc:(lv)=>`-6% входящий урон (ур. ${lv+1}/8)`, apply:()=>{ player.armor = clamp((player.armor||0) + 0.06, 0, 0.60); } },
       dodge:    { title:"Уклонение",     max: 6,  desc:(lv)=>`+5% шанс не получить урон (ур. ${lv+1}/6)`, apply:()=>{ player.dodge = clamp((player.dodge||0) + 0.05, 0, 0.35); } },
@@ -2882,6 +2938,12 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
           player.fireRate *= 0.95;
           player.armor = clamp((player.armor || 0) + 0.08, 0, 0.60);
         },
+      },
+      cheap_bullets: {
+        title:"Дешевые пули",
+        rarity:"common",
+        desc:"Вместа рикошета эти дешевые пули разлетаются на две части.",
+        apply(){},
       },
       dog: {
         title:"Питомец",
@@ -3310,7 +3372,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         case "ricochetChance":
           return `Рикошет: шанс ${fmtPct(player.ricochetChance || 0)}`;
         case "ricochetBounces":
-          return `Рикошет: отскоков ${player.ricochetBounces || 0}`;
+          return `Рикошет: отскоков ${getRicochetBounces()}`;
         case "armor":
           return `Броня: ${fmtPct(player.armor || 0)}`;
         case "dodge":
@@ -3926,6 +3988,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
           b.hitIds.add(e.id);
 
           let didRicochet = false;
+          let removedOnRicochet = false;
           if ((b.ricochetLeft || 0) > 0 && (b.ricochetChance || 0) > 0 && Math.random() < b.ricochetChance){
             const target = findRicochetTarget(e.x, e.y, e.id, b.lastHitId);
             if (target){
@@ -3933,17 +3996,26 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
               const dy = target.y - e.y;
               const d = Math.hypot(dx,dy) || 1;
               const spd = Math.hypot(b.vx, b.vy) || player.bulletSpeed;
-              b.vx = (dx/d) * spd;
-              b.vy = (dy/d) * spd;
-              b.x = e.x + (dx/d) * (e.r + b.r + 2);
-              b.y = e.y + (dy/d) * (e.r + b.r + 2);
-              b.ricochetLeft -= 1;
-              b.lastHitId = e.id;
-              didRicochet = true;
+              const baseAng = Math.atan2(dy, dx);
+
+              if (hasUnique("cheap_bullets")){
+                spawnCheapRicochetSplits(b, e, target, spd, baseAng);
+                bullets.splice(i,1);
+                removedOnRicochet = true;
+                didRicochet = true;
+              } else {
+                b.vx = (dx/d) * spd;
+                b.vy = (dy/d) * spd;
+                b.x = e.x + (dx/d) * (e.r + b.r + 2);
+                b.y = e.y + (dy/d) * (e.r + b.r + 2);
+                b.ricochetLeft -= 1;
+                b.lastHitId = e.id;
+                didRicochet = true;
+              }
             }
           }
 
-          if (!b.isNova){
+          if (!b.isNova && !removedOnRicochet){
             if (!didRicochet) b.pierce -= 1;
             if (b.pierce<=0 && !didRicochet){
               bullets.splice(i,1);
