@@ -5253,7 +5253,7 @@ Upgrades: ${Object.keys(player.u).map(k=>`${k}:${player.u[k]}`).join(", ")}
       // heal floaters
       if (floaters.length){
         ctx.save();
-        const baseSize = 16;
+        const baseSize = 18;
         const baseFont = "system-ui,-apple-system,Segoe UI,Roboto,Arial";
         ctx.font = `700 ${baseSize}px ${baseFont}`;
         ctx.textAlign = "center";
