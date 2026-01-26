@@ -1,10 +1,7 @@
-export const TAU = Math.PI * 2;
-
 export const ENEMY_MAX_R = 60;
 export const COLOSSUS_HP_STEP = 0.20;
 export const COLOSSUS_SHRINK_STEP = 0.10;
 export const COLOSSUS_SPAWN_STAGES = 4;
-export const GRID_SIZE = 140;
 export const BURST_TELEGRAPH = 0.25;
 export const HEAL_OVER_TIME = 0.25;
 export const CAMERA_ZOOM_OUT = 0.05;
@@ -114,16 +111,6 @@ export const LOW_HP_SLOW_DURATION = 4.0;
 export const LOW_HP_SLOW_SCALE = 0.5;
 export const LOW_HP_SLOW_COOLDOWN = 16.0;
 
-export const JOY_SIZE = 160;
-export const JOY_HALF = JOY_SIZE / 2;
-export const JOY_MARGIN = 10;
-
-export const STORAGE_NS = {
-  options: "options.",
-  records: "records.",
-};
-export const OPTION_KEYS = { showDamageNumbers: "showDamageNumbers" };
-
 export const BASE_HP = 50;
 
 export const ELITE_MODS = [
@@ -148,5 +135,3 @@ export const BOSS_KINDS = [
   { id:"colossus", name:"Colossus",   unlock:8 },
 ];
 export const BOSS_NAME = Object.fromEntries(BOSS_KINDS.map((b)=>[b.id, b.name]));
-
-export const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkills", dps: "maxdps" };

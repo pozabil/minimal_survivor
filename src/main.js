@@ -1,10 +1,8 @@
 import {
-  TAU,
   ENEMY_MAX_R,
   COLOSSUS_HP_STEP,
   COLOSSUS_SHRINK_STEP,
   COLOSSUS_SPAWN_STAGES,
-  GRID_SIZE,
   BURST_TELEGRAPH,
   HEAL_OVER_TIME,
   CAMERA_ZOOM_OUT,
@@ -111,21 +109,25 @@ import {
   LOW_HP_SLOW_DURATION,
   LOW_HP_SLOW_SCALE,
   LOW_HP_SLOW_COOLDOWN,
+  BASE_HP,
+  BOSS_KINDS,
+  BOSS_NAME,
+} from "./content/config.js";
+import {
+  TAU,
+  GRID_SIZE,
   JOY_HALF,
   JOY_MARGIN,
   STORAGE_NS,
   OPTION_KEYS,
-  BASE_HP,
-  BOSS_KINDS,
-  BOSS_NAME,
   RECORD_KEYS,
-} from "./scripts/config.js";
+} from "./core/constants.js";
 import { clamp, lerp } from "./utils/math.js";
 import { randf, randi } from "./utils/rand.js";
 import { circleHit, circleRectHit, pushAway } from "./utils/collision.js";
 import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "./utils/format.js";
-import { createUpgrades } from "./scripts/upgrades.js";
-import { createUnique } from "./scripts/unique.js";
+import { createUpgrades } from "./content/upgrades.js";
+import { createUniques } from "./content/uniques.js";
 import { initState } from "./core/init.js";
 import { startLoop } from "./core/loop.js";
 import { updateMovement } from "./systems/movement.js";
@@ -592,9 +594,9 @@ btnPause.addEventListener("click", (e)=>{
       chestBonusReroll: 0,
       chestBonusRare: 0.0,
 
-      unique: new Set(),
-      uniqueSeen: new Set(),
-      uniqueOrder: [],
+      uniques: new Set(),
+      uniquesSeen: new Set(),
+      uniquesOrder: [],
 
       dashCd: 0,
       lastDirX: 1,
@@ -1093,7 +1095,7 @@ btnPause.addEventListener("click", (e)=>{
     }
     function tryConsumeSpareTire(){
       if (!hasUnique("spare_tire")) return false;
-      player.unique.delete("spare_tire");
+      player.uniques.delete("spare_tire");
       const reviveHp = Math.max(1, Math.ceil(player.hpMax * 0.25));
       player.hp = reviveHp;
       player.invuln = Math.max(player.invuln, 1.2);
@@ -2449,7 +2451,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       fmtNum,
       getAuraWaveCooldown,
     });
-    const UNIQUE = createUnique({
+    const UNIQUES = createUniques({
       player,
       state,
       totem,
@@ -2457,27 +2459,27 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       spawnDog,
     });
     const upgradeList = Object.keys(UPGRADES);
-    const uniqueList = Object.keys(UNIQUE);
+    const uniquesList = Object.keys(UNIQUES);
     const atMax = (id)=>getLevel(id)>=UPGRADES[id].max;
     function hasUnique(id){
-      return player.unique.has(id);
+      return player.uniques.has(id);
     }
     function hasAnyActionSkill(){
-      for (const id of player.unique){
-        const u = UNIQUE[id];
+      for (const id of player.uniques){
+        const u = UNIQUES[id];
         if (u && u.action) return true;
       }
       return false;
     }
     function hasRemainingUnique(){
-      const remaining = uniqueList.filter((id)=>!player.uniqueSeen.has(id) && !player.unique.has(id));
+      const remaining = uniquesList.filter((id)=>!player.uniquesSeen.has(id) && !player.uniques.has(id));
       return remaining.length >= 3;
     }
     function addUniqueItem(id){
-      const item = UNIQUE[id];
-      if (!item || player.unique.has(id)) return;
-      player.unique.add(id);
-      player.uniqueOrder.push(id);
+      const item = UNIQUES[id];
+      if (!item || player.uniques.has(id)) return;
+      player.uniques.add(id);
+      player.uniquesOrder.push(id);
       if (item.apply) item.apply();
       if (pauseMenu.style.display === "grid") updateBuildUI();
     }
@@ -2594,7 +2596,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     }
 
     function buildUniqueChoices(){
-      const pool = uniqueList.filter((id)=>!player.uniqueSeen.has(id) && !player.unique.has(id));
+      const pool = uniquesList.filter((id)=>!player.uniquesSeen.has(id) && !player.uniques.has(id));
       const rarityPools = {
         common: [],
         rare: [],
@@ -2603,7 +2605,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       const firstUniqueChest = state.uniqueChestCount === 1;
       const secondUniqueChest = state.uniqueChestCount === 2;
       for (const id of pool){
-        const rarity = UNIQUE[id]?.rarity || "common";
+        const rarity = UNIQUES[id]?.rarity || "common";
         if (firstUniqueChest && rarity !== "common") continue;
         if (rarityPools[rarity]) rarityPools[rarity].push(id);
       }
@@ -2645,7 +2647,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         currentChoices.push({ id, rarity, kind:"unique" });
         if (rarity === "epic") epicAllowed = false;
       }
-      for (const c of currentChoices) player.uniqueSeen.add(c.id);
+      for (const c of currentChoices) player.uniquesSeen.add(c.id);
     }
 
     function openUpgradePicker(source){
@@ -2690,7 +2692,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
       currentChoices.forEach((c, i)=>{
         const isUnique = c.kind === "unique";
-        const entry = isUnique ? UNIQUE[c.id] : UPGRADES[c.id];
+        const entry = isUnique ? UNIQUES[c.id] : UPGRADES[c.id];
         const lv = isUnique ? 0 : getLevel(c.id);
         const desc = isUnique ? entry.desc : entry.desc(lv);
         const div = document.createElement("div");
@@ -2890,13 +2892,13 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
     function updateInventoryUI(){
       invListEl.innerHTML = "";
-      const ids = player.uniqueOrder.filter((id)=>player.unique.has(id));
+      const ids = player.uniquesOrder.filter((id)=>player.uniques.has(id));
       if (!ids.length){
         invListEl.innerHTML = `<div class="small" style="opacity:.8">Пока нет уникальных предметов.</div>`;
         return;
       }
       for (const id of ids){
-        const item = UNIQUE[id];
+        const item = UNIQUES[id];
         if (!item) continue;
         const row = document.createElement("div");
         row.className = "item invItem";
@@ -3230,8 +3232,6 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       if (!state.paused && !state.dead) update(dt);
       render();
     }
-
-    startLoop(step);
 
     function update(dt){
       state.t += dt;
@@ -3868,9 +3868,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       }
       if (activeItemsEl && activeItemsListEl){
         const items = [];
-        for (const id of player.uniqueOrder){
-          if (!player.unique.has(id)) continue;
-          const u = UNIQUE[id];
+        for (const id of player.uniquesOrder){
+          if (!player.uniques.has(id)) continue;
+          const u = UNIQUES[id];
           if (u && u.action) items.push(u.title);
         }
         if (!items.length){
@@ -4682,7 +4682,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
     // start
     openMainMenu();
-    requestAnimationFrame((now)=>{ last = now; requestAnimationFrame(step); });
+    startLoop(step);
 
   } catch (err) {
     crash(err);

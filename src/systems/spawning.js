@@ -1,11 +1,11 @@
 import {
-  TAU,
   ELITE_MODS,
   ELITE_RADIUS_MULT,
   ELITE_XP_REWARD_MULT,
   ELITE_XP_BASE_MULT,
-} from "../scripts/config.js";
-import { enemyBase } from "../entities/enemies.js";
+} from "../content/config.js";
+import { TAU } from "../core/constants.js";
+import { enemyBase } from "../content/enemies.js";
 import { clamp } from "../utils/math.js";
 import { randf, randi } from "../utils/rand.js";
 
