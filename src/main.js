@@ -8,9 +8,6 @@ import {
   CAMERA_ZOOM_OUT,
   TURRET_SPAWN_RADIUS,
   TURRET_MIN_DIST,
-  ORBITAL_BASE_DISTANCE,
-  ORBITAL_BASE_SIZE,
-  ORBITAL_SIZE_EXP,
   ORBITAL_KNOCKBACK_CHANCE,
   ORBITAL_KNOCKBACK_FORCE,
   AURA_WAVE_COOLDOWN_BASE,
@@ -63,16 +60,11 @@ import {
   XP_BONUS_NORMAL,
   XP_BONUS_ELITE,
   XP_BONUS_BOSS,
-  TURRET_AGGRO_BASE,
   TURRET_RANGE,
-  TURRET_FIRE_RATE,
-  TURRET_DAMAGE,
   TURRET_BULLET_SPEED,
   TURRET_BULLET_SIZE,
   PIERCE_DAMAGE_FALLOFF,
   PIERCE_DAMAGE_MIN_RATIO,
-  TURRET_SIZE_MULT,
-  TURRET_SIZE_LV_BONUS,
   INVULN_LV_STEP,
   INVULN_STEP,
   INVULN_BULLET_BASE,
@@ -80,10 +72,6 @@ import {
   INVULN_CONTACT_BASE,
   INVULN_CONTACT_MIN,
   TANK_INVULN_BONUS_CAP,
-  TOTEM_SPAWN_EVERY,
-  TOTEM_SPAWN_MIN_INTERVAL,
-  TOTEM_SPAWN_LV_STEP,
-  TOTEM_SPAWN_STEP,
   TOTEM_LIFE_BASE,
   TOTEM_LIFE_STEP,
   TOTEM_LIFE_LV_STEP,
@@ -129,6 +117,7 @@ import { createUpgrades } from "./content/upgrades.js";
 import { createUniques } from "./content/uniques.js";
 import { getPlayerClass, PLAYER_CLASSES } from "./content/players.js";
 import { initState } from "./core/init.js";
+import { createPlayerFunctions } from "./core/player.js";
 import { startLoop } from "./core/loop.js";
 import { updateMovement } from "./systems/movement.js";
 import { createSpawnEnemy, updateSpawning } from "./systems/spawning.js";
@@ -527,72 +516,6 @@ btnPause.addEventListener("click", (e)=>{
       if (optShowDamageNumbers) optShowDamageNumbers.checked = !!options.showDamageNumbers;
     }
 
-    function getChestInterval(){
-      const reduce = Math.floor((player.lvl - 1) / 4);
-      return Math.max(20, 35 - reduce);
-    }
-    function getTotemInterval(){
-      const reduce = Math.floor((player.lvl - 1) / TOTEM_SPAWN_LV_STEP) * TOTEM_SPAWN_STEP;
-      return Math.max(TOTEM_SPAWN_MIN_INTERVAL, TOTEM_SPAWN_EVERY - reduce);
-    }
-    function getRicochetBounces(){
-      if (player.ricochetChance <= 0) return 0;
-      return 1 + (player.ricochetBounces || 0);
-    }
-    function getTurretLevel(){
-      return getLevel("turret");
-    }
-    function getTurretChance(){
-      return 0.02 * getTurretLevel();
-    }
-    function getTurretMax(){
-      return getTurretLevel();
-    }
-    function getTurretAggroRadius(){
-      const lvl = getTurretLevel();
-      if (lvl <= 0) return 0;
-      return TURRET_AGGRO_BASE * (1 + 0.20 * (lvl - 1));
-    }
-    function getTurretSize(){
-      const lvl = getTurretLevel();
-      if (lvl <= 0) return 0;
-      const base = player.r * 2 * TURRET_SIZE_MULT;
-      return base * (1 + TURRET_SIZE_LV_BONUS * (lvl - 1));
-    }
-    function getTurretDamageScale(){
-      const base = player.baseDamage || player.damage || 1;
-      return (player.damage / base) * getWoundedDamageMult();
-    }
-    function getWoundedDamageMult(){
-      if (!hasUnique("baltika9")) return 1;
-      const hpRatio = player.hpMax > 0 ? (player.hp / player.hpMax) : 1;
-      if (hpRatio >= 0.5) return 1;
-      const bonus = (0.5 - hpRatio) * 0.5;
-      return 1 + bonus;
-    }
-    function getTurretDamage(){
-      const lv = getLevel("turretLevel");
-      return TURRET_DAMAGE * Math.pow(1.12, lv) * getTurretDamageScale();
-    }
-    function getTurretFireRate(){
-      const lv = getLevel("turretLevel");
-      return TURRET_FIRE_RATE * Math.pow(1.12, lv);
-    }
-    function getOrbitalSize(){
-      return ORBITAL_BASE_SIZE * Math.pow(player.orbitalRadius / ORBITAL_BASE_DISTANCE, ORBITAL_SIZE_EXP);
-    }
-    function getMoveSpeed(){
-      const flat = player.flatSpeed || 0;
-      const base = player.speed;
-      const bonus = (hasUnique("peace_pipe") && totem.active && totem.inZone) ? 1.02 : 1;
-      return base * bonus + flat;
-    }
-    function getBaseMoveSpeed(){
-      const flat = player.flatSpeed || 0;
-      const base = player.baseSpeed || player.speed || 1;
-      const bonus = (hasUnique("peace_pipe") && totem.active && totem.inZone) ? 1.02 : 1;
-      return base * bonus + flat;
-    }
     function getDashDir(dirX, dirY){
       if (Number.isFinite(dirX) && Number.isFinite(dirY) && (dirX !== 0 || dirY !== 0)){
         const d = Math.hypot(dirX, dirY) || 1;
@@ -670,13 +593,6 @@ btnPause.addEventListener("click", (e)=>{
       state.patriarchDollCd = PATRIARCH_DOLL_COOLDOWN;
       return true;
     }
-    function getTurretHpMax(){
-      const lv = getLevel("turretLevel");
-      return player.hpMax * 1.4 * Math.pow(1.12, lv);
-    }
-    function hasTurretHeal(){
-      return getLevel("turretHeal") > 0;
-    }
     Object.defineProperty(player, "xGainMultSafe", { get(){ return player.xpGainMult || 1; } });
 
     const bullets = [];
@@ -714,6 +630,42 @@ btnPause.addEventListener("click", (e)=>{
       bossCount: 0,
       bossTier: 0,
     };
+
+    const UNIQUES = createUniques({
+      player,
+      state,
+      totem,
+      spawnDog,
+    });
+    const uniquesList = Object.keys(UNIQUES);
+
+    const {
+      getBaseMoveSpeed,
+      getChestInterval,
+      getLevel,
+      getMoveSpeed,
+      getOrbitalSize,
+      getRicochetBounces,
+      getTotemInterval,
+      getTurretAggroRadius,
+      getTurretChance,
+      getTurretDamage,
+      getTurretFireRate,
+      getTurretHpMax,
+      getTurretLevel,
+      getTurretMax,
+      getTurretSize,
+      getWoundedDamageMult,
+      hasAnyActionSkill,
+      hasRemainingUnique,
+      hasTurretHeal,
+      hasUnique,
+    } = createPlayerFunctions({
+      player,
+      totem,
+      uniques: UNIQUES,
+      uniquesList,
+    });
 
     // Characters
 
@@ -2296,43 +2248,15 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
     }
 
-    function getLevel(id){
-      return player.upgrades[id] || 0;
-    }
-
     // Upgrades (caps increased)
     const UPGRADES = createUpgrades({
       player,
       state,
       getLevel,
-      clamp,
-      fmtNum,
       getAuraWaveCooldown,
     });
-    const UNIQUES = createUniques({
-      player,
-      state,
-      totem,
-      clamp,
-      spawnDog,
-    });
     const upgradeList = Object.keys(UPGRADES);
-    const uniquesList = Object.keys(UNIQUES);
     const atMax = (id)=>getLevel(id)>=UPGRADES[id].max;
-    function hasUnique(id){
-      return player.uniques.has(id);
-    }
-    function hasAnyActionSkill(){
-      for (const id of player.uniques){
-        const u = UNIQUES[id];
-        if (u && u.action) return true;
-      }
-      return false;
-    }
-    function hasRemainingUnique(){
-      const remaining = uniquesList.filter((id)=>!player.uniquesSeen.has(id) && !player.uniques.has(id));
-      return remaining.length >= 3;
-    }
     function addUniqueItem(id){
       const item = UNIQUES[id];
       if (!item || player.uniques.has(id)) return;

@@ -1,4 +1,18 @@
-import { BASE_HP } from "../content/config.js";
+import {
+  BASE_HP,
+  ORBITAL_BASE_DISTANCE,
+  ORBITAL_BASE_SIZE,
+  ORBITAL_SIZE_EXP,
+  TOTEM_SPAWN_EVERY,
+  TOTEM_SPAWN_LV_STEP,
+  TOTEM_SPAWN_MIN_INTERVAL,
+  TOTEM_SPAWN_STEP,
+  TURRET_AGGRO_BASE,
+  TURRET_DAMAGE,
+  TURRET_FIRE_RATE,
+  TURRET_SIZE_LV_BONUS,
+  TURRET_SIZE_MULT,
+} from "../content/config.js";
 
 export function createPlayer() {
   return {
@@ -77,5 +91,130 @@ export function createPlayer() {
     dashCd: 0,
     lastDirX: 1,
     lastDirY: 0,
+  };
+}
+
+export function createPlayerFunctions({
+  player,
+  totem,
+  uniques,
+  uniquesList,
+}) {
+  function getLevel(id){
+    return player.upgrades[id] || 0;
+  }
+  function hasUnique(id){
+    return player.uniques.has(id);
+  }
+  function hasAnyActionSkill(){
+    if (!uniques) return false;
+    for (const id of player.uniques){
+      const u = uniques[id];
+      if (u && u.action) return true;
+    }
+    return false;
+  }
+  function hasRemainingUnique(){
+    if (!uniquesList) return false;
+    const remaining = uniquesList.filter((id)=>!player.uniquesSeen.has(id) && !player.uniques.has(id));
+    return remaining.length >= 3;
+  }
+
+  function getChestInterval(){
+    const reduce = Math.floor((player.lvl - 1) / 4);
+    return Math.max(20, 35 - reduce);
+  }
+  function getTotemInterval(){
+    const reduce = Math.floor((player.lvl - 1) / TOTEM_SPAWN_LV_STEP) * TOTEM_SPAWN_STEP;
+    return Math.max(TOTEM_SPAWN_MIN_INTERVAL, TOTEM_SPAWN_EVERY - reduce);
+  }
+  function getRicochetBounces(){
+    if (player.ricochetChance <= 0) return 0;
+    return 1 + (player.ricochetBounces || 0);
+  }
+  function getTurretLevel(){
+    return getLevel("turret");
+  }
+  function getTurretChance(){
+    return 0.02 * getTurretLevel();
+  }
+  function getTurretMax(){
+    return getTurretLevel();
+  }
+  function getTurretAggroRadius(){
+    const lvl = getTurretLevel();
+    if (lvl <= 0) return 0;
+    return TURRET_AGGRO_BASE * (1 + 0.20 * (lvl - 1));
+  }
+  function getTurretSize(){
+    const lvl = getTurretLevel();
+    if (lvl <= 0) return 0;
+    const base = player.r * 2 * TURRET_SIZE_MULT;
+    return base * (1 + TURRET_SIZE_LV_BONUS * (lvl - 1));
+  }
+  function getWoundedDamageMult(){
+    if (!hasUnique("baltika9")) return 1;
+    const hpRatio = player.hpMax > 0 ? (player.hp / player.hpMax) : 1;
+    if (hpRatio >= 0.5) return 1;
+    const bonus = (0.5 - hpRatio) * 0.5;
+    return 1 + bonus;
+  }
+  function getTurretDamageScale(){
+    const base = player.baseDamage || player.damage || 1;
+    return (player.damage / base) * getWoundedDamageMult();
+  }
+  function getTurretDamage(){
+    const lv = getLevel("turretLevel");
+    return TURRET_DAMAGE * Math.pow(1.12, lv) * getTurretDamageScale();
+  }
+  function getTurretFireRate(){
+    const lv = getLevel("turretLevel");
+    return TURRET_FIRE_RATE * Math.pow(1.12, lv);
+  }
+  function getOrbitalSize(){
+    return ORBITAL_BASE_SIZE * Math.pow(player.orbitalRadius / ORBITAL_BASE_DISTANCE, ORBITAL_SIZE_EXP);
+  }
+  function getMoveSpeed(){
+    const flat = player.flatSpeed || 0;
+    const base = player.speed;
+    const bonus = (hasUnique("peace_pipe") && totem && totem.active && totem.inZone) ? 1.02 : 1;
+    return base * bonus + flat;
+  }
+  function getBaseMoveSpeed(){
+    const flat = player.flatSpeed || 0;
+    const base = player.baseSpeed || player.speed || 1;
+    const bonus = (hasUnique("peace_pipe") && totem && totem.active && totem.inZone) ? 1.02 : 1;
+    return base * bonus + flat;
+  }
+  function getTurretHpMax(){
+    const lv = getLevel("turretLevel");
+    return player.hpMax * 1.4 * Math.pow(1.12, lv);
+  }
+  function hasTurretHeal(){
+    return getLevel("turretHeal") > 0;
+  }
+
+  return {
+    getBaseMoveSpeed,
+    getChestInterval,
+    getLevel,
+    getMoveSpeed,
+    getOrbitalSize,
+    getRicochetBounces,
+    getTotemInterval,
+    getTurretAggroRadius,
+    getTurretChance,
+    getTurretDamage,
+    getTurretDamageScale,
+    getTurretFireRate,
+    getTurretHpMax,
+    getTurretLevel,
+    getTurretMax,
+    getTurretSize,
+    getWoundedDamageMult,
+    hasAnyActionSkill,
+    hasRemainingUnique,
+    hasTurretHeal,
+    hasUnique,
   };
 }

@@ -1,6 +1,7 @@
 import { SAME_CIRCLE_INTERVAL } from "./config.js";
+import { clamp } from "../utils/math.js";
 
-export function createUniques({ player, state, totem, clamp, spawnDog }) {
+export function createUniques({ player, state, totem, spawnDog }) {
   return {
     spare_tire: {
       title:"Запасное колесо",

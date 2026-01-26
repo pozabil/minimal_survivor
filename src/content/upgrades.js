@@ -1,11 +1,11 @@
 import { AURA_WAVE_FORCE_STEP } from "./config.js";
+import { clamp } from "../utils/math.js";
+import { fmtNum } from "../utils/format.js";
 
 export function createUpgrades({
   player,
   state,
   getLevel,
-  clamp,
-  fmtNum,
   getAuraWaveCooldown,
 }) {
   return {
