@@ -5,26 +5,6 @@ export const COLOSSUS_SPAWN_STAGES = 4;
 export const BURST_TELEGRAPH = 0.25;
 export const HEAL_OVER_TIME = 0.25;
 export const CAMERA_ZOOM_OUT = 0.05;
-export const TURRET_SPAWN_RADIUS = 280;
-export const TURRET_MIN_DIST = 120;
-export const ORBITAL_BASE_DISTANCE = 48;
-export const ORBITAL_BASE_SIZE = 7.5;
-export const ORBITAL_SIZE_EXP = 0.85;
-export const ORBITAL_KNOCKBACK_CHANCE = 0.12;
-export const ORBITAL_KNOCKBACK_FORCE = 120;
-export const AURA_WAVE_COOLDOWN_BASE = 2.6;
-export const AURA_WAVE_COOLDOWN_STEP = 0.1;
-export const AURA_WAVE_BASE_FORCE = 60;
-export const AURA_WAVE_FORCE_STEP = 10;
-export const AURA_WAVE_BOSS_MULT = 0.0;
-export const AURA_WAVE_ELITE_MULT = 0.25;
-export const AURA_WAVE_HIT_COOLDOWN = 0.05;
-export const AURA_WAVE_POS_MULT = 0.05;
-export const AURA_WAVE_VEL_MULT = 4;
-export const AURA_WAVE_TRAVEL_TIME = 0.42;
-export const AURA_WAVE_THICKNESS = 18;
-export const AURA_TICKS_PER_SEC = 5;
-export const AURA_TICK_INTERVAL = 1 / AURA_TICKS_PER_SEC;
 export const UNIQUE_CHEST_EVERY = 4;
 export const DASH_DISTANCE = 140;
 export const DASH_DURATION = 0.2;
@@ -63,16 +43,6 @@ export const DOG_GRAY_CHANCE = 0.12;
 export const XP_BONUS_NORMAL = 0.0005;
 export const XP_BONUS_ELITE = 0.002;
 export const XP_BONUS_BOSS = 0.01;
-export const TURRET_AGGRO_BASE = 220;
-export const TURRET_RANGE = 520;
-export const TURRET_FIRE_RATE = 1.8;
-export const TURRET_DAMAGE = 10;
-export const TURRET_BULLET_SPEED = 420;
-export const TURRET_BULLET_SIZE = 4;
-export const PIERCE_DAMAGE_FALLOFF = 0.8;
-export const PIERCE_DAMAGE_MIN_RATIO = 0.2;
-export const TURRET_SIZE_MULT = 1.20;
-export const TURRET_SIZE_LV_BONUS = 0.04;
 export const INVULN_LV_STEP = 4;
 export const INVULN_STEP = 0.01;
 export const INVULN_BULLET_BASE = 0.35;
@@ -112,26 +82,3 @@ export const LOW_HP_SLOW_SCALE = 0.5;
 export const LOW_HP_SLOW_COOLDOWN = 16.0;
 
 export const BASE_HP = 50;
-
-export const ELITE_MODS = [
-  { id:"swift",   hp:1.35, spd:1.38, dmg:1.15, color:"rgba(120,255,220,0.9)" },
-  { id:"bruiser", hp:2.05, spd:0.90, dmg:1.25, color:"rgba(255,140,140,0.95)" },
-  { id:"rage",    hp:1.45, spd:1.12, dmg:1.52, color:"rgba(210,160,255,0.95)" },
-];
-export const ELITE_RADIUS_MULT = 1.16;
-export const ELITE_XP_REWARD_MULT = 1.6;
-export const ELITE_XP_BASE_MULT = 1.2;
-
-export const BOSS_KINDS = [
-  { id:"beholder", name:"Beholder",   unlock:0 },
-  { id:"charger",  name:"Charger",    unlock:1 },
-  { id:"sniper",   name:"Sniper",     unlock:2 },
-  { id:"spiral",   name:"Spiral Eye", unlock:3 },
-  { id:"summoner", name:"Summoner",   unlock:4 },
-
-  { id:"mortar",   name:"Mortar",     unlock:5 },
-  { id:"warden",   name:"Warden",     unlock:6 },
-  { id:"vortex",   name:"Vortex",     unlock:7 },
-  { id:"colossus", name:"Colossus",   unlock:8 },
-];
-export const BOSS_NAME = Object.fromEntries(BOSS_KINDS.map((b)=>[b.id, b.name]));

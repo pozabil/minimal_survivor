@@ -6,22 +6,6 @@ import {
   BURST_TELEGRAPH,
   HEAL_OVER_TIME,
   CAMERA_ZOOM_OUT,
-  TURRET_SPAWN_RADIUS,
-  TURRET_MIN_DIST,
-  ORBITAL_KNOCKBACK_CHANCE,
-  ORBITAL_KNOCKBACK_FORCE,
-  AURA_WAVE_COOLDOWN_BASE,
-  AURA_WAVE_COOLDOWN_STEP,
-  AURA_WAVE_BASE_FORCE,
-  AURA_WAVE_FORCE_STEP,
-  AURA_WAVE_BOSS_MULT,
-  AURA_WAVE_ELITE_MULT,
-  AURA_WAVE_HIT_COOLDOWN,
-  AURA_WAVE_POS_MULT,
-  AURA_WAVE_VEL_MULT,
-  AURA_WAVE_TRAVEL_TIME,
-  AURA_WAVE_THICKNESS,
-  AURA_TICK_INTERVAL,
   UNIQUE_CHEST_EVERY,
   DASH_DISTANCE,
   DASH_DURATION,
@@ -60,11 +44,6 @@ import {
   XP_BONUS_NORMAL,
   XP_BONUS_ELITE,
   XP_BONUS_BOSS,
-  TURRET_RANGE,
-  TURRET_BULLET_SPEED,
-  TURRET_BULLET_SIZE,
-  PIERCE_DAMAGE_FALLOFF,
-  PIERCE_DAMAGE_MIN_RATIO,
   INVULN_LV_STEP,
   INVULN_STEP,
   INVULN_BULLET_BASE,
@@ -97,8 +76,6 @@ import {
   LOW_HP_SLOW_DURATION,
   LOW_HP_SLOW_SCALE,
   LOW_HP_SLOW_COOLDOWN,
-  BOSS_KINDS,
-  BOSS_NAME,
 } from "./content/config.js";
 import {
   TAU,
@@ -113,8 +90,32 @@ import { clamp, lerp } from "./utils/math.js";
 import { randf, randi } from "./utils/rand.js";
 import { circleHit, circleRectHit, pushAway } from "./utils/collision.js";
 import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "./utils/format.js";
-import { createUpgrades } from "./content/upgrades.js";
+import {
+  AURA_TICK_INTERVAL,
+  AURA_WAVE_BASE_FORCE,
+  AURA_WAVE_BOSS_MULT,
+  AURA_WAVE_COOLDOWN_BASE,
+  AURA_WAVE_COOLDOWN_STEP,
+  AURA_WAVE_ELITE_MULT,
+  AURA_WAVE_FORCE_STEP,
+  AURA_WAVE_HIT_COOLDOWN,
+  AURA_WAVE_POS_MULT,
+  AURA_WAVE_THICKNESS,
+  AURA_WAVE_TRAVEL_TIME,
+  AURA_WAVE_VEL_MULT,
+  ORBITAL_KNOCKBACK_CHANCE,
+  ORBITAL_KNOCKBACK_FORCE,
+  PIERCE_DAMAGE_FALLOFF,
+  PIERCE_DAMAGE_MIN_RATIO,
+  TURRET_BULLET_SIZE,
+  TURRET_BULLET_SPEED,
+  TURRET_MIN_DIST,
+  TURRET_RANGE,
+  TURRET_SPAWN_RADIUS,
+  createUpgrades,
+} from "./content/upgrades.js";
 import { createUniques } from "./content/uniques.js";
+import { BOSS_KINDS, BOSS_NAME } from "./content/enemies.js";
 import { getPlayerClass, PLAYER_CLASSES } from "./content/players.js";
 import { initState } from "./core/init.js";
 import { createPlayerFunctions } from "./core/player.js";
@@ -481,7 +482,23 @@ btnPause.addEventListener("click", (e)=>{
     }
 
     // State
-    const { player, state, ui } = initState();
+    const { player, state, ui, entities, spawn } = initState();
+    const {
+      bullets,
+      enemyBullets,
+      enemies,
+      turrets,
+      drops,
+      particles,
+      shockwaves,
+      floaters,
+      dashTrail,
+      lightningStrikes,
+      clones,
+      dogs,
+      chests,
+      totem,
+    } = entities;
 
     // Storage + options
     function readBoolKey(ns, key, fallback){
@@ -594,42 +611,6 @@ btnPause.addEventListener("click", (e)=>{
       return true;
     }
     Object.defineProperty(player, "xGainMultSafe", { get(){ return player.xpGainMult || 1; } });
-
-    const bullets = [];
-    const enemyBullets = [];
-    const enemies = [];
-    const turrets = [];
-    const drops = [];
-    const particles = [];
-    const shockwaves = [];
-    const floaters = [];
-    const dashTrail = [];
-    const lightningStrikes = [];
-    const clones = [];
-    const dogs = [];
-    const chests = [];
-    const totem = {
-      active: false,
-      x: 0, y: 0, r: 0,
-      t: 0,
-      life: 0,
-      lifeMax: 0,
-      grace: 0,
-      effect: 0,
-      inZone: false,
-    };
-
-    const spawn = {
-      timer: 0,
-      interval: 0.75,
-      packChance: 0.12,
-      bossEvery: 120,
-      nextBossAt: 120,
-      bossActive: 0,
-      maxBosses: 1,
-      bossCount: 0,
-      bossTier: 0,
-    };
 
     const UNIQUES = createUniques({
       player,

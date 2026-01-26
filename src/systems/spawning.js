@@ -1,11 +1,11 @@
+import { TAU } from "../core/constants.js";
 import {
   ELITE_MODS,
   ELITE_RADIUS_MULT,
   ELITE_XP_REWARD_MULT,
   ELITE_XP_BASE_MULT,
-} from "../content/config.js";
-import { TAU } from "../core/constants.js";
-import { enemyBase } from "../content/enemies.js";
+  ENEMY_BASE,
+} from "../content/enemies.js";
 import { clamp } from "../utils/math.js";
 import { randf, randi } from "../utils/rand.js";
 
@@ -245,7 +245,7 @@ export function createSpawnEnemy({
 
     const type = pickEnemyType({ player, state, enemies, forcedType });
 
-    const b = enemyBase(type);
+    const b = ENEMY_BASE[type];
     const tier = extra?.bossTier || 0;
 
     let eliteMod = null;

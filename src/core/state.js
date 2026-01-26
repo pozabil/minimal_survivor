@@ -43,6 +43,50 @@ export function createState() {
   };
 }
 
+export function createEntities() {
+  return {
+    bullets: [],
+    enemyBullets: [],
+    enemies: [],
+    turrets: [],
+    drops: [],
+    particles: [],
+    shockwaves: [],
+    floaters: [],
+    dashTrail: [],
+    lightningStrikes: [],
+    clones: [],
+    dogs: [],
+    chests: [],
+    totem: {
+      active: false,
+      x: 0,
+      y: 0,
+      r: 0,
+      t: 0,
+      life: 0,
+      lifeMax: 0,
+      grace: 0,
+      effect: 0,
+      inZone: false,
+    },
+  };
+}
+
+export function createSpawn() {
+  return {
+    timer: 0,
+    interval: 0.75,
+    packChance: 0.12,
+    bossEvery: 120,
+    nextBossAt: 120,
+    bossActive: 0,
+    maxBosses: 1,
+    bossCount: 0,
+    bossTier: 0,
+  };
+}
+
 export function createUiState() {
   return { buildFromPicker: false, buildTab: "upgrades" };
 }

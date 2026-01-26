@@ -1,18 +1,20 @@
 import {
   BASE_HP,
-  ORBITAL_BASE_DISTANCE,
-  ORBITAL_BASE_SIZE,
-  ORBITAL_SIZE_EXP,
   TOTEM_SPAWN_EVERY,
   TOTEM_SPAWN_LV_STEP,
   TOTEM_SPAWN_MIN_INTERVAL,
   TOTEM_SPAWN_STEP,
+} from "../content/config.js";
+import {
+  ORBITAL_BASE_DISTANCE,
+  ORBITAL_BASE_SIZE,
+  ORBITAL_SIZE_EXP,
   TURRET_AGGRO_BASE,
   TURRET_DAMAGE,
   TURRET_FIRE_RATE,
   TURRET_SIZE_LV_BONUS,
   TURRET_SIZE_MULT,
-} from "../content/config.js";
+} from "../content/upgrades.js";
 
 export function createPlayer() {
   return {
