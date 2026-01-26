@@ -275,9 +275,6 @@ canvas { display:block; width:100vw; height:100vh; image-rendering: pixelated; t
   background: linear-gradient(180deg, rgba(255,230,140,0.9), rgba(255,140,120,0.95));
   box-shadow: 0 -6px 16px rgba(255,180,120,0.45);
 }
-@media (min-width:901px){
-  .pauseBtn{ display:none !important; }
-}
 
 .grid2{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap:14px; margin-top:10px; }
 .box{

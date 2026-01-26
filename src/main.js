@@ -228,9 +228,26 @@ import { loadOptions, loadRecords, saveOptions, updateRecordsOnDeath } from "./s
     // Mobile joystick
     const joy = document.getElementById("joy");
     const knob = document.getElementById("knob");
-    const isTouch = (window.matchMedia && matchMedia("(pointer: coarse)").matches) || ("ontouchstart" in window);
-    if (isTouch) { joy.style.display = "none"; btnPause.style.display = "block"; }
-    const GAME_SCALE = isTouch ? 0.5 : 1;
+    const isTouch =
+      ("ontouchstart" in window) ||
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+      (navigator.msMaxTouchPoints && navigator.msMaxTouchPoints > 0) ||
+      (window.matchMedia && window.matchMedia("(any-pointer: coarse)").matches) ||
+      (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    if (isTouch) { joy.style.display = "none"; }
+    const isPauseToggleBlocked = () =>
+      (pickerOverlay.style.display === "grid") ||
+      (startOverlay.style.display === "grid") ||
+      (mainMenuOverlay.style.display === "grid") ||
+      (gameoverOverlay.style.display === "grid") ||
+      (recordsOverlay.style.display === "grid") ||
+      (settingsOverlay.style.display === "grid") ||
+      (restartConfirmOverlay.style.display === "grid");
+    const updatePauseBtnVisibility = () => {
+      btnPause.style.display = isPauseToggleBlocked() ? "none" : "block";
+    };
+    const minDim = Math.min(innerWidth, innerHeight);
+    const GAME_SCALE = (isTouch && minDim <= 640) ? 0.5 : 1;
     const SPAWN_SCALE = 1 / GAME_SCALE;
     let cameraScale = GAME_SCALE;
     let curDpr = 1;
@@ -471,13 +488,14 @@ canvas.addEventListener("pointercancel", (e)=>{
   joyReset();
 }, { passive:true });
 
-// Pause button (mobile)
-btnPause.addEventListener("click", (e)=>{
-  e.preventDefault();
-  if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || settingsOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
-  togglePauseMenu();
-});
     }
+
+    // Pause button
+    btnPause.addEventListener("click", (e)=>{
+      e.preventDefault();
+      if (isPauseToggleBlocked()) return;
+      togglePauseMenu();
+    });
 
     // State
     const { player, state, ui, entities, spawn } = initState();
@@ -630,12 +648,14 @@ btnPause.addEventListener("click", (e)=>{
     function openMainMenu(){
       state.paused = true;
       mainMenuOverlay.style.display = "grid";
+      updatePauseBtnVisibility();
     }
 
     function openStart(){
       state.paused = true;
       mainMenuOverlay.style.display = "none";
       startOverlay.style.display = "grid";
+      updatePauseBtnVisibility();
       charsWrap.innerHTML = "";
       PLAYER_CLASSES.forEach((c)=>{
         const div = document.createElement("div");
@@ -646,6 +666,7 @@ btnPause.addEventListener("click", (e)=>{
           maybeAddStartingDog(c.id);
           startOverlay.style.display = "none";
           state.paused = false;
+          updatePauseBtnVisibility();
         });
         charsWrap.appendChild(div);
       });
@@ -2788,6 +2809,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if (recordsReturnToMenu) mainMenuOverlay.style.display = "none";
       renderRecords();
       recordsOverlay.style.display = "grid";
+      updatePauseBtnVisibility();
     }
     function hideRecords(){
       recordsOverlay.style.display = "none";
@@ -2798,6 +2820,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
       recordsReturnToPause = false;
       recordsReturnToMenu = false;
+      updatePauseBtnVisibility();
     }
     function showSettings(){
       settingsReturnToPause = pauseMenu.style.display === "grid";
@@ -2806,6 +2829,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if (settingsReturnToMenu) mainMenuOverlay.style.display = "none";
       applyOptionsToUI();
       settingsOverlay.style.display = "grid";
+      updatePauseBtnVisibility();
     }
     function hideSettings(){
       settingsOverlay.style.display = "none";
@@ -2816,6 +2840,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
       settingsReturnToPause = false;
       settingsReturnToMenu = false;
+      updatePauseBtnVisibility();
     }
 
     function showRestartConfirm(){
@@ -2825,6 +2850,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if (restartReturnToPause) pauseMenu.style.display = "none";
       state.paused = true;
       restartConfirmOverlay.style.display = "grid";
+      updatePauseBtnVisibility();
     }
 
     function hideRestartConfirm(){
@@ -2836,6 +2862,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
       restartReturnToPause = false;
       restartReturnToPlay = false;
+      updatePauseBtnVisibility();
     }
 
     function gameOver(){
@@ -2846,6 +2873,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       gameoverOverlay.style.display = "grid";
       updateRecordsOnDeath({ state, player });
       summaryEl.textContent = `Time: ${fmtTime(state.t)} · Hero: ${player.heroName} · Level: ${player.lvl} · Kills: ${state.kills} · Damage: ${Math.round(state.dmgDone)}${state.deathReason ? ` · Cause: ${state.deathReason}` : ""}`;
+      updatePauseBtnVisibility();
     }
 
     function copyStats(){
