@@ -582,7 +582,6 @@ btnPause.addEventListener("click", (e)=>{
       state.patriarchDollCd = PATRIARCH_DOLL_COOLDOWN;
       return true;
     }
-    Object.defineProperty(player, "xGainMultSafe", { get(){ return player.xpGainMult || 1; } });
 
     const UNIQUES = createUniques({
       player,
@@ -847,8 +846,8 @@ btnPause.addEventListener("click", (e)=>{
       if (player.dodge > 0 && Math.random() < player.dodge) return 0;
 
       // armor cap 60%
-      const arm = clamp(player.armor || 0, 0, 0.60);
-      const dmg = raw * (1 - arm) * (player.damageTakenMult || 1);
+      const arm = clamp(player.armor, 0, 0.60);
+      const dmg = raw * (1 - arm) * player.damageTakenMult;
 
       player.hp -= dmg;
       if (player.hp < 0) player.hp = 0;
@@ -876,12 +875,12 @@ btnPause.addEventListener("click", (e)=>{
 
 
     function gainXp(v){
-      const mult = player.xGainMultSafe * (1 + (state.xpEnemyBonus || 0));
+      const mult = player.xpGainMult * (1 + (state.xpEnemyBonus || 0));
       player.xp += v * mult;
       while(player.xp >= player.xpNeed && !state.dead){
         player.xp -= player.xpNeed;
         player.lvl += 1;
-        player.xpNeed = Math.floor(player.xpNeed * 1.12 * (player.xpNeedMult || 1) + 8);
+        player.xpNeed = Math.floor(player.xpNeed * 1.12 * player.xpNeedMult + 8);
         state.chestTimer = Math.min(state.chestTimer, getChestInterval());
         state.pendingLevelUps += 1;
       }
@@ -2055,7 +2054,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       const dp = Math.hypot(dxp, dyp);
       if (dp < e.explodeR && player.invuln <= 0){
         const mult = 1 - (dp / e.explodeR); // 0..1
-        const dmg = e.explodeDmg * (0.55 + 0.45 * mult) * (player.damageTakenMult || 1);
+        const dmg = e.explodeDmg * (0.55 + 0.45 * mult) * player.damageTakenMult;
         player.hp -= dmg;
         const baseInvuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN);
         player.invuln = getInvulnAfterHit(baseInvuln);
@@ -2240,7 +2239,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if ((id === "auraRadius" || id === "auraDps" || id === "auraSlow" || id === "auraWave") && !player.aura) return false;
       if ((id === "orbitalDmg" || id === "orbitalRadius" || id === "orbitalSpeedUp") && player.orbitals <= 0) return false;
       if ((id === "novaDamage" || id === "novaRate" || id === "novaSpeed" || id === "novaMagnet") && player.novaCount <= 0) return false;
-      if (id === "ricochetBounces" && (player.ricochetChance || 0) <= 0) return false;
+      if (id === "ricochetBounces" && player.ricochetChance <= 0) return false;
       if ((id === "turretLevel" || id === "turretHeal") && getTurretLevel() <= 0) return false;
       return true;
     }
@@ -2577,25 +2576,25 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         case "critMultUp":
           return `Крит множ.: x${fmtNum(player.critMult, 2)}`;
         case "ricochetChance":
-          return `Рикошет: шанс ${fmtPct(player.ricochetChance || 0)}`;
+          return `Рикошет: шанс ${fmtPct(player.ricochetChance)}`;
         case "ricochetBounces":
           return `Рикошет: отскоков ${getRicochetBounces()}`;
         case "armor":
-          return `Броня: ${fmtPct(player.armor || 0)}`;
+          return `Броня: ${fmtPct(player.armor)}`;
         case "dodge":
-          return `Уклонение: ${fmtPct(player.dodge || 0)}`;
+          return `Уклонение: ${fmtPct(player.dodge)}`;
         case "lifesteal":
-          return `Лайфстил: ${fmtPct((player.lifeSteal || 0) * 0.01)} шанс на 1% HP при попадании`;
+          return `Лайфстил: ${fmtPct(player.lifeSteal * 0.01)} шанс на 1% HP при попадании`;
         case "xpGain": {
-          const bonus = (player.xpGainMult || 1) - 1;
-          return `Опыт: x${fmtNum(player.xpGainMult || 1, 2)} (${fmtSignedPct(bonus)})`;
+          const bonus = player.xpGainMult - 1;
+          return `Опыт: x${fmtNum(player.xpGainMult, 2)} (${fmtSignedPct(bonus)})`;
         }
         case "rerollCap":
           return `Лимит reroll: ${player.rerollCap}`;
         case "orbitalSpeedUp":
           return `Орбиталки: скорость ${fmtNum(player.orbitalSpeed, 2)}`;
         case "auraSlow":
-          return `Аура: замедление ${fmtPct(player.auraSlow || 0)}`;
+          return `Аура: замедление ${fmtPct(player.auraSlow)}`;
         case "auraWave":
           return `Аура: волна ${fmtNum(getAuraWaveCooldown(), 1)}с · сила ${fmtNum(getAuraWaveForce())}`;
         case "speed":

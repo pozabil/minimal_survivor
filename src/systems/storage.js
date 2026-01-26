@@ -71,7 +71,7 @@ export function updateRecordsOnDeath({ state, player }){
   if (player.lvl > next.level) next.level = player.lvl;
   if (time > next.time) next.time = time;
   if (state.kills > next.kills) next.kills = state.kills;
-  if ((state.maxDps || 0) > next.dps) next.dps = state.maxDps || 0;
+  if (state.maxDps > next.dps) next.dps = state.maxDps;
   saveRecords(next);
   return next;
 }
