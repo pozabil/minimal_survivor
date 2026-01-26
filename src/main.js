@@ -82,9 +82,6 @@ import {
   GRID_SIZE,
   JOY_HALF,
   JOY_MARGIN,
-  STORAGE_NS,
-  OPTION_KEYS,
-  RECORD_KEYS,
 } from "./core/constants.js";
 import { clamp, lerp } from "./utils/math.js";
 import { randf, randi } from "./utils/rand.js";
@@ -122,6 +119,7 @@ import { createPlayerFunctions } from "./core/player.js";
 import { startLoop } from "./core/loop.js";
 import { updateMovement } from "./systems/movement.js";
 import { createSpawnEnemy, updateSpawning } from "./systems/spawning.js";
+import { loadOptions, loadRecords, saveOptions, updateRecordsOnDeath } from "./systems/storage.js";
 
 (() => {
   "use strict";
@@ -501,32 +499,6 @@ btnPause.addEventListener("click", (e)=>{
     } = entities;
 
     // Storage + options
-    function readBoolKey(ns, key, fallback){
-      try {
-        const raw = localStorage.getItem(ns + key);
-        if (raw === null) return fallback;
-        if (raw === "1" || raw === "true") return true;
-        if (raw === "0" || raw === "false") return false;
-        return Boolean(Number(raw));
-      } catch {
-        return fallback;
-      }
-    }
-    function writeBoolKey(ns, key, value){
-      try { localStorage.setItem(ns + key, value ? "1" : "0"); } catch {}
-    }
-    function loadOptions(){
-      return {
-        showDamageNumbers: readBoolKey(
-          STORAGE_NS.options,
-          OPTION_KEYS.showDamageNumbers,
-          false
-        ),
-      };
-    }
-    function saveOptions(next){
-      writeBoolKey(STORAGE_NS.options, OPTION_KEYS.showDamageNumbers, !!next.showDamageNumbers);
-    }
     const options = loadOptions();
 
     function applyOptionsToUI(){
@@ -2797,47 +2769,6 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     let restartReturnToPause = false;
     let restartReturnToPlay = false;
 
-    function readRecord(key){
-      try {
-        const nsKey = STORAGE_NS.records + key;
-        let raw = localStorage.getItem(nsKey);
-        if (raw === null) raw = localStorage.getItem(key);
-        const value = Number(raw);
-        return Number.isFinite(value) ? value : 0;
-      } catch {
-        return 0;
-      }
-    }
-    function writeRecord(key, value){
-      try {
-        localStorage.setItem(STORAGE_NS.records + key, String(value));
-      } catch {}
-    }
-    function loadRecords(){
-      return {
-        level: readRecord(RECORD_KEYS.level),
-        time: readRecord(RECORD_KEYS.time),
-        kills: readRecord(RECORD_KEYS.kills),
-        dps: readRecord(RECORD_KEYS.dps),
-      };
-    }
-    function saveRecords(records){
-      writeRecord(RECORD_KEYS.level, records.level);
-      writeRecord(RECORD_KEYS.time, records.time);
-      writeRecord(RECORD_KEYS.kills, records.kills);
-      writeRecord(RECORD_KEYS.dps, records.dps);
-    }
-    function updateRecordsOnDeath(){
-      const records = loadRecords();
-      const next = { ...records };
-      const time = Math.floor(state.t);
-      if (player.lvl > next.level) next.level = player.lvl;
-      if (time > next.time) next.time = time;
-      if (state.kills > next.kills) next.kills = state.kills;
-      if ((state.maxDps || 0) > next.dps) next.dps = state.maxDps || 0;
-      saveRecords(next);
-      return next;
-    }
     function renderRecords(){
       const records = loadRecords();
       const levelText = records.level > 0 ? records.level : "--";
@@ -2914,7 +2845,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       pickerOverlay.style.display = "none";
       pauseMenu.style.display = "none";
       gameoverOverlay.style.display = "grid";
-      updateRecordsOnDeath();
+      updateRecordsOnDeath({ state, player });
       summaryEl.textContent = `Time: ${fmtTime(state.t)} · Hero: ${player.heroName} · Level: ${player.lvl} · Kills: ${state.kills} · Damage: ${Math.round(state.dmgDone)}${state.deathReason ? ` · Cause: ${state.deathReason}` : ""}`;
     }
 
