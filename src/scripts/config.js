@@ -131,6 +131,9 @@ export const ELITE_MODS = [
   { id:"bruiser", hp:2.05, spd:0.90, dmg:1.25, color:"rgba(255,140,140,0.95)" },
   { id:"rage",    hp:1.45, spd:1.12, dmg:1.52, color:"rgba(210,160,255,0.95)" },
 ];
+export const ELITE_RADIUS_MULT = 1.16;
+export const ELITE_XP_REWARD_MULT = 1.6;
+export const ELITE_XP_BASE_MULT = 1.2;
 
 export const BOSS_KINDS = [
   { id:"beholder", name:"Beholder",   unlock:0 },
