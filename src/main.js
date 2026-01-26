@@ -109,7 +109,6 @@ import {
   LOW_HP_SLOW_DURATION,
   LOW_HP_SLOW_SCALE,
   LOW_HP_SLOW_COOLDOWN,
-  BASE_HP,
   BOSS_KINDS,
   BOSS_NAME,
 } from "./content/config.js";
@@ -128,6 +127,7 @@ import { circleHit, circleRectHit, pushAway } from "./utils/collision.js";
 import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "./utils/format.js";
 import { createUpgrades } from "./content/upgrades.js";
 import { createUniques } from "./content/uniques.js";
+import { getPlayerClass, PLAYER_CLASSES } from "./content/players.js";
 import { initState } from "./core/init.js";
 import { startLoop } from "./core/loop.js";
 import { updateMovement } from "./systems/movement.js";
@@ -492,7 +492,7 @@ btnPause.addEventListener("click", (e)=>{
     }
 
     // State
-    const { state, ui } = initState();
+    const { player, state, ui } = initState();
 
     // Storage + options
     function readBoolKey(ns, key, fallback){
@@ -526,82 +526,6 @@ btnPause.addEventListener("click", (e)=>{
     function applyOptionsToUI(){
       if (optShowDamageNumbers) optShowDamageNumbers.checked = !!options.showDamageNumbers;
     }
-
-    // Player
-    const player = {
-      heroId: "scout",
-      heroName: "Скаут",
-      heroPerkText: "",
-      x:0, y:0, r:14,
-      vx:0, vy:0,
-      speed:260,
-      baseSpeed:260,
-      flatSpeed:0,
-      hpMax: BASE_HP,
-      hp: BASE_HP,
-      regen:0,
-      invuln:0,
-      magnet:120,
-
-      lvl:1,
-      xp:0,
-      xpNeed:40,
-
-      fireRate: 4.2,
-      shotTimer: 0,
-      bulletSpeed: 520,
-      bulletSize: 5,
-      damage: 16,
-      baseDamage: 16,
-      pierce: 1,
-      spread: 0.0,
-      multishot: 1,
-      critChance: 0.04,
-      critMult: 1.8,
-      ricochetChance: 0.0,
-      ricochetBounces: 0,
-
-      armor: 0.0,      // до 60% снижения входящего урона
-      dodge: 0.0,      // шанс уклониться (0..0.35)
-      lifeSteal: 0,  // уровни лайфстила (0..8)
-
-      orbitals: 0,
-      orbitalRadius: 48,
-      orbitalSpeed: 2.2,
-      orbitalDamage: 12,
-      orbitalHitCD: 0.22,
-
-      aura: false,
-      auraRadius: 72,
-      auraDps: 14,
-
-      auraSlow: 0.0,
-
-      novaCount: 0,
-      novaDamage: 32,
-      novaRate: 0.56,
-      novaSpeed: 460,
-      novaTimer: 0,
-      novaMagnet: 0,
-
-      upgrades: {},
-      rerolls: 2,
-      rerollCap: 4,
-
-      xpGainMult: 1.0,
-      xpNeedMult: 1.0,
-      damageTakenMult: 1.0,
-      chestBonusReroll: 0,
-      chestBonusRare: 0.0,
-
-      uniques: new Set(),
-      uniquesSeen: new Set(),
-      uniquesOrder: [],
-
-      dashCd: 0,
-      lastDirX: 1,
-      lastDirY: 0,
-    };
 
     function getChestInterval(){
       const reduce = Math.floor((player.lvl - 1) / 4);
@@ -792,76 +716,10 @@ btnPause.addEventListener("click", (e)=>{
     };
 
     // Characters
-    const characters = [
-      {
-        id:"scout",
-        name:"Скаут",
-        desc:"Скорость + магнит. Сундуки сильнее.",
-        perk:"Перки: сундук даёт +1 reroll (до лимита) и чаще выпадает rare.",
-        apply(){
-          player.heroId="scout"; player.heroName="Скаут"; player.heroPerkText=this.perk;
-          player.speed = 295;
-          player.baseSpeed = 295;
-          player.magnet = 150;
-          player.hpMax = BASE_HP * 0.9;
-          player.hp = player.hpMax;
-          player.fireRate = 4.6;
-          player.damage = 15;
-          player.baseDamage = 15;
-
-          player.xpGainMult = 1.0;
-          player.chestBonusReroll = 1;
-          player.chestBonusRare = 0.10;
-        }
-      },
-      {
-        id:"tank",
-        name:"Танк",
-        desc:"HP + реген. Доп. неуязвимость после урона.",
-        perk:"Перки: после попадания неуязвимость x1.3 (макс +0.15с).",
-        apply(){
-          player.heroId="tank"; player.heroName="Танк"; player.heroPerkText=this.perk;
-          player.hpMax = BASE_HP * 1.4;
-          player.hp = player.hpMax;
-          player.regen = 0.8;
-          player.speed = 240;
-          player.baseSpeed = 240;
-          player.damage = 16;
-          player.baseDamage = 16;
-          player.fireRate = 4.1;
-
-          player.xpGainMult = 1.0;
-          player.chestBonusReroll = 0;
-          player.chestBonusRare = 0.0;
-        }
-      },
-      {
-        id:"mage",
-        name:"Маг",
-        desc:"Стартовая орбиталка + урон. Больше XP.",
-        perk:"Перки: +10% XP, орбиталки быстрее на 20%.",
-        apply(){
-          player.heroId="mage"; player.heroName="Маг"; player.heroPerkText=this.perk;
-          player.orbitals = 1;
-          player.orbitalDamage = 12;
-          player.damage = 18;
-          player.baseDamage = 18;
-          player.fireRate = 4.0;
-          player.hpMax = BASE_HP * 1.0;
-          player.hp = player.hpMax;
-          player.speed = 255;
-          player.baseSpeed = 255;
-
-          player.xpGainMult = 1.10;
-          player.orbitalSpeed = 2.4 * 1.20;
-          player.chestBonusReroll = 0;
-          player.chestBonusRare = 0.0;
-        }
-      },
-    ];
 
     function maybeAddStartingDog(heroId){
-      const chance = heroId==="scout" ? 0.10 : heroId==="tank" ? 0.06 : heroId==="mage" ? 0.08 : 0;
+      const hero = getPlayerClass(heroId);
+      const chance = hero ? (hero.dogStartChance || 0) : 0;
       if (chance > 0 && Math.random() < chance) addUniqueItem("dog");
     }
 
@@ -875,12 +733,12 @@ btnPause.addEventListener("click", (e)=>{
       mainMenuOverlay.style.display = "none";
       startOverlay.style.display = "grid";
       charsWrap.innerHTML = "";
-      characters.forEach((c)=>{
+      PLAYER_CLASSES.forEach((c)=>{
         const div = document.createElement("div");
         div.className = "choice";
         div.innerHTML = `<div class="t">${c.name}</div><div class="d">${c.desc}</div><div class="d" style="margin-top:8px; opacity:.75">${c.perk}</div>`;
         div.addEventListener("click", ()=>{
-          c.apply();
+          c.apply(player);
           maybeAddStartingDog(c.id);
           startOverlay.style.display = "none";
           state.paused = false;
