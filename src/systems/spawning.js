@@ -5,6 +5,7 @@ import {
   ELITE_XP_REWARD_MULT,
   ELITE_XP_BASE_MULT,
   ENEMY_BASE,
+  BOSS_KINDS,
 } from "../content/enemies.js";
 import { clamp } from "../utils/math.js";
 import { randf, randi } from "../utils/rand.js";
@@ -315,6 +316,47 @@ export function createSpawnEnemy({
       });
     }
     return e;
+  };
+}
+
+export function createSpawnBoss({ spawn, spawnEnemy, bossWrap }) {
+  function pickBossKind() {
+    const maxUnlock = Math.min(BOSS_KINDS.length - 1, spawn.bossTier);
+    const available = BOSS_KINDS.filter((b) => b.unlock <= maxUnlock);
+    return available[randi(0, available.length - 1)];
+  }
+
+  return function spawnBoss(kindId = null) {
+    if (spawn.bossActive >= spawn.maxBosses) return;
+    const kind = kindId ? BOSS_KINDS.find((b) => b.id === kindId) : pickBossKind();
+    if (!kind) return;
+    spawn.bossActive += 1;
+    spawn.bossCount += 1;
+    spawn.bossTier = Math.max(spawn.bossTier, spawn.bossCount - 1);
+    spawnEnemy(false, "boss", { bossKind: kind.id, bossTier: spawn.bossTier });
+    bossWrap.style.display = "block";
+  };
+}
+
+export function createSpawnColossusElite({ player, state, spawnEnemy }) {
+  function pickColossusEliteType() {
+    const picks = ["grunt", "runner", "tank", "shooter", "brute"];
+    if (state.difficulty > 3.0) picks.push("spitter", "dasher");
+    if (player.lvl >= 18) picks.push("shield");
+    return picks[randi(0, picks.length - 1)];
+  }
+
+  return function spawnColossusElite(boss) {
+    const type = pickColossusEliteType();
+    const ang = randf(0, TAU);
+    const dist = Math.max(28, boss.r + randf(18, 42));
+    const ex = boss.x + Math.cos(ang) * dist;
+    const ey = boss.y + Math.sin(ang) * dist;
+    const elite = spawnEnemy(false, type, { spawnX: ex, spawnY: ey, forceElite: true });
+    if (elite) {
+      elite.vx = 0;
+      elite.vy = 0;
+    }
   };
 }
 

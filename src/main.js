@@ -20,7 +20,6 @@ import {
   SAME_CIRCLE_DAMAGE_MULT,
   MAX_SHIRT_SLOW_DURATION,
   MAX_SHIRT_COOLDOWN,
-  MAX_SHIRT_SLOW_SCALE,
   MAX_SHIRT_KILL_CD_REDUCE,
   PATRIARCH_DOLL_COOLDOWN,
   PATRIARCH_DOLL_DAMAGE_MULT,
@@ -71,11 +70,6 @@ import {
   TOTEM_DPS_RAMP_LV_STEP,
   TOTEM_DPS_RAMP_CAP,
   TOTEM_EFFECT_MAX,
-  LOW_HP_SLOW_THRESHOLD,
-  LOW_HP_SLOW_RESET,
-  LOW_HP_SLOW_DURATION,
-  LOW_HP_SLOW_SCALE,
-  LOW_HP_SLOW_COOLDOWN,
 } from "./content/config.js";
 import {
   TAU,
@@ -112,14 +106,14 @@ import {
   createUpgrades,
 } from "./content/upgrades.js";
 import { createUniques } from "./content/uniques.js";
-import { BOSS_KINDS, BOSS_NAME } from "./content/enemies.js";
+import { BOSS_NAME } from "./content/enemies.js";
 import { getPlayerClass, PLAYER_CLASSES } from "./content/players.js";
 import { initState } from "./core/init.js";
 import { createPlayerFunctions } from "./core/player.js";
 import { startLoop } from "./core/loop.js";
 import { createStep } from "./flow/step.js";
 import { updateMovement } from "./systems/movement.js";
-import { createSpawnEnemy, updateSpawning } from "./systems/spawning.js";
+import { createSpawnBoss, createSpawnColossusElite, createSpawnEnemy, updateSpawning } from "./systems/spawning.js";
 import { loadOptions, loadRecords, saveOptions, updateRecordsOnDeath } from "./systems/storage.js";
 import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
@@ -916,40 +910,17 @@ canvas.addEventListener("pointercancel", (e)=>{
       spawnScale: SPAWN_SCALE,
     });
 
-    function pickBossKind(){
-      const maxUnlock = Math.min(BOSS_KINDS.length - 1, spawn.bossTier);
-      const available = BOSS_KINDS.filter(b => b.unlock <= maxUnlock);
-      return available[randi(0, available.length-1)];
-    }
-    function spawnBoss(kindId=null){
-      if (spawn.bossActive >= spawn.maxBosses) return;
-      const kind = kindId ? BOSS_KINDS.find((b)=>b.id===kindId) : pickBossKind();
-      if (!kind) return;
-      spawn.bossActive += 1;
-      spawn.bossCount += 1;
-      spawn.bossTier = Math.max(spawn.bossTier, spawn.bossCount - 1);
-      spawnEnemy(false, "boss", { bossKind: kind.id, bossTier: spawn.bossTier });
-      bossWrap.style.display = "block";
-    }
+    const spawnBoss = createSpawnBoss({
+      spawn,
+      spawnEnemy,
+      bossWrap,
+    });
 
-    function pickColossusEliteType(){
-      const picks = ["grunt", "runner", "tank", "shooter", "brute"];
-      if (state.difficulty > 3.0) picks.push("spitter", "dasher");
-      if (player.lvl >= 18) picks.push("shield");
-      return picks[randi(0, picks.length - 1)];
-    }
-    function spawnColossusElite(boss){
-      const type = pickColossusEliteType();
-      const ang = randf(0, TAU);
-      const dist = Math.max(28, boss.r + randf(18, 42));
-      const ex = boss.x + Math.cos(ang) * dist;
-      const ey = boss.y + Math.sin(ang) * dist;
-      const elite = spawnEnemy(false, type, { spawnX: ex, spawnY: ey, forceElite: true });
-      if (elite){
-        elite.vx = 0;
-        elite.vy = 0;
-      }
-    }
+    const spawnColossusElite = createSpawnColossusElite({
+      player,
+      state,
+      spawnEnemy,
+    });
 
     // Chest
     function spawnChest(){
