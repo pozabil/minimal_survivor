@@ -1,5 +1,36 @@
 export function initHud() {
+  const elements = {
+    elTime: document.getElementById("time"),
+    elLvl: document.getElementById("lvl"),
+    elKills: document.getElementById("kills"),
+    elEnemiesCount: document.getElementById("enemiesCount"),
+    elShots: document.getElementById("shots"),
+    elDps: document.getElementById("dps"),
+    elFps: document.getElementById("fps"),
+    elWep: document.getElementById("wep"),
+    elRerolls: document.getElementById("rerolls"),
+    elThreat: document.getElementById("threat"),
+    elActionHint: document.getElementById("actionHint"),
+    activeItemsEl: document.getElementById("activeItems"),
+    activeItemsListEl: document.getElementById("activeItemsList"),
+    elChestRespawn: document.getElementById("chestRespawn"),
+    totemTimerEl: document.getElementById("totemTimer"),
+    totemWarningEl: document.getElementById("totemWarning"),
+    hpbar: document.getElementById("hpbar"),
+    hpbarPulse: document.getElementById("hpbarPulse"),
+    xpbar: document.getElementById("xpbar"),
+    hptext: document.getElementById("hptext"),
+    xptext: document.getElementById("xptext"),
+    totemBar: document.getElementById("totemBar"),
+    totemText: document.getElementById("totemText"),
+    bossBar: document.getElementById("bossBar"),
+    bossText: document.getElementById("bossText"),
+    chestBar: document.getElementById("chestBar"),
+    chestText: document.getElementById("chestText"),
+    bossWrap: document.getElementById("bossWrap"),
+    bossList: document.getElementById("bossList"),
+  };
   return {
-    elements: {},
+    elements,
   };
 }

@@ -120,6 +120,8 @@ import { startLoop } from "./core/loop.js";
 import { updateMovement } from "./systems/movement.js";
 import { createSpawnEnemy, updateSpawning } from "./systems/spawning.js";
 import { loadOptions, loadRecords, saveOptions, updateRecordsOnDeath } from "./systems/storage.js";
+import { initHud } from "./ui/hud.js";
+import { initOverlays } from "./ui/overlays.js";
 
 (() => {
   "use strict";
@@ -140,90 +142,87 @@ import { loadOptions, loadRecords, saveOptions, updateRecordsOnDeath } from "./s
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas 2D context is not available (canvas.getContext('2d') returned null).");
 
+    const hud = initHud();
+    const overlays = initOverlays();
+
     // HUD
-    const elTime = document.getElementById("time");
-    const elLvl  = document.getElementById("lvl");
-    const elKills= document.getElementById("kills");
-    const elEnemiesCount = document.getElementById("enemiesCount");
-    const elShots = document.getElementById("shots");
-    const elDps  = document.getElementById("dps");
-    const elFps  = document.getElementById("fps");
-    const elWep  = document.getElementById("wep");
-    const elRerolls = document.getElementById("rerolls");
-    const elThreat = document.getElementById("threat");
-    const elActionHint = document.getElementById("actionHint");
-    const activeItemsEl = document.getElementById("activeItems");
-    const activeItemsListEl = document.getElementById("activeItemsList");
-    const elChestRespawn = document.getElementById("chestRespawn");
-    const totemTimerEl = document.getElementById("totemTimer");
-    const totemWarningEl = document.getElementById("totemWarning");
-
-    const hpbar  = document.getElementById("hpbar");
-    const hpbarPulse = document.getElementById("hpbarPulse");
-    const xpbar  = document.getElementById("xpbar");
-    const hptext = document.getElementById("hptext");
-    const xptext = document.getElementById("xptext");
-    const totemBar = document.getElementById("totemBar");
-    const totemText = document.getElementById("totemText");
-    const bossBar = document.getElementById("bossBar");
-    const bossText = document.getElementById("bossText");
-    const chestBar = document.getElementById("chestBar");
-    const chestText = document.getElementById("chestText");
-
-    const bossWrap = document.getElementById("bossWrap");
-    const bossList = document.getElementById("bossList");
+    const {
+      elTime,
+      elLvl,
+      elKills,
+      elEnemiesCount,
+      elShots,
+      elDps,
+      elFps,
+      elWep,
+      elRerolls,
+      elThreat,
+      elActionHint,
+      activeItemsEl,
+      activeItemsListEl,
+      elChestRespawn,
+      totemTimerEl,
+      totemWarningEl,
+      hpbar,
+      hpbarPulse,
+      xpbar,
+      hptext,
+      xptext,
+      totemBar,
+      totemText,
+      bossBar,
+      bossText,
+      chestBar,
+      chestText,
+      bossWrap,
+      bossList,
+    } = hud.elements;
 
     // Overlays
-    const mainMenuOverlay = document.getElementById("mainMenu");
-    const btnFreePlay = document.getElementById("btnFreePlay");
-    const btnMenuRecords = document.getElementById("btnMenuRecords");
-    const btnMenuSettings = document.getElementById("btnMenuSettings");
-
-    const startOverlay = document.getElementById("start");
-    const charsWrap = document.getElementById("chars");
-
-    const pickerOverlay = document.getElementById("picker");
-    const pickerTitle = document.getElementById("pickerTitle");
-    const pickerHint = document.getElementById("pickerHint");
-    const choicesWrap = document.getElementById("choices");
-    const btnReroll = document.getElementById("btnReroll");
-    const btnSkip = document.getElementById("btnSkip");
-    const btnShowBuild = document.getElementById("btnShowBuild");
-
-    const pauseMenu = document.getElementById("pauseMenu");
-    const buildListEl = document.getElementById("buildList");
-    const invListEl = document.getElementById("invList");
-    const tabUpgrades = document.getElementById("tabUpgrades");
-    const tabInventory = document.getElementById("tabInventory");
-    const buildStatsEl = document.getElementById("buildStats");
-    const btnResume = document.getElementById("btnResume");
-    const btnRestart2 = document.getElementById("btnRestart2");
-    const btnCopy = document.getElementById("btnCopy");
-    const btnRecords = document.getElementById("btnRecords");
-    const btnSettings = document.getElementById("btnSettings");
-    const btnHang = document.getElementById("btnHang");
-
-    const restartConfirmOverlay = document.getElementById("restartConfirm");
-    const btnRestartYes = document.getElementById("btnRestartYes");
-    const btnRestartNo = document.getElementById("btnRestartNo");
-
-    const gameoverOverlay = document.getElementById("gameover");
-    const summaryEl = document.getElementById("summary");
-    const restartBtn = document.getElementById("restart");
-    const copyBtn = document.getElementById("copyStats");
-    const btnRecordsOver = document.getElementById("btnRecordsOver");
-
-    const recordsOverlay = document.getElementById("records");
-    const recordsListEl = document.getElementById("recordsList");
-    const btnRecordsClose = document.getElementById("btnRecordsClose");
-
-    const settingsOverlay = document.getElementById("settings");
-    const btnSettingsClose = document.getElementById("btnSettingsClose");
-    const optShowDamageNumbers = document.getElementById("optShowDamageNumbers");
-
-    const btnPause = document.getElementById("btnPause");
-    const actionBar = document.getElementById("actionBar");
-    const actionBarFill = document.getElementById("actionBarFill");
+    const {
+      mainMenuOverlay,
+      btnFreePlay,
+      btnMenuRecords,
+      btnMenuSettings,
+      startOverlay,
+      charsWrap,
+      pickerOverlay,
+      pickerTitle,
+      pickerHint,
+      choicesWrap,
+      btnReroll,
+      btnSkip,
+      btnShowBuild,
+      pauseMenu,
+      buildListEl,
+      invListEl,
+      tabUpgrades,
+      tabInventory,
+      buildStatsEl,
+      btnResume,
+      btnRestart2,
+      btnCopy,
+      btnRecords,
+      btnSettings,
+      btnHang,
+      restartConfirmOverlay,
+      btnRestartYes,
+      btnRestartNo,
+      gameoverOverlay,
+      summaryEl,
+      restartBtn,
+      copyBtn,
+      btnRecordsOver,
+      recordsOverlay,
+      recordsListEl,
+      btnRecordsClose,
+      settingsOverlay,
+      btnSettingsClose,
+      optShowDamageNumbers,
+      btnPause,
+      actionBar,
+      actionBarFill,
+    } = overlays.elements;
 
     // Mobile joystick
     const joy = document.getElementById("joy");
