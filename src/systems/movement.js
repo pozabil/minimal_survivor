@@ -1,4 +1,5 @@
 import { resolveCircleRect } from "../utils/collision.js";
+import { len2 } from "../utils/math.js";
 
 export function updateMovement({
   dt,
@@ -22,11 +23,12 @@ export function updateMovement({
     iy += joyVec.y;
   }
 
-  const ilen = Math.hypot(ix, iy) || 1;
-  ix /= ilen;
-  iy /= ilen;
+  const ilen = len2(ix, iy);
+  const ilenSafe = ilen || 1;
+  ix /= ilenSafe;
+  iy /= ilenSafe;
 
-  if (Math.hypot(ix, iy) > 0.2) {
+  if (ilen > 0.08) {
     player.lastDirX = ix;
     player.lastDirY = iy;
   }
@@ -57,7 +59,7 @@ export function updateMovement({
       if (push) {
         player.x += push.x;
         player.y += push.y;
-        const pd = Math.hypot(push.x, push.y) || 1;
+        const pd = len2(push.x, push.y) || 1;
         const nx = push.x / pd;
         const ny = push.y / pd;
         const vdot = player.vx * nx + player.vy * ny;

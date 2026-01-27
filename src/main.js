@@ -71,7 +71,7 @@ import {
   JOY_MARGIN,
 } from "./core/constants.js";
 import { initCanvas } from "./core/canvas.js";
-import { clamp, lerp } from "./utils/math.js";
+import { clamp, lerp, len2, len2Sq } from "./utils/math.js";
 import { randf, randi } from "./utils/rand.js";
 import { circleHit, circleRectHit, pushAway } from "./utils/collision.js";
 import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "./utils/format.js";
@@ -343,7 +343,7 @@ function placeJoystick(cx, cy){
 function joyMove(px, py){
   const dx = px - joyCenter.x;
   const dy = py - joyCenter.y;
-  const d = Math.hypot(dx,dy) || 1;
+  const d = len2(dx, dy) || 1;
   const m = Math.min(1, d / joyRadius);
   joyVec.x = (dx / d) * m;
   joyVec.y = (dy / d) * m;
@@ -371,8 +371,10 @@ canvas.addEventListener("pointerdown", (e)=>{
   if (hasAnyActionSkill()){
     const now = performance.now();
     const dtTap = now - lastTapTime;
-    const dist = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY);
-    if (dtTap < 280 && dist < 40){
+    const dx = e.clientX - lastTapX;
+    const dy = e.clientY - lastTapY;
+    const distSq = len2Sq(dx, dy);
+    if (dtTap < 280 && distSq < 40 * 40){
       triggerAction();
       lastTapTime = 0;
     } else {
@@ -447,7 +449,7 @@ canvas.addEventListener("pointercancel", (e)=>{
 
     function getDashDir(dirX, dirY){
       if (Number.isFinite(dirX) && Number.isFinite(dirY) && (dirX !== 0 || dirY !== 0)){
-        const d = Math.hypot(dirX, dirY) || 1;
+        const d = len2(dirX, dirY) || 1;
         return { x: dirX / d, y: dirY / d };
       }
       let ix = 0, iy = 0;
@@ -456,11 +458,11 @@ canvas.addEventListener("pointercancel", (e)=>{
       if (keys.has("KeyA") || keys.has("ArrowLeft")) ix -= 1;
       if (keys.has("KeyD") || keys.has("ArrowRight")) ix += 1;
       if (isTouch){ ix += joyVec.x; iy += joyVec.y; }
-      const ilen = Math.hypot(ix, iy);
+      const ilen = len2(ix, iy);
       if (ilen > 0.2) return { x: ix / ilen, y: iy / ilen };
-      const spd = Math.hypot(player.vx, player.vy);
+      const spd = len2(player.vx, player.vy);
       if (spd > 1) return { x: player.vx / spd, y: player.vy / spd };
-      const ld = Math.hypot(player.lastDirX || 0, player.lastDirY || 0) || 1;
+      const ld = len2(player.lastDirX || 0, player.lastDirY || 0) || 1;
       return { x: (player.lastDirX || 1) / ld, y: (player.lastDirY || 0) / ld };
     }
     function triggerDash(dirX, dirY){
@@ -1245,7 +1247,7 @@ canvas.addEventListener("pointercancel", (e)=>{
 
             if (Math.random() < ORBITAL_KNOCKBACK_CHANCE){
               const dx = e.x-ox, dy = e.y-oy;
-              const d = Math.hypot(dx,dy) || 1;
+              const d = len2(dx,dy) || 1;
               e.vx += (dx/d) * ORBITAL_KNOCKBACK_FORCE;
               e.vy += (dy/d) * ORBITAL_KNOCKBACK_FORCE;
             }
@@ -1399,8 +1401,8 @@ canvas.addEventListener("pointercancel", (e)=>{
           if (e.dead || e.dying) continue;
           const dx = e.x - player.x;
           const dy = e.y - player.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist > radius + e.r) continue;
+          const maxR = radius + e.r;
+          if (len2Sq(dx, dy) > maxR * maxR) continue;
 
           for (let t=0; t<auraTicks; t++){
             if (e.dead || e.dying) break;
@@ -1433,7 +1435,7 @@ canvas.addEventListener("pointercancel", (e)=>{
             if (state.t - lastHit < AURA_WAVE_HIT_COOLDOWN) continue;
             const dx = e.x - waveX;
             const dy = e.y - waveY;
-            const dist = Math.hypot(dx, dy);
+            const dist = len2(dx, dy);
             if (dist > state.auraWaveMaxR) continue;
             const band = AURA_WAVE_THICKNESS + e.r + travel;
             const inner = Math.max(0, minR - band);
@@ -1486,7 +1488,7 @@ canvas.addEventListener("pointercancel", (e)=>{
 
             if (Math.random() < ORBITAL_KNOCKBACK_CHANCE){
               const dx = e.x-ox, dy = e.y-oy;
-              const d = Math.hypot(dx,dy) || 1;
+              const d = len2(dx,dy) || 1;
               e.vx += (dx/d) * ORBITAL_KNOCKBACK_FORCE;
               e.vy += (dy/d) * ORBITAL_KNOCKBACK_FORCE;
             }
@@ -1542,8 +1544,8 @@ canvas.addEventListener("pointercancel", (e)=>{
           if (e.dead || e.dying) continue;
           const dx = e.x - c.x;
           const dy = e.y - c.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist > radius + e.r) continue;
+          const maxR = radius + e.r;
+          if (len2Sq(dx, dy) > maxR * maxR) continue;
 
           for (let t=0; t<auraTicks; t++){
             if (e.dead || e.dying) break;
@@ -1576,7 +1578,7 @@ canvas.addEventListener("pointercancel", (e)=>{
             if (state.t - lastHit < AURA_WAVE_HIT_COOLDOWN) continue;
             const dx = e.x - waveX;
             const dy = e.y - waveY;
-            const dist = Math.hypot(dx, dy);
+            const dist = len2(dx, dy);
             if (dist > c.auraWaveMaxR) continue;
             const band = AURA_WAVE_THICKNESS + e.r + travel;
             const inner = Math.max(0, minR - band);
@@ -1665,7 +1667,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       for (let i=enemies.length-1; i>=0; i--){
         const e = enemies[i];
         if (!e || e.dead || e.dying) continue;
-        const d = Math.hypot(e.x - c.x, e.y - c.y);
+        const d = len2(e.x - c.x, e.y - c.y);
         if (d > SAME_CIRCLE_RADIUS + e.r) continue;
         e.hp -= dmg;
         e.hitFlash = Math.max(e.hitFlash, 0.12);
@@ -1933,7 +1935,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
       // damage player
       const dxp = player.x - e.x, dyp = player.y - e.y;
-      const dp = Math.hypot(dxp, dyp);
+      const dp = len2(dxp, dyp);
       if (dp < e.explodeR && player.invuln <= 0){
         const mult = 1 - (dp / e.explodeR); // 0..1
         const dmg = e.explodeDmg * (0.55 + 0.45 * mult) * player.damageTakenMult;
@@ -1957,7 +1959,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         for (let t=turrets.length-1; t>=0; t--){
           const tur = turrets[t];
           if (circleRectHit(e.x, e.y, e.explodeR, tur.x, tur.y, tur.size, tur.size)){
-            const dtur = Math.hypot(tur.x - e.x, tur.y - e.y);
+            const dtur = len2(tur.x - e.x, tur.y - e.y);
             const mult = 1 - (dtur / e.explodeR);
             const dmg = e.explodeDmg * (0.55 + 0.45 * mult);
             tur.hp -= dmg;
@@ -1973,7 +1975,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         if (j === i) continue;
         const ee = enemies[j];
         if (!ee || ee.dead) continue;
-        const d = Math.hypot(ee.x - e.x, ee.y - e.y);
+        const d = len2(ee.x - e.x, ee.y - e.y);
         if (d < e.explodeR){
           const mult = 1 - (d / e.explodeR);
           const dmg = 22 * (0.5 + 0.5 * mult);
@@ -2809,7 +2811,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         moveSpeed,
         clamp,
       });
-      const spd = Math.hypot(player.vx, player.vy) || 0;
+      const spd = len2(player.vx, player.vy) || 0;
       const ratio = clamp(spd / Math.max(1, moveSpeed), 0, 1);
       const baseSpd = getBaseMoveSpeed();
       const speedBonus = moveSpeed / baseSpd;
@@ -2921,8 +2923,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
             if (target){
               const dx = target.x - e.x;
               const dy = target.y - e.y;
-              const d = Math.hypot(dx,dy) || 1;
-              const spd = Math.hypot(b.vx, b.vy) || player.bulletSpeed;
+              const d = len2(dx,dy) || 1;
+              const spd = len2(b.vx, b.vy) || player.bulletSpeed;
               const baseAng = Math.atan2(dy, dx);
 
               if (hasUnique("cheap_bullets")){
@@ -3052,13 +3054,13 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
         const target = getEnemyTarget(e);
         const dx = target.x - e.x, dy = target.y - e.y;
-        const d = Math.hypot(dx,dy) || 1;
+        const d = len2(dx,dy) || 1;
         e.moveDirX = dx / d;
         e.moveDirY = dy / d;
 
         // bomber explode when close
         if (e.type === "bomber"){
-          const dist = Math.hypot(dx, dy);
+          const dist = len2(dx, dy);
           if (dist < e.explodeR * 0.55){
             explodeBomber(i);
             continue;
@@ -3124,12 +3126,12 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
         // anti-sticky player collision + damage
         if (circleHit(player.x,player.y, player.r, e.x,e.y, e.r)){
-          const overlap = (player.r + e.r) - Math.hypot(player.x - e.x, player.y - e.y);
+          const overlap = (player.r + e.r) - len2(player.x - e.x, player.y - e.y);
           let push = pushAway(player.x, player.y, e.x, e.y, Math.max(6, overlap * 0.6));
           if (e.type === "triad"){
             const dxp = player.x - e.x;
             const dyp = player.y - e.y;
-            const dist = Math.hypot(dxp, dyp) || 1;
+            const dist = len2(dxp, dyp) || 1;
             const nx = dxp / dist;
             const ny = dyp / dist;
             const base = Math.max(6, overlap * 0.6);
@@ -3213,7 +3215,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
         let dx = player.x - g.x;
         let dy = player.y - g.y;
-        let dist = Math.hypot(dx, dy) || 1;
+        let dist = len2(dx, dy) || 1;
 
         let targetX = player.x;
         let targetY = player.y;
@@ -3513,7 +3515,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         if (!onScreenTotem){
           const dxT = totem.x - player.x;
           const dyT = totem.y - player.y;
-          const distT = Math.hypot(dxT, dyT) || 1;
+          const distT = len2(dxT, dyT) || 1;
           const ux = dxT / distT;
           const uy = dyT / distT;
 
@@ -3587,7 +3589,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         if (!onScreen){
           const dxC = c.x - player.x;
           const dyC = c.y - player.y;
-          const distC = Math.hypot(dxC, dyC) || 1;
+          const distC = len2(dxC, dyC) || 1;
           const ux = dxC / distC;
           const uy = dyC / distC;
 
@@ -3676,7 +3678,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       for (const b of enemyBullets){
         const sx=b.x-camX, sy=b.y-camY;
         if (b.trail === "sniper"){
-          const spd = Math.hypot(b.vx, b.vy) || 1;
+          const spd = len2(b.vx, b.vy) || 1;
           const ux = b.vx / spd;
           const uy = b.vy / spd;
           const stepDist = Math.max(5, b.r * 1.9);
@@ -3780,7 +3782,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       for (const b of bullets){
         const sx=b.x-camX, sy=b.y-camY;
         if (b.isNova){
-          const spd = Math.hypot(b.vx, b.vy) || 1;
+          const spd = len2(b.vx, b.vy) || 1;
           const ux = b.vx / spd;
           const uy = b.vy / spd;
           const tx = sx - ux * 20;

@@ -1,4 +1,4 @@
-import { clamp } from "./math.js";
+import { clamp, len2 } from "./math.js";
 
 export function circleHit(ax, ay, ar, bx, by, br) {
   const dx = ax - bx;
@@ -29,9 +29,10 @@ export function resolveCircleRect(cx, cy, cr, rx, ry, rw, rh) {
   const closestY = ry + cly;
   const vx = cx - closestX;
   const vy = cy - closestY;
-  const dist = Math.hypot(vx, vy);
-  if (dist > cr) return null;
-  if (dist > 0) {
+  const distSq = vx * vx + vy * vy;
+  if (distSq > cr * cr) return null;
+  if (distSq > 0) {
+    const dist = Math.sqrt(distSq);
     const push = cr - dist;
     return { x: (vx / dist) * push, y: (vy / dist) * push };
   }
@@ -45,6 +46,6 @@ export function resolveCircleRect(cx, cy, cr, rx, ry, rw, rh) {
 export function pushAway(ax, ay, bx, by, strength) {
   const dx = ax - bx;
   const dy = ay - by;
-  const d = Math.hypot(dx, dy) || 1;
+  const d = len2(dx, dy) || 1;
   return { x: (dx / d) * strength, y: (dy / d) * strength };
 }

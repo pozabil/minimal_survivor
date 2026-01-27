@@ -15,7 +15,7 @@ import {
   ENEMY_BASE,
   BOSS_KINDS,
 } from "../content/enemies.js";
-import { clamp } from "../utils/math.js";
+import { clamp, len2Sq } from "../utils/math.js";
 import { randf, randi } from "../utils/rand.js";
 
 function applyElite(e, mod, reward, scale) {
@@ -385,7 +385,7 @@ export function createSpawnChest({ state, chests, totem, player, hasRemainingUni
         const d = Math.sqrt(Math.random()) * totem.r;
         const x = totem.x + Math.cos(a) * d;
         const y = totem.y + Math.sin(a) * d;
-        if (Math.hypot(x - player.x, y - player.y) < 260) continue;
+        if (len2Sq(x - player.x, y - player.y) < 260 * 260) continue;
         chests.push({ x, y, r: chestR, t: 0, bob: randf(0, TAU), special: isSpecial });
         return;
       } else {
@@ -393,7 +393,7 @@ export function createSpawnChest({ state, chests, totem, player, hasRemainingUni
         const d = randf(320, 620);
         const x = player.x + Math.cos(a) * d;
         const y = player.y + Math.sin(a) * d;
-        if (Math.hypot(x - player.x, y - player.y) < 260) continue;
+        if (len2Sq(x - player.x, y - player.y) < 260 * 260) continue;
         chests.push({ x, y, r: chestR, t: 0, bob: randf(0, TAU), special: isSpecial });
         return;
       }
