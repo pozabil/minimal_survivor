@@ -70,6 +70,7 @@ import {
   JOY_HALF,
   JOY_MARGIN,
 } from "./core/constants.js";
+import { initCanvas } from "./core/canvas.js";
 import { clamp, lerp } from "./utils/math.js";
 import { randf, randi } from "./utils/rand.js";
 import { circleHit, circleRectHit, pushAway } from "./utils/collision.js";
@@ -133,10 +134,6 @@ import { initOverlays } from "./ui/overlays.js";
   try {
     const canvas = document.getElementById("c");
 
-    // SAFE getContext
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Canvas 2D context is not available (canvas.getContext('2d') returned null).");
-
     const hud = initHud();
     const overlays = initOverlays();
 
@@ -167,6 +164,7 @@ import { initOverlays } from "./ui/overlays.js";
       (window.matchMedia && window.matchMedia("(any-pointer: coarse)").matches) ||
       (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     if (isTouch) { joy.style.display = "none"; }
+
     const isPauseToggleBlocked = () =>
       (pickerOverlay.style.display === "grid") ||
       (startOverlay.style.display === "grid") ||
@@ -178,22 +176,14 @@ import { initOverlays } from "./ui/overlays.js";
     const updatePauseBtnVisibility = () => {
       btnPause.style.display = isPauseToggleBlocked() ? "none" : "block";
     };
+
     const minDim = Math.min(innerWidth, innerHeight);
     const GAME_SCALE = (isTouch && minDim <= 640) ? 0.5 : 1;
     const SPAWN_SCALE = 1 / GAME_SCALE;
+    const MAX_DPR = 2
     let cameraScale = GAME_SCALE;
-    let curDpr = 1;
 
-    // Resize
-    function resize(){
-      curDpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      canvas.width = Math.floor(innerWidth * curDpr);
-      canvas.height= Math.floor(innerHeight * curDpr);
-      // dpr * GAME_SCALE — это zoom-out без потери "CSS fullscreen"
-      ctx.setTransform(curDpr * GAME_SCALE, 0, 0, curDpr * GAME_SCALE, 0, 0);
-    }
-    addEventListener("resize", resize, { passive:true });
-    resize();
+    const { ctx, getDpr } = initCanvas(canvas, GAME_SCALE, MAX_DPR);
 
     const enemyGrid = new Map();
 
@@ -3435,7 +3425,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
     }
 
     function render(){
-      ctx.setTransform(curDpr * cameraScale, 0, 0, curDpr * cameraScale, 0, 0);
+      ctx.setTransform(getDpr() * cameraScale, 0, 0, getDpr() * cameraScale, 0, 0);
       const w = innerWidth  / cameraScale;
       const h = innerHeight / cameraScale;
 
