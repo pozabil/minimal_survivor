@@ -1,4 +1,4 @@
-import { BASE_HP } from "./config.js";
+export const BASE_HP = 50;
 
 export const PLAYER_CLASSES = [
   {

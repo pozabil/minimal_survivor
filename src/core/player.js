@@ -1,10 +1,10 @@
 import {
-  BASE_HP,
   TOTEM_SPAWN_EVERY,
   TOTEM_SPAWN_LV_STEP,
   TOTEM_SPAWN_MIN_INTERVAL,
   TOTEM_SPAWN_STEP,
 } from "../content/config.js";
+import { BASE_HP } from "../content/players.js";
 import {
   ORBITAL_BASE_DISTANCE,
   ORBITAL_BASE_SIZE,

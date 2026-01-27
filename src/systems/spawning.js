@@ -1,5 +1,12 @@
 import { TAU } from "../core/constants.js";
-import { UNIQUE_CHEST_EVERY } from "../content/config.js";
+import {
+  UNIQUE_CHEST_EVERY,
+  TOTEM_GRACE,
+  TOTEM_SPAWN_MIN,
+  TOTEM_SPAWN_MAX,
+  TOTEM_RADIUS_MIN,
+  TOTEM_RADIUS_MAX,
+} from "../content/config.js";
 import {
   ELITE_MODS,
   ELITE_RADIUS_MULT,
@@ -396,6 +403,25 @@ export function createSpawnChest({ state, chests, totem, player, hasRemainingUni
     } else {
       chests.push({ x: player.x + 420, y: player.y, r: chestR, t: 0, bob: 0, special: isSpecial });
     }
+  };
+}
+
+export function createSpawnTotem({ player, totem, hasUnique, getTotemLife }) {
+  return function spawnTotem() {
+    if (totem.active) return;
+    const a = randf(0, TAU);
+    const d = randf(TOTEM_SPAWN_MIN, TOTEM_SPAWN_MAX);
+    totem.x = player.x + Math.cos(a) * d;
+    totem.y = player.y + Math.sin(a) * d;
+    const lvlScale = 1 + Math.min(0.8, Math.max(0, player.lvl - 1) * 0.005);
+    totem.r = randf(TOTEM_RADIUS_MIN, TOTEM_RADIUS_MAX) * lvlScale;
+    if (hasUnique("nose_ring")) totem.r *= 1.08;
+    totem.t = 0;
+    totem.life = getTotemLife();
+    totem.lifeMax = totem.life;
+    totem.grace = TOTEM_GRACE;
+    totem.active = true;
+    totem.inZone = false;
   };
 }
 

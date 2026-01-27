@@ -13,7 +13,6 @@ import {
   DASH_TRAIL_LIFE,
   DASH_TRAIL_INTERVAL,
   DASH_TRAIL_MAX,
-  SAME_CIRCLE_INTERVAL,
   SAME_CIRCLE_LIFE,
   SAME_CIRCLE_RADIUS,
   SAME_CIRCLE_DAMAGE_MULT,
@@ -53,11 +52,6 @@ import {
   TOTEM_LIFE_STEP,
   TOTEM_LIFE_LV_STEP,
   TOTEM_LIFE_CAP,
-  TOTEM_GRACE,
-  TOTEM_SPAWN_MIN,
-  TOTEM_SPAWN_MAX,
-  TOTEM_RADIUS_MIN,
-  TOTEM_RADIUS_MAX,
   TOTEM_EFFECT_GAIN_BASE,
   TOTEM_EFFECT_GAIN_STEP,
   TOTEM_EFFECT_GAIN_LV_STEP,
@@ -104,7 +98,7 @@ import {
   TURRET_SPAWN_RADIUS,
   createUpgrades,
 } from "./content/upgrades.js";
-import { createUniques } from "./content/uniques.js";
+import { createUniques, SAME_CIRCLE_INTERVAL } from "./content/uniques.js";
 import { BOSS_NAME } from "./content/enemies.js";
 import { getPlayerClass, PLAYER_CLASSES } from "./content/players.js";
 import { initState } from "./core/init.js";
@@ -112,7 +106,14 @@ import { createPlayerFunctions } from "./core/player.js";
 import { startLoop } from "./core/loop.js";
 import { createStep } from "./flow/step.js";
 import { updateMovement } from "./systems/movement.js";
-import { createSpawnBoss, createSpawnChest, createSpawnColossusElite, createSpawnEnemy, updateSpawning } from "./systems/spawning.js";
+import {
+  createSpawnBoss,
+  createSpawnChest,
+  createSpawnColossusElite,
+  createSpawnEnemy,
+  createSpawnTotem,
+  updateSpawning,
+} from "./systems/spawning.js";
 import { loadOptions, loadRecords, saveOptions, updateRecordsOnDeath } from "./systems/storage.js";
 import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
@@ -141,81 +142,19 @@ import { initOverlays } from "./ui/overlays.js";
 
     // HUD
     const {
-      elTime,
-      elLvl,
-      elKills,
-      elEnemiesCount,
-      elShots,
-      elDps,
-      elFps,
-      elWep,
-      elRerolls,
-      elThreat,
-      elActionHint,
-      activeItemsEl,
-      activeItemsListEl,
-      elChestRespawn,
-      totemTimerEl,
-      totemWarningEl,
-      hpbar,
-      hpbarPulse,
-      xpbar,
-      hptext,
-      xptext,
-      totemBar,
-      totemText,
-      bossBar,
-      bossText,
-      chestBar,
-      chestText,
-      bossWrap,
-      bossList,
+      elTime, elLvl, elKills, elEnemiesCount, elShots, elDps, elFps, elWep, elRerolls, elThreat, elActionHint,
+      activeItemsEl, activeItemsListEl, elChestRespawn, totemTimerEl, totemWarningEl, hpbar, hpbarPulse, xpbar,
+      hptext, xptext, totemBar, totemText, bossBar, bossText, chestBar, chestText, bossWrap, bossList,
     } = hud.elements;
 
     // Overlays
     const {
-      mainMenuOverlay,
-      btnFreePlay,
-      btnMenuRecords,
-      btnMenuSettings,
-      startOverlay,
-      charsWrap,
-      pickerOverlay,
-      pickerTitle,
-      pickerHint,
-      choicesWrap,
-      btnReroll,
-      btnSkip,
-      btnShowBuild,
-      pauseMenu,
-      buildListEl,
-      invListEl,
-      tabUpgrades,
-      tabInventory,
-      buildStatsEl,
-      btnResume,
-      btnRestart2,
-      btnCopy,
-      btnRecords,
-      btnSettings,
-      btnHang,
-      restartConfirmOverlay,
-      btnRestartYes,
-      btnRestartNo,
-      gameoverOverlay,
-      summaryEl,
-      restartBtn,
-      copyBtn,
-      btnRecordsOver,
-      recordsOverlay,
-      recordsListEl,
-      btnRecordsClose,
-      settingsOverlay,
-      btnSettingsClose,
-      optShowDamageNumbers,
-      btnPause,
-      actionBar,
-      actionBarFill,
+      mainMenuOverlay, btnFreePlay, btnMenuRecords, btnMenuSettings, startOverlay, charsWrap, pickerOverlay,
+      pickerTitle, pickerHint, choicesWrap, btnReroll, btnSkip, btnShowBuild, pauseMenu, buildListEl, invListEl,
+      tabUpgrades, tabInventory, buildStatsEl, btnResume, btnRestart2, btnCopy, btnRecords, btnSettings, btnHang,
+      restartConfirmOverlay, btnRestartYes, btnRestartNo, gameoverOverlay, summaryEl, restartBtn, copyBtn,
+      btnRecordsOver, recordsOverlay, recordsListEl, btnRecordsClose, settingsOverlay, btnSettingsClose,
+      optShowDamageNumbers, btnPause, actionBar, actionBarFill,
     } = overlays.elements;
 
     // Mobile joystick
@@ -961,22 +900,12 @@ canvas.addEventListener("pointercancel", (e)=>{
       const steps = Math.floor(Math.max(0, lv) / TOTEM_DPS_RAMP_LV_STEP);
       return Math.min(TOTEM_DPS_RAMP_CAP, TOTEM_DPS_RAMP_BASE * Math.pow(TOTEM_DPS_RAMP_GROWTH, steps));
     }
-    function spawnTotem(){
-      if (totem.active) return;
-      const a = randf(0, TAU);
-      const d = randf(TOTEM_SPAWN_MIN, TOTEM_SPAWN_MAX);
-      totem.x = player.x + Math.cos(a) * d;
-      totem.y = player.y + Math.sin(a) * d;
-      const lvlScale = 1 + Math.min(0.8, Math.max(0, player.lvl - 1) * 0.005);
-      totem.r = randf(TOTEM_RADIUS_MIN, TOTEM_RADIUS_MAX) * lvlScale;
-      if (hasUnique("nose_ring")) totem.r *= 1.08;
-      totem.t = 0;
-      totem.life = getTotemLife();
-      totem.lifeMax = totem.life;
-      totem.grace = TOTEM_GRACE;
-      totem.active = true;
-      totem.inZone = false;
-    }
+    const spawnTotem = createSpawnTotem({
+      player,
+      totem,
+      hasUnique,
+      getTotemLife,
+    });
 
     // Targeting
     function findNearestEnemy(){

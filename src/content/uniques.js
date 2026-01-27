@@ -1,5 +1,6 @@
-import { SAME_CIRCLE_INTERVAL } from "./config.js";
 import { clamp } from "../utils/math.js";
+
+export const SAME_CIRCLE_INTERVAL = 6;
 
 export function createUniques({ player, state, totem, spawnDog }) {
   return {

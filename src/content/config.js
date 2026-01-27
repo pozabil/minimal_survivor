@@ -13,7 +13,6 @@ export const DASH_INVULN = 0.35;
 export const DASH_TRAIL_LIFE = 0.24;
 export const DASH_TRAIL_INTERVAL = 0.01;
 export const DASH_TRAIL_MAX = 36;
-export const SAME_CIRCLE_INTERVAL = 6;
 export const SAME_CIRCLE_LIFE = 2;
 export const SAME_CIRCLE_RADIUS = 120;
 export const SAME_CIRCLE_DAMAGE_MULT = 2.5;
@@ -80,5 +79,3 @@ export const LOW_HP_SLOW_RESET = 0.12;
 export const LOW_HP_SLOW_DURATION = 4.0;
 export const LOW_HP_SLOW_SCALE = 0.5;
 export const LOW_HP_SLOW_COOLDOWN = 16.0;
-
-export const BASE_HP = 50;
