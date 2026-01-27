@@ -6,7 +6,6 @@ import {
   BURST_TELEGRAPH,
   HEAL_OVER_TIME,
   CAMERA_ZOOM_OUT,
-  UNIQUE_CHEST_EVERY,
   DASH_DISTANCE,
   DASH_DURATION,
   DASH_COOLDOWN,
@@ -113,7 +112,7 @@ import { createPlayerFunctions } from "./core/player.js";
 import { startLoop } from "./core/loop.js";
 import { createStep } from "./flow/step.js";
 import { updateMovement } from "./systems/movement.js";
-import { createSpawnBoss, createSpawnColossusElite, createSpawnEnemy, updateSpawning } from "./systems/spawning.js";
+import { createSpawnBoss, createSpawnChest, createSpawnColossusElite, createSpawnEnemy, updateSpawning } from "./systems/spawning.js";
 import { loadOptions, loadRecords, saveOptions, updateRecordsOnDeath } from "./systems/storage.js";
 import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
@@ -923,41 +922,13 @@ canvas.addEventListener("pointercancel", (e)=>{
     });
 
     // Chest
-    function spawnChest(){
-      if (state.chestAlive) return;
-      if (chests.length > 0) { state.chestAlive = true; return; }
-      state.chestAlive = true;
-      state.chestCount += 1;
-      const isSpecial = (state.chestCount % UNIQUE_CHEST_EVERY === 0) && hasRemainingUnique();
-      if (isSpecial) state.uniqueChestCount += 1;
-      const chestR = isSpecial ? 22 : 16;
-
-      const useTotem = totem.active;
-      for (let tries = 0; tries < 20; tries++){
-        if (useTotem){
-          const a = randf(0, TAU);
-          const d = Math.sqrt(Math.random()) * totem.r;
-          const x = totem.x + Math.cos(a)*d;
-          const y = totem.y + Math.sin(a)*d;
-          if (Math.hypot(x - player.x, y - player.y) < 260) continue;
-          chests.push({ x, y, r: chestR, t: 0, bob: randf(0, TAU), special: isSpecial });
-          return;
-        } else {
-          const a = randf(0, TAU);
-          const d = randf(320, 620);
-          const x = player.x + Math.cos(a)*d;
-          const y = player.y + Math.sin(a)*d;
-          if (Math.hypot(x - player.x, y - player.y) < 260) continue;
-          chests.push({ x, y, r: chestR, t: 0, bob: randf(0, TAU), special: isSpecial });
-          return;
-        }
-      }
-      if (useTotem){
-        chests.push({ x: totem.x, y: totem.y, r: chestR, t: 0, bob: 0, special: isSpecial });
-      } else {
-        chests.push({ x: player.x + 420, y: player.y, r: chestR, t: 0, bob: 0, special: isSpecial });
-      }
-    }
+    const spawnChest = createSpawnChest({
+      state,
+      chests,
+      totem,
+      player,
+      hasRemainingUnique,
+    });
     function pickUpChest(){
       if (!chests.length) { state.chestAlive = false; return; }
       const c = chests[0];

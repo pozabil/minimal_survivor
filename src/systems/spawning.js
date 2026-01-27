@@ -1,4 +1,5 @@
 import { TAU } from "../core/constants.js";
+import { UNIQUE_CHEST_EVERY } from "../content/config.js";
 import {
   ELITE_MODS,
   ELITE_RADIUS_MULT,
@@ -356,6 +357,44 @@ export function createSpawnColossusElite({ player, state, spawnEnemy }) {
     if (elite) {
       elite.vx = 0;
       elite.vy = 0;
+    }
+  };
+}
+
+export function createSpawnChest({ state, chests, totem, player, hasRemainingUnique }) {
+  return function spawnChest() {
+    if (state.chestAlive) return;
+    if (chests.length > 0) { state.chestAlive = true; return; }
+    state.chestAlive = true;
+    state.chestCount += 1;
+    const isSpecial = (state.chestCount % UNIQUE_CHEST_EVERY === 0) && hasRemainingUnique();
+    if (isSpecial) state.uniqueChestCount += 1;
+    const chestR = isSpecial ? 22 : 16;
+
+    const useTotem = totem.active;
+    for (let tries = 0; tries < 20; tries++) {
+      if (useTotem) {
+        const a = randf(0, TAU);
+        const d = Math.sqrt(Math.random()) * totem.r;
+        const x = totem.x + Math.cos(a) * d;
+        const y = totem.y + Math.sin(a) * d;
+        if (Math.hypot(x - player.x, y - player.y) < 260) continue;
+        chests.push({ x, y, r: chestR, t: 0, bob: randf(0, TAU), special: isSpecial });
+        return;
+      } else {
+        const a = randf(0, TAU);
+        const d = randf(320, 620);
+        const x = player.x + Math.cos(a) * d;
+        const y = player.y + Math.sin(a) * d;
+        if (Math.hypot(x - player.x, y - player.y) < 260) continue;
+        chests.push({ x, y, r: chestR, t: 0, bob: randf(0, TAU), special: isSpecial });
+        return;
+      }
+    }
+    if (useTotem) {
+      chests.push({ x: totem.x, y: totem.y, r: chestR, t: 0, bob: 0, special: isSpecial });
+    } else {
+      chests.push({ x: player.x + 420, y: player.y, r: chestR, t: 0, bob: 0, special: isSpecial });
     }
   };
 }
