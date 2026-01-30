@@ -66,7 +66,6 @@ import {
 } from "./content/config.js";
 import {
   TAU,
-  GRID_SIZE,
   JOY_HALF,
   JOY_MARGIN,
 } from "./core/constants.js";
@@ -107,6 +106,7 @@ import { createPlayerFunctions } from "./core/player.js";
 import { startLoop } from "./core/loop.js";
 import { createStep } from "./flow/step.js";
 import { updateMovement } from "./systems/movement.js";
+import { createSpatialGrid } from "./systems/spatial_grid.js";
 import {
   createSpawnBoss,
   createSpawnChest,
@@ -184,36 +184,6 @@ import { initOverlays } from "./ui/overlays.js";
     let cameraScale = GAME_SCALE;
 
     const { ctx, getDpr } = initCanvas(canvas, GAME_SCALE, MAX_DPR);
-
-    const enemyGrid = new Map();
-
-    function gridKey(cx, cy){ return cx + "," + cy; }
-    function gridBuild(){
-      enemyGrid.clear();
-      for (const e of enemies){
-        if (e.dead || e.dying) continue;
-        const cx = Math.floor(e.x / GRID_SIZE);
-        const cy = Math.floor(e.y / GRID_SIZE);
-        const key = gridKey(cx, cy);
-        let cell = enemyGrid.get(key);
-        if (!cell){ cell = []; enemyGrid.set(key, cell); }
-        cell.push(e);
-      }
-    }
-    function gridQueryCircle(x, y, r, out){
-      out.length = 0;
-      const minCx = Math.floor((x - r) / GRID_SIZE);
-      const maxCx = Math.floor((x + r) / GRID_SIZE);
-      const minCy = Math.floor((y - r) / GRID_SIZE);
-      const maxCy = Math.floor((y + r) / GRID_SIZE);
-      for (let cy = minCy; cy <= maxCy; cy++){
-        for (let cx = minCx; cx <= maxCx; cx++){
-          const cell = enemyGrid.get(gridKey(cx, cy));
-          if (cell) out.push(...cell);
-        }
-      }
-      return out;
-    }
 
 
     // Simple circle batching to reduce per-entity beginPath/fill calls
@@ -439,6 +409,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       chests,
       totem,
     } = entities;
+    const { gridBuild, gridQueryCircle } = createSpatialGrid(enemies);
 
     // Storage + options
     const options = loadOptions();
@@ -2809,7 +2780,6 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         turrets,
         lerpFast,
         moveSpeed,
-        clamp,
       });
       const spd = len2(player.vx, player.vy) || 0;
       const ratio = clamp(spd / Math.max(1, moveSpeed), 0, 1);
