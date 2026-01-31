@@ -108,6 +108,7 @@ import {
   ensureRoundRectPolyfill,
 } from "./systems/render.js";
 import { renderOffscreenArrow } from "./render/ui/arrows.js";
+import { COLORS } from "./render/colors.js";
 import {
   createSpawnBoss,
   createSpawnChest,
@@ -1155,7 +1156,7 @@ canvas.addEventListener("pointercancel", (e)=>{
           if (dog.target.type === "shield") dmg *= 0.65;
           dog.target.hp -= dmg;
           dog.target.hitFlash = Math.max(dog.target.hitFlash, 0.09);
-          recordDamage(dmg, dog.target.x, dog.target.y, isCrit, "rgba(255,190,90,0.95)");
+          recordDamage(dmg, dog.target.x, dog.target.y, isCrit, COLORS.orangeDamage95);
           if (dog.target.hp <= 0) killEnemy(dog.target);
           const lastId = dog.target.id;
           dog.target = pickDogTarget(lastId);
@@ -1451,7 +1452,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       const dmg = player.damage * SAME_CIRCLE_DAMAGE_MULT * getWoundedDamageMult();
       spawnBurst(c.x, c.y, randi(26, 38), 380, 0.75);
       spawnBurst(c.x, c.y, randi(10, 16), 220, 0.55);
-      spawnShockwave(c.x, c.y, 12, SAME_CIRCLE_RADIUS * 0.9, 0.38, "rgba(200,235,255,0.95)");
+      spawnShockwave(c.x, c.y, 12, SAME_CIRCLE_RADIUS * 0.9, 0.38, COLORS.blueShockwave95);
       const force = getAuraWaveForce();
       for (let i=enemies.length-1; i>=0; i--){
         const e = enemies[i];
@@ -1587,9 +1588,9 @@ canvas.addEventListener("pointercancel", (e)=>{
         const dmg = e.shotDmg   * (1.35 + tier*0.08);
         const trailExtra = {
           trail: "sniper",
-          color: "rgba(120,220,255,0.95)",
-          glow: "rgba(120,220,255,0.85)",
-          trailColor: "rgba(120,220,255,0.6)",
+          color: COLORS.blueBright95,
+          glow: COLORS.blueBright85,
+          trailColor: COLORS.blueTrail60,
         };
         shootBullet(e.x, e.y, aim, spd, dmg, 5, 3.6, trailExtra);
         if (tier >= 2) {
@@ -2693,7 +2694,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           e.hp -= dmg;
           e.hitFlash = 0.09;
           const dmgSize = (e.type === "boss") ? 32 : null;
-          recordDamage(dmg, e.x, e.y, isCrit, "rgba(255,190,90,0.95)", dmgSize);
+          recordDamage(dmg, e.x, e.y, isCrit, COLORS.orangeDamage95, dmgSize);
           if (!b.hitIds) b.hitIds = new Set();
           b.hitIds.add(e.id);
 
@@ -3188,7 +3189,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       const camX = player.x - w*0.5;
       const camY = player.y - h*0.5;
 
-      ctx.fillStyle = "#0b0e14";
+      ctx.fillStyle = COLORS.bg;
       ctx.fillRect(0,0,w,h);
 
       batch.bullets.length = 0;
@@ -3202,7 +3203,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       const gy0 = Math.floor(camY/g)*g;
 
       ctx.globalAlpha = 0.40;
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.strokeStyle = COLORS.white08;
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let x=gx0; x<camX+w+g; x+=g){
@@ -3222,9 +3223,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         const pulse = 0.5 + 0.5 * Math.sin(totem.t * 2.6);
         const inner = totem.r * (0.15 + 0.55 * pulse);
         const grad = ctx.createRadialGradient(sx, sy, inner, sx, sy, totem.r);
-        grad.addColorStop(0, "rgba(90,220,190,0)");
-        grad.addColorStop(0.55, `rgba(90,220,190,${0.05 + 0.06 * pulse})`);
-        grad.addColorStop(1, `rgba(90,220,190,${0.12 + 0.12 * pulse})`);
+        grad.addColorStop(0, COLORS.tealTotem0);
+        grad.addColorStop(0.55, `rgba(${COLORS.tealTotemRgb},${0.05 + 0.06 * pulse})`);
+        grad.addColorStop(1, `rgba(${COLORS.tealTotemRgb},${0.12 + 0.12 * pulse})`);
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(sx, sy, totem.r, 0, TAU);
@@ -3234,8 +3235,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         const fontSize = Math.max(32, totem.r * 0.75);
         ctx.save();
         ctx.globalAlpha = 0.55;
-        ctx.fillStyle = "rgba(120,240,200,0.38)";
-        ctx.strokeStyle = "rgba(0,0,0,0.25)";
+        ctx.fillStyle = COLORS.mintText38;
+        ctx.strokeStyle = COLORS.black25;
         ctx.lineWidth = Math.max(2, fontSize * 0.03);
         ctx.font = `900 ${fontSize}px system-ui,-apple-system,Segoe UI,Roboto,Arial`;
         ctx.textAlign = "center";
@@ -3245,7 +3246,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         ctx.restore();
 
         ctx.globalAlpha = 0.55 + 0.12 * pulse;
-        ctx.strokeStyle = "rgba(90,220,190,0.55)";
+        ctx.strokeStyle = COLORS.tealTotem55;
         ctx.lineWidth = 2 + 2 * pulse;
         ctx.beginPath();
         ctx.arc(sx, sy, totem.r, 0, TAU);
@@ -3253,15 +3254,15 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         ctx.globalAlpha = 1;
 
         ctx.save();
-        ctx.shadowColor = "rgba(90,220,190,0.55)";
+        ctx.shadowColor = COLORS.tealTotem55;
         ctx.shadowBlur = 18 + 8 * pulse;
-        ctx.fillStyle = "rgba(80,200,170,0.78)";
+        ctx.fillStyle = COLORS.tealTotem78;
         ctx.beginPath();
         ctx.roundRect(sx-10, sy-18, 20, 36, 6);
         ctx.fill();
         ctx.restore();
 
-        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.fillStyle = COLORS.white55;
         ctx.fillRect(sx-2, sy-12, 4, 24);
 
         // direction arrow to totem (when it's off-screen and player is outside)
@@ -3276,10 +3277,10 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         const sx=c.x-camX, sy=c.y-camY;
         const bob = Math.sin(c.t*3 + c.bob)*3;
         const isSpecial = !!c.special;
-        const glowCol = isSpecial ? "rgba(255,90,90,1)" : "rgba(255,220,120,1)";
-        const fillCol = isSpecial ? "rgba(255,90,90,0.95)" : "rgba(255,220,120,0.95)";
-        const strokeCol = isSpecial ? "rgba(255,200,200,0.55)" : "rgba(255,255,255,0.35)";
-        const stripeCol = isSpecial ? "rgba(255,230,230,0.55)" : "rgba(255,255,255,0.55)";
+        const glowCol = isSpecial ? COLORS.red100 : COLORS.gold100;
+        const fillCol = isSpecial ? COLORS.red95 : COLORS.gold95;
+        const strokeCol = isSpecial ? COLORS.redChestStroke55 : COLORS.white35;
+        const stripeCol = isSpecial ? COLORS.pinkStripe55 : COLORS.white55;
         const chestW = c.r * 2.25;
         const chestH = c.r * 1.625;
         const chestR = Math.max(5, c.r * 0.45);
@@ -3313,20 +3314,20 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         if (d.kind === "heal"){
           const pulse = 0.6 + 0.4 * Math.sin((d.pulse || 0) + state.t * 6);
           ctx.save();
-          ctx.shadowColor = "rgba(120,255,140,0.9)";
+          ctx.shadowColor = COLORS.greenHealGlow;
           ctx.shadowBlur = 14 * pulse;
           ctx.beginPath();
-          ctx.fillStyle = "rgba(120,230,140,0.95)";
+          ctx.fillStyle = COLORS.greenHealCore;
           ctx.arc(sx,sy,d.r * (0.95 + 0.12 * pulse),0,TAU);
           ctx.fill();
           ctx.restore();
         } else {
           ctx.beginPath();
-          ctx.fillStyle = "rgba(120,220,255,0.9)";
+          ctx.fillStyle = COLORS.blueBright90;
           ctx.arc(sx,sy,d.r,0,TAU);
           ctx.fill();
           ctx.beginPath();
-          ctx.fillStyle = "rgba(255,255,255,0.55)";
+          ctx.fillStyle = COLORS.white55;
           ctx.arc(sx-2,sy-2,2,0,TAU);
           ctx.fill();
         }
@@ -3341,9 +3342,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           const uy = b.vy / spd;
           const stepDist = Math.max(5, b.r * 1.9);
           const steps = 3;
-          const headCol = b.color || "rgba(120,220,255,0.95)";
-          const tailCol = b.trailColor || "rgba(200,230,255,0.75)";
-          const glowCol = b.glow || "rgba(180,220,255,0.7)";
+          const headCol = b.color || COLORS.blueBright95;
+          const tailCol = b.trailColor || COLORS.blueSoft75;
+          const glowCol = b.glow || COLORS.blueGlowSoft70;
           ctx.save();
           ctx.fillStyle = tailCol;
           ctx.shadowColor = glowCol;
@@ -3364,7 +3365,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           ctx.restore();
           continue;
         }
-        const col = b.color || "rgba(255,140,160,0.9)";
+        const col = b.color || COLORS.pinkEnemyBullet90;
         if (b.glow){
           ctx.save();
           ctx.shadowColor = b.glow;
@@ -3386,7 +3387,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       if (player.aura){
         const sx=player.x-camX, sy=player.y-camY;
         ctx.globalAlpha = 0.10;
-        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.fillStyle = COLORS.white90;
         ctx.beginPath();
         ctx.arc(sx,sy, player.auraRadius, 0, TAU);
         ctx.fill();
@@ -3395,7 +3396,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       if (player.aura && clones.length){
         ctx.save();
         ctx.globalAlpha = 0.08;
-        ctx.fillStyle = "rgba(200,230,255,0.75)";
+        ctx.fillStyle = COLORS.blueSoft75;
         for (const sc of clones){
           const sx = sc.x - camX;
           const sy = sc.y - camY;
@@ -3414,8 +3415,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         const fade = 1 - clamp(drawR / Math.max(1, drawMax), 0, 1);
         ctx.save();
         const mainAlpha = 0.22 + 0.18 * fade;
-        ctx.strokeStyle = "rgba(200,230,255,0.9)";
-        ctx.shadowColor = "rgba(120,210,255,0.55)";
+        ctx.strokeStyle = COLORS.blueSoft90;
+        ctx.shadowColor = COLORS.blueGlow55;
         ctx.shadowBlur = 18;
         ctx.lineCap = "round";
         ctx.globalAlpha = mainAlpha * 0.45;
@@ -3451,7 +3452,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           const w1 = Math.max(0.8, b.r * 0.2);
           ctx.save();
           ctx.beginPath();
-          ctx.fillStyle="rgba(190,140,255,0.35)";
+          ctx.fillStyle=COLORS.purpleNova35;
           ctx.moveTo(sx + px * w0, sy + py * w0);
           ctx.lineTo(sx - px * w0, sy - py * w0);
           ctx.lineTo(tx - px * w1, ty - py * w1);
@@ -3459,10 +3460,10 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           ctx.closePath();
           ctx.fill();
 
-          ctx.shadowColor = "rgba(190,140,255,0.8)";
+          ctx.shadowColor = COLORS.purpleNova80;
           ctx.shadowBlur = 14;
           ctx.beginPath();
-          ctx.fillStyle="rgba(220,190,255,0.95)";
+          ctx.fillStyle=COLORS.purpleNovaCore95;
           ctx.arc(sx,sy,b.r,0,TAU);
           ctx.fill();
           ctx.restore();
@@ -3470,7 +3471,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           batchCirclePush(batch.bullets, sx, sy, b.r);
         }
       }
-      batchCircleDraw(ctx, batch.bullets, "rgba(255,245,210,0.95)");
+      batchCircleDraw(ctx, batch.bullets, COLORS.sandBullet95);
 
       // dog
       if (dogs.length){
@@ -3484,7 +3485,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           ctx.fillStyle = d.color || DOG_BROWN_COLORS[0];
           ctx.arc(0, 0, d.r, 0, TAU);
           ctx.fill();
-          ctx.fillStyle = "rgba(255,255,255,0.85)";
+          ctx.fillStyle = COLORS.white85;
           ctx.fillRect(-d.r * 0.6, -d.r * 0.2, d.r * 1.2, d.r * 0.4);
           ctx.restore();
         }
@@ -3493,19 +3494,19 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       // enemies
       for (const e of enemies){
         const sx=e.x-camX, sy=e.y-camY;
-        let baseCol = e.type==="boss" ? "rgba(210,120,255,0.95)" : "rgba(255,120,140,0.92)";
-        if (e.type==="tank") baseCol="rgba(255,90,90,0.95)";
-        if (e.type==="runner") baseCol="rgba(255,160,90,0.95)";
-        if (e.type==="shooter") baseCol="rgba(120,255,190,0.92)";
-        if (e.type==="bomber") baseCol="rgba(255,220,120,0.92)";
-        if (e.type==="triad") baseCol="rgba(160,190,255,0.95)";
-        if (e.type==="blaster") baseCol="rgba(140,190,255,0.95)";
-        if (e.type==="burst") baseCol="rgba(180,200,255,0.95)";
+        let baseCol = e.type==="boss" ? COLORS.purpleBoss95 : COLORS.redEnemyBase92;
+        if (e.type==="tank") baseCol=COLORS.red95;
+        if (e.type==="runner") baseCol=COLORS.orangeRunner95;
+        if (e.type==="shooter") baseCol=COLORS.tealShooter92;
+        if (e.type==="bomber") baseCol=COLORS.goldBomber92;
+        if (e.type==="triad") baseCol=COLORS.blueTriad95;
+        if (e.type==="blaster") baseCol=COLORS.blueBlaster95;
+        if (e.type==="burst") baseCol=COLORS.blueBurst95;
         if (e.type==="boss"){
-          if (e.bossKind==="sniper") baseCol = "rgba(120,220,255,0.95)";
-          if (e.bossKind==="charger") baseCol = "rgba(255,180,120,0.95)";
-          if (e.bossKind==="spiral") baseCol = "rgba(200,140,255,0.95)";
-          if (e.bossKind==="summoner") baseCol = "rgba(160,255,160,0.92)";
+          if (e.bossKind==="sniper") baseCol = COLORS.blueBright95;
+          if (e.bossKind==="charger") baseCol = COLORS.orangeBossCharger95;
+          if (e.bossKind==="spiral") baseCol = COLORS.purpleBossSpiral95;
+          if (e.bossKind==="summoner") baseCol = COLORS.greenBossSummoner92;
         }
         if (e.type==="boss"){
           const waveT = (state.t * 0.55 + e.id * 0.17) % 1;
@@ -3542,7 +3543,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           const rad = e.triRad || 22;
           const a0 = e.triAngle || 0;
           ctx.globalAlpha = 0.75;
-          ctx.fillStyle = "rgba(140,180,255,0.45)";
+          ctx.fillStyle = COLORS.blueTriad45;
           ctx.beginPath();
           for (let k=0; k<3; k++){
             const ang = a0 + k*(TAU/3);
@@ -3558,7 +3559,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
         ctx.save();
         if (e.type === "blaster" && blasterCharge > 0){
-          ctx.shadowColor = e.bulletGlow || "rgba(255,230,140,0.95)";
+          ctx.shadowColor = e.bulletGlow || COLORS.goldGlow95;
           ctx.shadowBlur = 16 + blasterCharge * 18;
         }
         const auraFlash = (e.auraFlash || 0) > 0;
@@ -3570,12 +3571,12 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
             ctx.fill();
             ctx.globalAlpha = 0.75;
             ctx.beginPath();
-            ctx.fillStyle = "rgba(255,255,255,0.95)";
+            ctx.fillStyle = COLORS.white95;
             ctx.arc(sx,sy,e.r,0,TAU);
             ctx.fill();
           } else {
             ctx.beginPath();
-            ctx.fillStyle = "rgba(255,255,255,0.95)";
+            ctx.fillStyle = COLORS.white95;
             ctx.arc(sx,sy,e.r,0,TAU);
             ctx.fill();
           }
@@ -3586,7 +3587,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           ctx.fill();
           ctx.globalAlpha = 0.60;
           ctx.beginPath();
-          ctx.fillStyle = "rgba(255,255,255,0.95)";
+          ctx.fillStyle = COLORS.white95;
           ctx.arc(sx,sy,e.r,0,TAU);
           ctx.fill();
         } else {
@@ -3611,9 +3612,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
             ctx.arc(0, 0, rr, 0, TAU);
             ctx.clip();
             ctx.globalAlpha = 0.95;
-            ctx.shadowColor = e.bulletGlow || "rgba(255,230,140,0.95)";
+            ctx.shadowColor = e.bulletGlow || COLORS.goldGlow95;
             ctx.shadowBlur = 26;
-            ctx.fillStyle = e.bulletColor || "rgba(255,235,120,0.98)";
+            ctx.fillStyle = e.bulletColor || COLORS.goldBullet98;
             const x0 = blasterFillFromBack ? -rr : (rr - fillW);
             ctx.fillRect(x0, -rr, fillW, rr * 2);
             ctx.restore();
@@ -3624,7 +3625,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           const p = clamp(1 - (e.deathT / BURST_TELEGRAPH), 0, 1);
           ctx.globalAlpha = 0.9;
           ctx.lineWidth = 2 + p * 3;
-          ctx.strokeStyle = "rgba(255,230,150,0.95)";
+          ctx.strokeStyle = COLORS.goldTelegraph95;
           ctx.beginPath();
           ctx.arc(sx,sy,e.r + 6 + p * 6,0,TAU);
           ctx.stroke();
@@ -3635,7 +3636,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           const pulse = 0.5 + 0.5 * Math.sin(state.t * 5 + e.id * 0.7);
           ctx.globalAlpha = 0.55 + pulse * 0.25;
           ctx.lineWidth = 3;
-          ctx.strokeStyle = e.eliteColor || "rgba(255,220,120,0.9)";
+          ctx.strokeStyle = e.eliteColor || COLORS.goldElite90;
           ctx.beginPath();
           ctx.arc(sx,sy,e.r + 5 + pulse * 4,0,TAU);
           ctx.stroke();
@@ -3645,13 +3646,13 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         if (e.type==="boss" || e.type==="tank"){
           ctx.globalAlpha=0.7;
           ctx.lineWidth=3;
-          ctx.strokeStyle="rgba(0,0,0,0.35)";
+          ctx.strokeStyle=COLORS.black35;
           ctx.beginPath();
           ctx.arc(sx,sy,e.r+3,0,TAU);
           ctx.stroke();
 
           const p = clamp(e.hp/e.hpMax,0,1);
-          ctx.strokeStyle="rgba(255,255,255,0.65)";
+          ctx.strokeStyle=COLORS.white65;
           ctx.beginPath();
           ctx.arc(sx,sy,e.r+3,-Math.PI/2,-Math.PI/2+TAU*p);
           ctx.stroke();
@@ -3663,16 +3664,16 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       for (const t of turrets){
         const sx=t.x-camX, sy=t.y-camY;
         const hs = t.size * 0.5;
-        ctx.fillStyle="rgba(120,220,255,0.9)";
+        ctx.fillStyle=COLORS.blueBright90;
         ctx.beginPath();
         ctx.roundRect(sx-hs, sy-hs, t.size, t.size, 5);
         ctx.fill();
 
-        ctx.fillStyle="rgba(255,255,255,0.7)";
+        ctx.fillStyle=COLORS.white70;
         ctx.fillRect(sx-2, sy-hs-4, 4, 8);
 
         const p = clamp(t.hp/t.hpMax, 0, 1);
-        ctx.strokeStyle="rgba(255,255,255,0.7)";
+        ctx.strokeStyle=COLORS.white70;
         ctx.lineWidth=2;
         ctx.beginPath();
         ctx.arc(sx,sy, hs + 4, -Math.PI/2, -Math.PI/2 + TAU*p);
@@ -3686,8 +3687,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           ctx.save();
           ctx.globalAlpha = 0.85 * alpha;
           ctx.lineWidth = 2 + 2 * alpha;
-          ctx.strokeStyle = "rgba(180,220,255,0.95)";
-          ctx.shadowColor = "rgba(180,220,255,0.9)";
+          ctx.strokeStyle = COLORS.blueLightning95;
+          ctx.shadowColor = COLORS.blueGlow90;
           ctx.shadowBlur = 18;
           ctx.beginPath();
           const pts = s.pts || [];
@@ -3703,8 +3704,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
           ctx.save();
           ctx.globalAlpha = 0.9 * alpha;
-          ctx.fillStyle = "rgba(255,255,255,0.9)";
-          ctx.shadowColor = "rgba(180,220,255,0.9)";
+          ctx.fillStyle = COLORS.white90;
+          ctx.shadowColor = COLORS.blueGlow90;
           ctx.shadowBlur = 14;
           ctx.beginPath();
           ctx.arc(s.x - camX, s.y - camY, 6 + 6 * alpha, 0, TAU);
@@ -3739,7 +3740,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         const a = 1 - (p.t/p.life);
         ctx.globalAlpha = 0.85*a;
         ctx.beginPath();
-        ctx.fillStyle="rgba(255,255,255,0.9)";
+        ctx.fillStyle=COLORS.white90;
         ctx.arc(sx,sy, p.r, 0, TAU);
         ctx.fill();
       }
@@ -3755,7 +3756,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           const sx=ox-camX, sy=oy-camY;
           batchCirclePush(batch.orbitals, sx, sy, orbSize);
         }
-        batchCircleDraw(ctx, batch.orbitals, "rgba(210,230,255,0.95)");
+        batchCircleDraw(ctx, batch.orbitals, COLORS.bluePlayer95);
       }
       if (player.orbitals>0 && clones.length){
         const orbSize = getOrbitalSize();
@@ -3769,7 +3770,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
             batchCirclePush(batch.orbitalsClone, sx, sy, orbSize);
           }
         }
-        batchCircleDraw(ctx, batch.orbitalsClone, "rgba(180,210,255,0.7)");
+        batchCircleDraw(ctx, batch.orbitalsClone, COLORS.blueOrbitalClone70);
       }
 
       // magnet radius
@@ -3778,7 +3779,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         const sy = player.y - camY;
 
         ctx.globalAlpha = 0.08;
-        ctx.strokeStyle = "rgba(120,220,255,0.9)";
+        ctx.strokeStyle = COLORS.blueBright90;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(sx, sy, player.magnet, 0, TAU);
@@ -3795,12 +3796,12 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           const alpha = 0.45 + 0.25 * (1 - t);
           ctx.save();
           ctx.globalAlpha = alpha;
-          ctx.fillStyle = "rgba(200,230,255,0.75)";
+          ctx.fillStyle = COLORS.blueSoft75;
           ctx.beginPath();
           ctx.arc(sx, sy, player.r * 0.95, 0, TAU);
           ctx.fill();
           ctx.globalAlpha = 0.8;
-          ctx.strokeStyle = "rgba(120,200,255,0.6)";
+          ctx.strokeStyle = COLORS.blueSoft60;
           ctx.lineWidth = 2;
           ctx.stroke();
           ctx.restore();
@@ -3811,8 +3812,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       // dash trail
       if (dashTrail.length){
         ctx.save();
-        ctx.fillStyle = "rgba(200,230,255,0.9)";
-        ctx.shadowColor = "rgba(180,220,255,0.7)";
+        ctx.fillStyle = COLORS.blueSoft90;
+        ctx.shadowColor = COLORS.blueGlowSoft70;
         ctx.shadowBlur = 18;
         for (const d of dashTrail){
           const p = 1 - (d.t / d.life);
@@ -3832,7 +3833,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         const sx=player.x-camX, sy=player.y-camY;
         ctx.beginPath();
         const blink = player.invuln>0 && (Math.floor(performance.now()/60)%2===0);
-        ctx.fillStyle = blink ? "rgba(255,255,255,0.9)" : "rgba(210,230,255,0.95)";
+        ctx.fillStyle = blink ? COLORS.white90 : COLORS.bluePlayer95;
         ctx.arc(sx,sy, player.r, 0, TAU);
         ctx.fill();
       }
@@ -3855,7 +3856,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           } else if (ctx.font !== `700 ${baseSize}px ${baseFont}`){
             ctx.font = `700 ${baseSize}px ${baseFont}`;
           }
-          ctx.fillStyle = f.color || "rgba(120,255,140,0.95)";
+          ctx.fillStyle = f.color || COLORS.greenHeal;
           ctx.fillText(f.text, sx, sy);
         }
         ctx.restore();
@@ -3866,7 +3867,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       const grd = ctx.createRadialGradient(w*0.5,h*0.5, Math.min(w,h)*0.15, w*0.5,h*0.5, Math.max(w,h)*0.75);
       const hpRatio = player.hpMax > 0 ? player.hp / player.hpMax : 1;
       const low = clamp((0.5 - hpRatio) / 0.5, 0, 1);
-      let edgeColor = "rgba(0,0,0,0.55)";
+      let edgeColor = COLORS.black55;
       if (low > 0){
         const pulse = 0.6 + 0.4 * Math.sin(state.t * 6);
         const r = Math.round(255 + (200 - 255) * low);
@@ -3875,7 +3876,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         const alpha = (0.45 + 0.25 * low) * pulse;
         edgeColor = `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
       }
-      grd.addColorStop(0,"rgba(0,0,0,0)");
+      grd.addColorStop(0,COLORS.black0);
       grd.addColorStop(1, edgeColor);
       ctx.fillStyle=grd;
       ctx.fillRect(0,0,w,h);

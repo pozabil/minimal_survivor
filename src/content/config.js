@@ -1,3 +1,5 @@
+import { COLORS } from "../render/colors.js";
+
 export const ENEMY_MAX_R = 60;
 export const COLOSSUS_HP_STEP = 0.20;
 export const COLOSSUS_SHRINK_STEP = 0.10;
@@ -28,8 +30,8 @@ export const DOG_TURN_RATE = 4.5;
 export const DOG_HIT_COOLDOWN = 0.18;
 export const DOG_CRIT_CHANCE = 0.22;
 export const DOG_BALTIKA_AVOID_R = 96;
-export const DOG_BROWN_COLORS = ["rgba(130,85,55,0.95)", "rgba(150,95,60,0.95)", "rgba(110,70,45,0.95)"];
-export const DOG_GRAY_COLOR = "rgba(150,150,155,0.95)";
+export const DOG_BROWN_COLORS = [COLORS.dogBrown1, COLORS.dogBrown2, COLORS.dogBrown3];
+export const DOG_GRAY_COLOR = COLORS.dogGray;
 export const DOG_GRAY_CHANCE = 0.12;
 export const XP_BONUS_NORMAL = 0.0005;
 export const XP_BONUS_ELITE = 0.002;

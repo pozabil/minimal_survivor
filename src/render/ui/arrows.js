@@ -1,4 +1,5 @@
 import { len2 } from "../../utils/math.js";
+import { COLORS } from "../colors.js";
 
 const ARROW_PRESETS = {
   totem: {
@@ -7,8 +8,8 @@ const ARROW_PRESETS = {
     tip: 22,
     back: -16,
     wing: 12,
-    fill: "rgba(90,220,190,0.95)",
-    stroke: "rgba(210,255,245,0.7)",
+    fill: COLORS.tealArrowFill95,
+    stroke: COLORS.tealArrowStroke70,
     alpha: 0.95,
     lineWidth: 2,
     isSpecial: false,
@@ -19,8 +20,8 @@ const ARROW_PRESETS = {
     tip: 16,
     back: -12,
     wing: 9,
-    fill: "rgba(255,220,120,0.95)",
-    stroke: "rgba(255,255,255,0.55)",
+    fill: COLORS.gold95,
+    stroke: COLORS.white55,
     alpha: 0.90,
     lineWidth: 2,
     isSpecial: false,
@@ -31,14 +32,14 @@ const ARROW_PRESETS = {
     tip: 16,
     back: -12,
     wing: 9,
-    fill: "rgba(255,220,120,0.95)",
-    stroke: "rgba(255,255,255,0.55)",
+    fill: COLORS.gold95,
+    stroke: COLORS.white55,
     alpha: 0.90,
     lineWidth: 2,
     isSpecial: true,
     specialScale: 1.4,
-    specialFill: "rgba(255,70,70,0.9)",
-    specialStroke: "rgba(255,160,160,0.9)",
+    specialFill: COLORS.redArrowFill90,
+    specialStroke: COLORS.redArrowStroke90,
     specialFillAlpha: 0.7,
     specialStrokeAlpha: 0.8,
     specialLineWidth: 1.5,

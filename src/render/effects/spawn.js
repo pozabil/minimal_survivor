@@ -10,6 +10,7 @@ import {
 } from "../../content/uniques.js";
 import { TAU } from "../../core/constants.js";
 import { randf, randi } from "../../utils/rand.js";
+import { COLORS } from "../colors.js";
 
 export function createEffectSpawns({
   player,
@@ -42,7 +43,7 @@ export function createEffectSpawns({
       r1,
       life,
       t: 0,
-      color: color || "rgba(200,230,255,0.95)",
+      color: color || COLORS.blueSoft95,
     });
   }
 
@@ -83,7 +84,7 @@ export function createEffectSpawns({
       t: 0,
       life: 0.9,
       text: `+${value}`,
-      color: "rgba(120,255,140,0.95)",
+      color: COLORS.greenHeal,
     });
   }
 
@@ -100,7 +101,7 @@ export function createEffectSpawns({
       t: 0,
       life: 0.9,
       text: `-${value}`,
-      color: color || "rgba(220,60,60,0.95)",
+      color: color || COLORS.redDamage95,
       size: Number.isFinite(size) ? size : null,
     });
   }
