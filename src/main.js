@@ -108,6 +108,14 @@ import { createStep } from "./flow/step.js";
 import { updateMovement } from "./systems/movement.js";
 import { createSpatialGrid } from "./systems/spatial_grid.js";
 import {
+  createRenderBatch,
+  batchCirclePush,
+  batchCircleDraw,
+  batchMapPush,
+  batchMapClear,
+  ensureRoundRectPolyfill,
+} from "./systems/render.js";
+import {
   createSpawnBoss,
   createSpawnChest,
   createSpawnColossusElite,
@@ -188,51 +196,10 @@ import { bindOptionsUI } from "./ui/options.js";
 
 
     // Simple circle batching to reduce per-entity beginPath/fill calls
-    const batch = {
-      bullets: [],
-      enemyBullets: new Map(),
-      orbitals: [],
-      orbitalsClone: [],
-    };
-    function batchCirclePush(arr, x, y, r){
-      arr.push(x, y, r);
-    }
-    function batchCircleDraw(arr, fillStyle){
-      if (!arr.length) return;
-      ctx.fillStyle = fillStyle;
-      ctx.beginPath();
-      for (let i=0; i<arr.length; i+=3){
-        const x = arr[i];
-        const y = arr[i+1];
-        const r = arr[i+2];
-        ctx.moveTo(x + r, y);
-        ctx.arc(x, y, r, 0, TAU);
-      }
-      ctx.fill();
-    }
-    function batchMapPush(map, key, x, y, r){
-      let arr = map.get(key);
-      if (!arr){ arr = []; map.set(key, arr); }
-      arr.push(x, y, r);
-    }
-    function batchMapClear(map){
-      for (const arr of map.values()) arr.length = 0;
-    }
+    const batch = createRenderBatch();
 
     // roundRect polyfill
-    if (!CanvasRenderingContext2D.prototype.roundRect){
-      CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
-        const rr = Math.min(r, w/2, h/2);
-        this.beginPath();
-        this.moveTo(x+rr,y);
-        this.arcTo(x+w,y, x+w,y+h, rr);
-        this.arcTo(x+w,y+h, x,y+h, rr);
-        this.arcTo(x,y+h, x,y, rr);
-        this.arcTo(x,y, x+w,y, rr);
-        this.closePath();
-        return this;
-      };
-    }
+    ensureRoundRectPolyfill();
 
     // Input
     const keys = new Set();
@@ -3681,7 +3648,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         }
       }
       for (const [col, arr] of batch.enemyBullets){
-        batchCircleDraw(arr, col);
+        batchCircleDraw(ctx, arr, col);
       }
 
       // aura
@@ -3772,7 +3739,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           batchCirclePush(batch.bullets, sx, sy, b.r);
         }
       }
-      batchCircleDraw(batch.bullets, "rgba(255,245,210,0.95)");
+      batchCircleDraw(ctx, batch.bullets, "rgba(255,245,210,0.95)");
 
       // dog
       if (dogs.length){
@@ -4057,7 +4024,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
           const sx=ox-camX, sy=oy-camY;
           batchCirclePush(batch.orbitals, sx, sy, orbSize);
         }
-        batchCircleDraw(batch.orbitals, "rgba(210,230,255,0.95)");
+        batchCircleDraw(ctx, batch.orbitals, "rgba(210,230,255,0.95)");
       }
       if (player.orbitals>0 && clones.length){
         const orbSize = getOrbitalSize();
@@ -4071,7 +4038,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
             batchCirclePush(batch.orbitalsClone, sx, sy, orbSize);
           }
         }
-        batchCircleDraw(batch.orbitalsClone, "rgba(180,210,255,0.7)");
+        batchCircleDraw(ctx, batch.orbitalsClone, "rgba(180,210,255,0.7)");
       }
 
       // magnet radius
