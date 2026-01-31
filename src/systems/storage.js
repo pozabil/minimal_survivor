@@ -18,11 +18,7 @@ function writeBoolKey(ns, key, value){
 
 export function loadOptions(){
   return {
-    showDamageNumbers: readBoolKey(
-      STORAGE_NS.options,
-      OPTION_KEYS.showDamageNumbers,
-      false
-    ),
+    showDamageNumbers: readBoolKey(STORAGE_NS.options, OPTION_KEYS.showDamageNumbers, true),
   };
 }
 
