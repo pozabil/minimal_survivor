@@ -10,7 +10,6 @@ import {
   DASH_DURATION,
   DASH_COOLDOWN,
   DASH_INVULN,
-  DASH_TRAIL_INTERVAL,
   SAME_CIRCLE_LIFE,
   SAME_CIRCLE_RADIUS,
   SAME_CIRCLE_DAMAGE_MULT,
@@ -122,6 +121,7 @@ import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
 import { bindOptionsUI } from "./ui/options.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
+import { createEffectUpdates } from "./render/effects/update.js";
 
 (() => {
   "use strict";
@@ -188,7 +188,6 @@ import { createEffectSpawns } from "./render/effects/spawn.js";
     let cameraScale = GAME_SCALE;
 
     const { ctx, getDpr } = initCanvas(canvas, GAME_SCALE, MAX_DPR);
-
 
     // Simple circle batching to reduce per-entity beginPath/fill calls
     const batch = createRenderBatch();
@@ -388,6 +387,15 @@ canvas.addEventListener("pointercancel", (e)=>{
       lightningStrikes,
       floaters,
       dashTrail,
+    });
+    const {
+      updateDashTrail,
+      updateLightning,
+    } = createEffectUpdates({
+      state,
+      dashTrail,
+      lightningStrikes,
+      spawnDashTrail,
     });
     const { gridBuild, gridQueryCircle } = createSpatialGrid(enemies);
     const {
@@ -594,6 +602,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       if (player.hp >= player.hpMax) return;
       state.healQueue.push({ amount, t: 0 });
     }
+
     function updateHeal(dt){
       if (player.hp >= player.hpMax){
         state.healActive = null;
@@ -1433,23 +1442,6 @@ canvas.addEventListener("pointercancel", (e)=>{
       }
     }
 
-    function updateDashTrail(dt){
-      for (let i=dashTrail.length-1; i>=0; i--){
-        const d = dashTrail[i];
-        d.t += dt;
-        if (d.t >= d.life) dashTrail.splice(i,1);
-      }
-      if (state.dashT > 0){
-        state.dashTrailT += dt;
-        while (state.dashTrailT >= DASH_TRAIL_INTERVAL){
-          state.dashTrailT -= DASH_TRAIL_INTERVAL;
-          spawnDashTrail();
-        }
-      } else {
-        state.dashTrailT = 0;
-      }
-    }
-
     function explodeSameCircle(c){
       const dmg = player.damage * SAME_CIRCLE_DAMAGE_MULT * getWoundedDamageMult();
       spawnBurst(c.x, c.y, randi(26, 38), 380, 0.75);
@@ -1478,13 +1470,6 @@ canvas.addEventListener("pointercancel", (e)=>{
           e.vy += push.y * AURA_WAVE_VEL_MULT;
         }
         if (e.hp <= 0) killEnemy(e);
-      }
-    }
-    function updateLightning(dt){
-      for (let i=lightningStrikes.length-1; i>=0; i--){
-        const s = lightningStrikes[i];
-        s.t += dt;
-        if (s.t >= s.life) lightningStrikes.splice(i,1);
       }
     }
 
@@ -3008,8 +2993,6 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         let dy = player.y - g.y;
         let dist = len2(dx, dy) || 1;
 
-        let targetX = player.x;
-        let targetY = player.y;
         let targetMagnet = player.magnet;
         let useNova = false;
         let useTurret = false;
