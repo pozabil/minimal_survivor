@@ -90,7 +90,6 @@ import {
   createUpgrades,
 } from "./content/upgrades.js";
 import { createUniques, SAME_CIRCLE_INTERVAL } from "./content/uniques.js";
-import { BOSS_NAME } from "./content/enemies.js";
 import { getPlayerClass, PLAYER_CLASSES } from "./content/players.js";
 import { initState } from "./core/init.js";
 import { createPlayerFunctions } from "./core/player.js";
@@ -123,6 +122,8 @@ import { loadRecords, updateRecordsOnDeath } from "./systems/storage.js";
 import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
 import { bindOptionsUI } from "./ui/options.js";
+import { createBossUI } from "./ui/bosses.js";
+import { createTotemTimerUI } from "./ui/totem.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
 
@@ -150,6 +151,8 @@ import { createEffectUpdates } from "./render/effects/update.js";
       activeItemsEl, activeItemsListEl, elChestRespawn, totemTimerEl, totemWarningEl, hpbar, hpbarPulse, xpbar,
       hptext, xptext, totemBar, totemText, bossBar, bossText, chestBar, chestText, bossWrap, bossList,
     } = hud.elements;
+    const updateBossUI = createBossUI({ bossWrap, bossList });
+    const updateTotemTimer = createTotemTimerUI({ totemTimerEl });
 
     // Overlays
     const {
@@ -3077,20 +3080,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       for (const ee of enemies){
         if (ee.type === "boss" && !ee.dead) bosses.push(ee);
       }
-      if (bosses.length){
-        bossWrap.style.display = "block";
-        let html = "";
-        for (const b of bosses){
-          const name = BOSS_NAME[b.bossKind] || "Boss";
-          const tier = (b.bossTier || 0) + 1;
-          const hpPct = clamp(b.hp / b.hpMax, 0, 1);
-          html += `<div class="bossRow"><div class="bossName">BOSS: ${name} (T${tier})</div><div class="bar bossHp"><div class="fill" style="width:${(hpPct*100).toFixed(2)}%"></div></div></div>`;
-        }
-        bossList.innerHTML = html;
-      } else {
-        bossWrap.style.display = "none";
-        bossList.innerHTML = "";
-      }
+      updateBossUI(bosses);
 
       // HUD
       elLvl.textContent = `Lv ${player.lvl}`;
@@ -3105,14 +3095,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       elDps.textContent = `Dmg ${dpsNow}`;
       if (dpsNow > state.maxDps) state.maxDps = dpsNow;
       elTime.textContent = fmtTime(state.t);
-      if (totemTimerEl){
-        if (totem.active && totem.grace > 0){
-          totemTimerEl.style.display = "block";
-          totemTimerEl.innerHTML = `${Math.max(0, Math.ceil(totem.grace))}<span class="sub">Идите в зону тотема</span>`;
-        } else {
-          totemTimerEl.style.display = "none";
-        }
-      }
+      updateTotemTimer(totem);
       if (totemWarningEl){
         const showWarning = totem.active && totem.grace <= 0 && !totem.inZone;
         totemWarningEl.classList.toggle("show", showWarning);
