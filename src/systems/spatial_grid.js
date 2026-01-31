@@ -38,5 +38,10 @@ export function createSpatialGrid(enemies){
     return out;
   }
 
-  return { gridBuild, gridQueryCircle };
+  // Expose for debug visualization (read-only use).
+  function getGridCells(){
+    return enemyGrid;
+  }
+
+  return { gridBuild, gridQueryCircle, getGridCells };
 }

@@ -110,6 +110,7 @@ import {
 import { renderOffscreenArrow } from "./render/ui/arrows.js";
 import { COLORS } from "./render/colors.js";
 import { createEffectRenderer } from "./render/effects/render.js";
+import { renderSpatialGrid } from "./render/debug.js";
 import {
   createSpawnBoss,
   createSpawnChest,
@@ -417,7 +418,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       floaters,
       dashTrail,
     });
-    const { gridBuild, gridQueryCircle } = createSpatialGrid(enemies);
+    const { gridBuild, gridQueryCircle, getGridCells } = createSpatialGrid(enemies);
     const {
       findNearestEnemy,
       findNearestEnemyFrom,
@@ -2573,6 +2574,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       hasUnique,
     });
 
+    const novaBulletsThisFrame = [];
+
     function update(dt){
       state.t += dt;
 
@@ -2996,7 +2999,12 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
       // XP drops update + pickup
       const novaMagnetR = getNovaMagnetRadius();
-      const novaBullets = (novaMagnetR > 0) ? bullets.filter(b => b.isNova) : [];
+      novaBulletsThisFrame.length = 0;
+      if (novaMagnetR > 0){
+        for (const b of bullets){
+          if (b.isNova) novaBulletsThisFrame.push(b);
+        }
+      }
       const turretPull = hasTurretHeal() && turrets.length > 0;
       const turretAggro = turretPull ? getTurretAggroRadius() : 0;
       for (let i = drops.length - 1; i >= 0; i--) {
@@ -3016,8 +3024,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         let targetMagnet = player.magnet;
         let useNova = false;
         let useTurret = false;
-        if (novaBullets.length){
-          for (const b of novaBullets){
+        if (novaBulletsThisFrame.length){
+          for (const b of novaBulletsThisFrame){
             const ndx = b.x - g.x;
             const ndy = b.y - g.y;
             if ((ndx*ndx + ndy*ndy) <= novaMagnetR * novaMagnetR){
@@ -3230,6 +3238,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       }
       ctx.stroke();
       ctx.globalAlpha = 1;
+
+      // debug
+      renderSpatialGrid(ctx, camX, camY, getGridCells());
 
       // totem
       if (totem.active){
