@@ -391,11 +391,16 @@ canvas.addEventListener("pointercancel", (e)=>{
     const {
       updateDashTrail,
       updateLightning,
+      updateParticles,
+      updateShockwaves,
+      updateFloaters,
     } = createEffectUpdates({
       state,
       dashTrail,
       lightningStrikes,
-      spawnDashTrail,
+      particles,
+      shockwaves,
+      floaters,
     });
     const { gridBuild, gridQueryCircle } = createSpatialGrid(enemies);
     const {
@@ -2655,7 +2660,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       applyAura(dt);
       updateDogs(dt);
       updateSameCircle(dt);
-      updateDashTrail(dt);
+      updateDashTrail(dt, spawnDashTrail);
       updateLightning(dt);
       if (hasUnique("patriarch_doll") && state.patriarchDollCd <= 0){
         const didHit = tryActivatePatriarchDoll();
@@ -3040,34 +3045,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         }
       }
 
-      // particles
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.t += dt;
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.vx *= dampSlow;
-        p.vy *= dampSlow;
-        if (p.t >= p.life) particles.splice(i, 1);
-      }
-
-      // shockwaves
-      for (let i = shockwaves.length - 1; i >= 0; i--) {
-        const s = shockwaves[i];
-        s.t += dt;
-        if (s.t >= s.life) shockwaves.splice(i, 1);
-      }
-
-      // heal floaters
-      for (let i = floaters.length - 1; i >= 0; i--) {
-        const f = floaters[i];
-        f.t += dt;
-        f.x += f.vx * dt;
-        f.y += f.vy * dt;
-        f.vx *= dampSlow;
-        f.vy *= dampSlow;
-        if (f.t >= f.life) floaters.splice(i, 1);
-      }
+      updateParticles(dt, dampSlow);
+      updateShockwaves(dt);
+      updateFloaters(dt, dampSlow);
 
       // boss ui
       const bosses = [];
