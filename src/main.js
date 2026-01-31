@@ -114,6 +114,7 @@ import {
   batchMapPush,
   batchMapClear,
   ensureRoundRectPolyfill,
+  renderOffscreenArrow,
 } from "./systems/render.js";
 import {
   createSpawnBoss,
@@ -3437,44 +3438,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         ctx.fillStyle = "rgba(255,255,255,0.55)";
         ctx.fillRect(sx-2, sy-12, 4, 24);
 
-        // direction arrow to totem (when it's off-screen)
-        const onScreenTotem = (sx >= 0 && sx <= w && sy >= 0 && sy <= h);
-        if (!onScreenTotem){
-          const dxT = totem.x - player.x;
-          const dyT = totem.y - player.y;
-          const distT = len2(dxT, dyT) || 1;
-          const ux = dxT / distT;
-          const uy = dyT / distT;
-
-          const margin = 34;
-          const cx = w * 0.5;
-          const cy = h * 0.5;
-          const reach = Math.max(56, Math.min(cx, cy) - margin);
-          let ax = cx + ux * reach;
-          let ay = cy + uy * reach;
-          ax = clamp(ax, margin, w - margin);
-          ay = clamp(ay, margin, h - margin);
-
-          const ang = Math.atan2(uy, ux);
-
-          ctx.save();
-          ctx.translate(ax, ay);
-          ctx.rotate(ang);
-          ctx.globalAlpha = 0.95;
-          ctx.fillStyle = "rgba(90,220,190,0.95)";
-          ctx.beginPath();
-          ctx.moveTo(22, 0);
-          ctx.lineTo(-16, 12);
-          ctx.lineTo(-16, -12);
-          ctx.closePath();
-          ctx.fill();
-
-          ctx.globalAlpha = 0.6;
-          ctx.strokeStyle = "rgba(210,255,245,0.7)";
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.restore();
-          ctx.globalAlpha = 1;
+        // direction arrow to totem (when it's off-screen and player is outside)
+        if (!totem.inZone){
+          renderOffscreenArrow(ctx, camX, camY, w, h, player.x, player.y, totem.x, totem.y, "totem");
         }
       }
 
@@ -3512,68 +3478,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         ctx.fillRect(sx-2, sy - chestH * 0.5 + bob, 4, chestH);
 
         // direction arrow to chest (when it's off-screen)
-        const onScreen = (sx >= 0 && sx <= w && sy >= 0 && sy <= h);
-        if (!onScreen){
-          const dxC = c.x - player.x;
-          const dyC = c.y - player.y;
-          const distC = len2(dxC, dyC) || 1;
-          const ux = dxC / distC;
-          const uy = dyC / distC;
-
-          const margin = isSpecial ? 30 : 26;
-          const cx = w * 0.5;
-          const cy = h * 0.5;
-          const reach = Math.max(isSpecial ? 46 : 40, Math.min(cx, cy) - margin);
-          let ax = cx + ux * reach;
-          let ay = cy + uy * reach;
-          ax = clamp(ax, margin, w - margin);
-          ay = clamp(ay, margin, h - margin);
-
-          const ang = Math.atan2(uy, ux);
-
-          const arrowTip = 16;
-          const arrowBack = -12;
-          const arrowWing = 9;
-          const baseFill = "rgba(255,220,120,0.95)";
-          const baseStroke = "rgba(255,255,255,0.55)";
-
-          ctx.save();
-          ctx.translate(ax, ay);
-          ctx.rotate(ang);
-
-          if (isSpecial){
-            const scale = 1.4;
-            ctx.globalAlpha = 0.7;
-            ctx.fillStyle = "rgba(255,70,70,0.9)";
-            ctx.beginPath();
-            ctx.moveTo(arrowTip * scale * 1.25, 0);
-            ctx.lineTo(arrowBack * scale, arrowWing * scale * 1.125);
-            ctx.lineTo(arrowBack * scale, -arrowWing * scale * 1.125);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.globalAlpha = 0.8;
-            ctx.strokeStyle = "rgba(255,160,160,0.9)";
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-          }
-
-          ctx.globalAlpha = 0.90;
-          ctx.fillStyle = baseFill;
-          ctx.beginPath();
-          ctx.moveTo(arrowTip, 0);
-          ctx.lineTo(arrowBack, arrowWing);
-          ctx.lineTo(arrowBack, -arrowWing);
-          ctx.closePath();
-          ctx.fill();
-
-          ctx.globalAlpha = 0.65;
-          ctx.strokeStyle = baseStroke;
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.restore();
-          ctx.globalAlpha = 1;
-        }
+        renderOffscreenArrow(ctx, camX, camY, w, h, player.x, player.y, c.x, c.y, isSpecial ? "specialChest" : "chest");
       }
 
       // drops
