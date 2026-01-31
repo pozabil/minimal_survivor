@@ -10,9 +10,7 @@ import {
   DASH_DURATION,
   DASH_COOLDOWN,
   DASH_INVULN,
-  DASH_TRAIL_LIFE,
   DASH_TRAIL_INTERVAL,
-  DASH_TRAIL_MAX,
   SAME_CIRCLE_LIFE,
   SAME_CIRCLE_RADIUS,
   SAME_CIRCLE_DAMAGE_MULT,
@@ -23,12 +21,6 @@ import {
   PATRIARCH_DOLL_DAMAGE_MULT,
   PATRIARCH_DOLL_TARGETS_MIN,
   PATRIARCH_DOLL_TARGETS_MAX,
-  LIGHTNING_STRIKE_LIFE,
-  LIGHTNING_STRIKE_SEGMENTS_MIN,
-  LIGHTNING_STRIKE_SEGMENTS_MAX,
-  LIGHTNING_STRIKE_JITTER,
-  LIGHTNING_STRIKE_HEIGHT_MIN,
-  LIGHTNING_STRIKE_HEIGHT_MAX,
   DOG_RADIUS,
   DOG_SPEED,
   DOG_TURN_RATE,
@@ -115,8 +107,8 @@ import {
   batchMapPush,
   batchMapClear,
   ensureRoundRectPolyfill,
-  renderOffscreenArrow,
 } from "./systems/render.js";
+import { renderOffscreenArrow } from "./render/ui/arrows.js";
 import {
   createSpawnBoss,
   createSpawnChest,
@@ -129,6 +121,7 @@ import { loadRecords, updateRecordsOnDeath } from "./systems/storage.js";
 import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
 import { bindOptionsUI } from "./ui/options.js";
+import { createEffectSpawns } from "./render/effects/spawn.js";
 
 (() => {
   "use strict";
@@ -362,23 +355,40 @@ canvas.addEventListener("pointercancel", (e)=>{
     });
 
     // State
-    const { player, state, ui, entities, spawn } = initState();
+    const { player, state, ui, entities, spawn, effects } = initState();
     const {
       bullets,
       enemyBullets,
       enemies,
       turrets,
       drops,
-      particles,
-      shockwaves,
-      floaters,
-      dashTrail,
-      lightningStrikes,
       clones,
       dogs,
       chests,
       totem,
     } = entities;
+    const {
+      particles,
+      shockwaves,
+      lightningStrikes,
+      floaters,
+      dashTrail,
+    } = effects;
+    const {
+      spawnBurst,
+      spawnShockwave,
+      spawnDashTrail,
+      spawnLightningStrike,
+      spawnHealFloat,
+      spawnDamageFloat,
+    } = createEffectSpawns({
+      player,
+      particles,
+      shockwaves,
+      lightningStrikes,
+      floaters,
+      dashTrail,
+    });
     const { gridBuild, gridQueryCircle } = createSpatialGrid(enemies);
     const {
       findNearestEnemy,
@@ -462,7 +472,7 @@ canvas.addEventListener("pointercancel", (e)=>{
         e.hp -= dmg;
         e.hitFlash = Math.max(e.hitFlash, 0.12);
         recordDamage(dmg, e.x, e.y);
-        burst(e.x, e.y, randi(8, 12), 260, 0.25);
+        spawnBurst(e.x, e.y, randi(8, 12), 260, 0.25);
         if (e.hp <= 0) killEnemy(e);
       }
       state.patriarchDollCd = PATRIARCH_DOLL_COOLDOWN;
@@ -604,83 +614,6 @@ canvas.addEventListener("pointercancel", (e)=>{
         state.healActive = null;
       }
     }
-    function burst(x,y,count,spd,life){
-      for(let i=0;i<count;i++){
-        const a = randf(0,TAU);
-        particles.push({
-          x,y,
-          vx: Math.cos(a)*randf(spd*0.4, spd),
-          vy: Math.sin(a)*randf(spd*0.4, spd),
-          r: randf(1.5,3.5),
-          life: randf(life*0.6, life),
-          t: 0,
-        });
-      }
-    }
-    function spawnShockwave(x,y,r0,r1,life,color){
-      shockwaves.push({
-        x,y,
-        r0,r1,
-        life,
-        t:0,
-        color: color || "rgba(200,230,255,0.95)",
-      });
-    }
-    function spawnDashTrail(){
-      dashTrail.push({
-        x: player.x,
-        y: player.y,
-        r: player.r * 0.95,
-        t: 0,
-        life: DASH_TRAIL_LIFE,
-      });
-      if (dashTrail.length > DASH_TRAIL_MAX) dashTrail.shift();
-    }
-    function spawnLightningStrike(x,y){
-      const height = randf(LIGHTNING_STRIKE_HEIGHT_MIN, LIGHTNING_STRIKE_HEIGHT_MAX);
-      const topY = y - height;
-      const segments = randi(LIGHTNING_STRIKE_SEGMENTS_MIN, LIGHTNING_STRIKE_SEGMENTS_MAX);
-      const pts = [{ x, y: topY }];
-      for (let i=1; i<segments; i++){
-        const t = i / segments;
-        const px = x + randf(-LIGHTNING_STRIKE_JITTER, LIGHTNING_STRIKE_JITTER);
-        const py = topY + (y - topY) * t;
-        pts.push({ x: px, y: py });
-      }
-      pts.push({ x, y });
-      lightningStrikes.push({ pts, x, y, t: 0, life: LIGHTNING_STRIKE_LIFE });
-    }
-    function spawnHealFloat(amount){
-      const value = Math.round(amount);
-      if (value <= 0) return;
-      floaters.push({
-        x: player.x + randf(-10, 10),
-        y: player.y + randf(-12, 0),
-        vx: randf(-18, 18),
-        vy: randf(-50, -30),
-        t: 0,
-        life: 0.9,
-        text: `+${value}`,
-        color: "rgba(120,255,140,0.95)",
-      });
-    }
-    function spawnDamageFloat(amount, x, y, color, size){
-      const value = Math.round(amount);
-      if (value <= 0) return;
-      const bx = Number.isFinite(x) ? x : player.x;
-      const by = Number.isFinite(y) ? y : player.y;
-      floaters.push({
-        x: bx + randf(-10, 10),
-        y: by + randf(-16, -4),
-        vx: randf(-22, 22),
-        vy: randf(-70, -50),
-        t: 0,
-        life: 0.9,
-        text: `-${value}`,
-        color: color || "rgba(220,60,60,0.95)",
-        size: Number.isFinite(size) ? size : null,
-      });
-    }
 
     function recordDamage(amount, x, y, showNumber=false, color=null, size=null){
       state.dmgDone += amount;
@@ -743,7 +676,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       const reviveHp = Math.max(1, Math.ceil(player.hpMax * 0.25));
       player.hp = reviveHp;
       player.invuln = Math.max(player.invuln, 1.2);
-      burst(player.x, player.y, randi(14,18), 240, 0.45);
+      spawnBurst(player.x, player.y, randi(14,18), 240, 0.45);
       if (pauseMenu.style.display === "grid") updateBuildUI();
       return true;
     }
@@ -1519,8 +1452,8 @@ canvas.addEventListener("pointercancel", (e)=>{
 
     function explodeSameCircle(c){
       const dmg = player.damage * SAME_CIRCLE_DAMAGE_MULT * getWoundedDamageMult();
-      burst(c.x, c.y, randi(26, 38), 380, 0.75);
-      burst(c.x, c.y, randi(10, 16), 220, 0.55);
+      spawnBurst(c.x, c.y, randi(26, 38), 380, 0.75);
+      spawnBurst(c.x, c.y, randi(10, 16), 220, 0.55);
       spawnShockwave(c.x, c.y, 12, SAME_CIRCLE_RADIUS * 0.9, 0.38, "rgba(200,235,255,0.95)");
       const force = getAuraWaveForce();
       for (let i=enemies.length-1; i>=0; i--){
@@ -1790,7 +1723,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       const e = enemies[i];
       if (!e || e.type !== "bomber") return;
 
-      burst(e.x, e.y, randi(24, 34), 340, 0.50);
+      spawnBurst(e.x, e.y, randi(24, 34), 340, 0.50);
 
       // damage player
       const dxp = player.x - e.x, dyp = player.y - e.y;
@@ -1823,7 +1756,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
             const dmg = e.explodeDmg * (0.55 + 0.45 * mult);
             tur.hp -= dmg;
             tur.hitCd = Math.max(tur.hitCd, 0.2);
-            burst(tur.x,tur.y, randi(8,12), 220, 0.30);
+            spawnBurst(tur.x,tur.y, randi(8,12), 220, 0.30);
             if (tur.hp <= 0) turrets.splice(t,1);
           }
         }
@@ -1864,7 +1797,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if (hasUnique("max_shirt") && state.maxShirtCd > 0){
         state.maxShirtCd = Math.max(0, state.maxShirtCd - MAX_SHIRT_KILL_CD_REDUCE);
       }
-      burst(e.x,e.y, randi(10,16), 220, 0.35);
+      spawnBurst(e.x,e.y, randi(10,16), 220, 0.35);
       dropXp(e.x,e.y, e.xp);
 
       if (player.lifeSteal > 0){
@@ -2832,8 +2765,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
             if (circleRectHit(b.x,b.y,b.r, tur.x,tur.y, tur.size, tur.size)){
               tur.hp -= b.dmg;
               tur.hitCd = Math.max(tur.hitCd, 0.1);
-              if (b.explodeR) burst(b.x,b.y, randi(10,16), 260, 0.32);
-              else burst(tur.x,tur.y, randi(6,10), 200, 0.25);
+              if (b.explodeR) spawnBurst(b.x,b.y, randi(10,16), 260, 0.32);
+              else spawnBurst(tur.x,tur.y, randi(6,10), 200, 0.25);
               enemyBullets.splice(i,1);
               if (tur.hp <= 0) turrets.splice(t,1);
               hitTurret = true;
@@ -2854,9 +2787,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
               player.y += push.y;
               player.vx += push.x * 18;
               player.vy += push.y * 18;
-              burst(b.x,b.y, randi(12,18), 280, 0.36);
+              spawnBurst(b.x,b.y, randi(12,18), 280, 0.36);
             } else {
-              burst(player.x,player.y, randi(10,16), 240, 0.32);
+              spawnBurst(player.x,player.y, randi(10,16), 240, 0.32);
             }
             enemyBullets.splice(i,1);
             if (player.hp<=0){
@@ -3018,7 +2951,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
             applyDamageToPlayer(e.dmg);
             const baseInvuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN);
             player.invuln = getInvulnAfterHit(baseInvuln);
-            burst(player.x,player.y, randi(12,20), 260, 0.35);
+            spawnBurst(player.x,player.y, randi(12,20), 260, 0.35);
             if (player.hp<=0){
               if (handlePlayerDeath(`contact ${enemyLabel(e.type, e.bossKind)}`)) return;
             }
@@ -3031,7 +2964,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
               if (tur.hitCd <= 0){
                 tur.hp -= e.dmg;
                 tur.hitCd = 0.25;
-                burst(tur.x,tur.y, randi(6,10), 200, 0.25);
+                spawnBurst(tur.x,tur.y, randi(6,10), 200, 0.25);
                 if (tur.hp <= 0) turrets.splice(t,1);
               }
               const push = pushAway(e.x, e.y, tur.x, tur.y, 6);

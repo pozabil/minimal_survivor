@@ -2,6 +2,15 @@ import { clamp } from "../utils/math.js";
 
 export const SAME_CIRCLE_INTERVAL = 6;
 
+export const DASH_TRAIL_LIFE = 0.24;
+export const DASH_TRAIL_MAX = 36;
+export const LIGHTNING_STRIKE_LIFE = 0.22;
+export const LIGHTNING_STRIKE_SEGMENTS_MIN = 4;
+export const LIGHTNING_STRIKE_SEGMENTS_MAX = 6;
+export const LIGHTNING_STRIKE_JITTER = 18;
+export const LIGHTNING_STRIKE_HEIGHT_MIN = 180;
+export const LIGHTNING_STRIKE_HEIGHT_MAX = 320;
+
 export function createUniques({ player, state, totem, spawnDog }) {
   return {
     spare_tire: {

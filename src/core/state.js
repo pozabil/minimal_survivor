@@ -50,11 +50,6 @@ export function createEntities() {
     enemies: [],
     turrets: [],
     drops: [],
-    particles: [],
-    shockwaves: [],
-    floaters: [],
-    dashTrail: [],
-    lightningStrikes: [],
     clones: [],
     dogs: [],
     chests: [],
@@ -70,6 +65,16 @@ export function createEntities() {
       effect: 0,
       inZone: false,
     },
+  };
+}
+
+export function createEffects() {
+  return {
+    particles: [],
+    shockwaves: [],
+    lightningStrikes: [],
+    floaters: [],
+    dashTrail: [],
   };
 }
 
