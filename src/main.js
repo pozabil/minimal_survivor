@@ -115,9 +115,10 @@ import {
   createSpawnTotem,
   updateSpawning,
 } from "./systems/spawning.js";
-import { loadOptions, loadRecords, saveOptions, updateRecordsOnDeath } from "./systems/storage.js";
+import { loadRecords, updateRecordsOnDeath } from "./systems/storage.js";
 import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
+import { bindOptionsUI } from "./ui/options.js";
 
 (() => {
   "use strict";
@@ -412,11 +413,7 @@ canvas.addEventListener("pointercancel", (e)=>{
     const { gridBuild, gridQueryCircle } = createSpatialGrid(enemies);
 
     // Storage + options
-    const options = loadOptions();
-
-    function applyOptionsToUI(){
-      if (optShowDamageNumbers) optShowDamageNumbers.checked = !!options.showDamageNumbers;
-    }
+    const { options, applyOptionsToUI } = bindOptionsUI({ optShowDamageNumbers });
 
     function getDashDir(dirX, dirY){
       if (Number.isFinite(dirX) && Number.isFinite(dirY) && (dirX !== 0 || dirY !== 0)){
@@ -575,13 +572,6 @@ canvas.addEventListener("pointercancel", (e)=>{
     if (btnMenuSettings) btnMenuSettings.addEventListener("click", ()=>showSettings());
     if (btnSettings) btnSettings.addEventListener("click", ()=>showSettings());
     if (btnSettingsClose) btnSettingsClose.addEventListener("click", hideSettings);
-    if (optShowDamageNumbers){
-      optShowDamageNumbers.addEventListener("change", (e)=>{
-        options.showDamageNumbers = e.target.checked;
-        saveOptions(options);
-      });
-    }
-    applyOptionsToUI();
 
     // Drops/particles
     function dropXp(x,y,amount){
