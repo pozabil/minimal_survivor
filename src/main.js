@@ -143,7 +143,7 @@ import { createEffectUpdates } from "./render/effects/update.js";
     const updateTotemWarning = createTotemWarningUI({ elements: hud.elements });
     const { updateInfo, forceUpdateRerollsUI } = createInfoUI({ elements: hud.elements });
     const updateTimers = createTimersUI({ elements: hud.elements });
-    const updatePlayerBars = createPlayerBarsUI({ elements: hud.elements });
+    const { updatePlayerBars, forceUpdatePlayerHpBar } = createPlayerBarsUI({ elements: hud.elements });
     const updateActiveItems = createActiveItemsUI({ hudElements: hud.elements, overlayElements: overlays.elements });
 
     // Overlays
@@ -569,7 +569,6 @@ canvas.addEventListener("pointercancel", (e)=>{
         div.className = "choice";
         div.innerHTML = `<div class="t">${c.name}</div><div class="d">${c.desc}</div><div class="d" style="margin-top:8px; opacity:.75">${c.perk}</div>`;
         div.addEventListener("click", ()=>{
-          addUniqueItem('max_shirt')
           c.apply(player);
           maybeAddStartingDog(c.id);
           startOverlay.style.display = "none";
@@ -713,6 +712,7 @@ canvas.addEventListener("pointercancel", (e)=>{
     }
     function handlePlayerDeath(reason){
       if (tryConsumeSpareTire()) return false;
+      forceUpdatePlayerHpBar({ player, state });
       player.hp = 0;
       if (reason) setDeathReason(reason);
       gameOver();
