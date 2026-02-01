@@ -148,7 +148,7 @@ import { createEffectUpdates } from "./render/effects/update.js";
     // HUD
     const {
       elTime, elLvl, elKills, elEnemiesCount, elShots, elDps, elFps, elWep, elRerolls, elThreat, elActionHint,
-      activeItemsEl, activeItemsListEl, elChestRespawn, totemTimerEl, totemWarningEl, hpbar, hpbarPulse, xpbar,
+      activeItemsEl, activeItemsListEl, totemTimerEl, totemWarningEl, hpbar, hpbarPulse, xpbar,
       hptext, xptext, totemBar, totemText, bossBar, bossText, chestBar, chestText, bossWrap, bossList,
     } = hud.elements;
     const updateBossUI = createBossUI({ bossWrap, bossList });
@@ -3143,8 +3143,6 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         + (player.aura?" + Aura":"")
         + (player.novaCount>0?` + Nova x${player.novaCount * 3}`:"")
         + (getTurretLevel()>0?` + Turret L${getTurretLevel()}`:"");
-
-      elChestRespawn.textContent = String(getChestInterval());
 
       elRerolls.textContent = `Reroll ${player.rerolls}`;
       elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;

@@ -13,7 +13,6 @@ export function initHud() {
     elActionHint: document.getElementById("actionHint"),
     activeItemsEl: document.getElementById("activeItems"),
     activeItemsListEl: document.getElementById("activeItemsList"),
-    elChestRespawn: document.getElementById("chestRespawn"),
     totemTimerEl: document.getElementById("totemTimer"),
     totemWarningEl: document.getElementById("totemWarning"),
     hpbar: document.getElementById("hpbar"),
