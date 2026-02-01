@@ -1,4 +1,4 @@
-import { fmtTime } from "../utils/format.js";
+import { fmtTime } from "../../utils/format.js";
 
 export function createInfoUI({
   elements,

@@ -1,4 +1,4 @@
-import { clamp } from "../utils/math.js";
+import { clamp } from "../../utils/math.js";
 
 export function createPlayerBarsUI({ elements }) {
   const {

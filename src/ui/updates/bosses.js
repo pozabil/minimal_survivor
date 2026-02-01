@@ -1,5 +1,5 @@
-import { BOSS_NAME } from "../content/enemies.js";
-import { clamp } from "../utils/math.js";
+import { BOSS_NAME } from "../../content/enemies.js";
+import { clamp } from "../../utils/math.js";
 
 export function createBossUI({ elements }) {
   const { elBossWrap, elBossList } = elements;

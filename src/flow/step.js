@@ -18,7 +18,7 @@ export function createStep({
 }){
   let fpsAcc = 0;
   let fpsN = 0;
-  let fpsLast = 0;
+  let fpsLastTime = 0;
 
   return function step(now, dtRaw){
     const dtBase = clamp(dtRaw, 0, 0.05);
@@ -60,11 +60,11 @@ export function createStep({
     if (elFps){
       fpsAcc += (dtRaw > 0 ? 1 / dtRaw : 0);
       fpsN++;
-      if (now - fpsLast > 250){
+      if (now - fpsLastTime > 250){
         elFps.textContent = "FPS " + Math.round(fpsAcc / Math.max(1, fpsN));
         fpsAcc = 0;
         fpsN = 0;
-        fpsLast = now;
+        fpsLastTime = now;
       }
     }
 

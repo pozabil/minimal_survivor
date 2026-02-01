@@ -109,12 +109,12 @@ import { loadRecords, updateRecordsOnDeath } from "./systems/storage.js";
 import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
 import { bindOptionsUI } from "./ui/options.js";
-import { createBossUI } from "./ui/bosses.js";
-import { createTotemTimerUI, createTotemWarningUI } from "./ui/totem.js";
-import { createInfoUI } from "./ui/info.js";
-import { createTimersUI } from "./ui/timers.js";
-import { createPlayerBarsUI } from "./ui/player_bars.js";
-import { createActiveItemsUI } from "./ui/active_items.js";
+import { createBossUI } from "./ui/updates/bosses.js";
+import { createTotemTimerUI, createTotemWarningUI } from "./ui/updates/totem.js";
+import { createInfoUI } from "./ui/updates/info.js";
+import { createTimersUI } from "./ui/updates/timers.js";
+import { createPlayerBarsUI } from "./ui/updates/player_bars.js";
+import { createActiveItemsUI } from "./ui/updates/active_items.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
 
