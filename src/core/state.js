@@ -1,4 +1,4 @@
-import { TOTEM_SPAWN_FIRST } from "../content/config.js";
+import { TOTEM_SPAWN_FIRST } from "../content/totem.js";
 
 export function createState() {
   return {

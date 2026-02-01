@@ -12,7 +12,8 @@ export function createInfoUI({
     elDps,
   } = elements;
 
-  function updateInfo({ player, state, enemies, bullets, enemyBullets, dpsNow }) {
+  function updateInfo({ player, state, enemies, bullets, enemyBullets, getDps }) {
+    const dpsNow = getDps();
     elLvl.textContent = `Lv ${player.lvl}`;
     elKills.textContent = `Kills ${state.kills}`;
     let alive = 0;

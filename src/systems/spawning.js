@@ -1,12 +1,12 @@
 import { TAU } from "../core/constants.js";
+import { UNIQUE_CHEST_EVERY } from "../content/config.js";
 import {
-  UNIQUE_CHEST_EVERY,
   TOTEM_GRACE,
   TOTEM_SPAWN_MIN,
   TOTEM_SPAWN_MAX,
   TOTEM_RADIUS_MIN,
   TOTEM_RADIUS_MAX,
-} from "../content/config.js";
+} from "../content/totem.js";
 import {
   ELITE_MODS,
   ELITE_RADIUS_MULT,

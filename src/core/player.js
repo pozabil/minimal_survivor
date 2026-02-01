@@ -1,9 +1,26 @@
 import {
+  INVULN_LV_STEP,
+  INVULN_STEP,
+  TANK_INVULN_BONUS_CAP,
+} from "../content/config.js";
+import {
   TOTEM_SPAWN_EVERY,
   TOTEM_SPAWN_LV_STEP,
   TOTEM_SPAWN_MIN_INTERVAL,
   TOTEM_SPAWN_STEP,
-} from "../content/config.js";
+  TOTEM_LIFE_BASE,
+  TOTEM_LIFE_STEP,
+  TOTEM_LIFE_LV_STEP,
+  TOTEM_LIFE_CAP,
+  TOTEM_EFFECT_GAIN_BASE,
+  TOTEM_EFFECT_GAIN_STEP,
+  TOTEM_EFFECT_GAIN_LV_STEP,
+  TOTEM_EFFECT_GAIN_CAP,
+  TOTEM_DPS_RAMP_BASE,
+  TOTEM_DPS_RAMP_GROWTH,
+  TOTEM_DPS_RAMP_LV_STEP,
+  TOTEM_DPS_RAMP_CAP,
+} from "../content/totem.js";
 import { BASE_HP } from "../content/players.js";
 import {
   ORBITAL_BASE_DISTANCE,
@@ -130,6 +147,26 @@ export function createPlayerFunctions({
     const reduce = Math.floor((player.lvl - 1) / TOTEM_SPAWN_LV_STEP) * TOTEM_SPAWN_STEP;
     return Math.max(TOTEM_SPAWN_MIN_INTERVAL, TOTEM_SPAWN_EVERY - reduce);
   }
+  function getTotemLife(){
+    const bonus = Math.floor(Math.max(0, player.lvl) / TOTEM_LIFE_LV_STEP) * TOTEM_LIFE_STEP;
+    return Math.min(TOTEM_LIFE_CAP, TOTEM_LIFE_BASE + bonus);
+  }
+  function getInvulnDuration(base, min){
+    const steps = Math.floor(Math.max(0, player.lvl) / INVULN_LV_STEP);
+    return Math.max(min, base - steps * INVULN_STEP);
+  }
+  function getInvulnAfterHit(base){
+    if (player.heroId === "tank") return base + Math.min(base * 0.3, TANK_INVULN_BONUS_CAP);
+    return base;
+  }
+  function getTotemEffectGain(){
+    const bonus = Math.floor(Math.max(0, player.lvl) / TOTEM_EFFECT_GAIN_LV_STEP) * TOTEM_EFFECT_GAIN_STEP;
+    return Math.min(TOTEM_EFFECT_GAIN_CAP, TOTEM_EFFECT_GAIN_BASE + bonus);
+  }
+  function getTotemDpsRamp(){
+    const steps = Math.floor(Math.max(0, player.lvl) / TOTEM_DPS_RAMP_LV_STEP);
+    return Math.min(TOTEM_DPS_RAMP_CAP, TOTEM_DPS_RAMP_BASE * Math.pow(TOTEM_DPS_RAMP_GROWTH, steps));
+  }
   function getRicochetBounces(){
     if (player.ricochetChance <= 0) return 0;
     return 1 + (player.ricochetBounces || 0);
@@ -203,7 +240,12 @@ export function createPlayerFunctions({
     getMoveSpeed,
     getOrbitalSize,
     getRicochetBounces,
+    getInvulnAfterHit,
+    getInvulnDuration,
     getTotemInterval,
+    getTotemDpsRamp,
+    getTotemEffectGain,
+    getTotemLife,
     getTurretAggroRadius,
     getTurretChance,
     getTurretDamage,

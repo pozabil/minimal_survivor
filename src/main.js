@@ -32,29 +32,16 @@ import {
   XP_BONUS_NORMAL,
   XP_BONUS_ELITE,
   XP_BONUS_BOSS,
-  INVULN_LV_STEP,
-  INVULN_STEP,
   INVULN_BULLET_BASE,
   INVULN_BULLET_MIN,
   INVULN_CONTACT_BASE,
   INVULN_CONTACT_MIN,
-  TANK_INVULN_BONUS_CAP,
-  TOTEM_LIFE_BASE,
-  TOTEM_LIFE_STEP,
-  TOTEM_LIFE_LV_STEP,
-  TOTEM_LIFE_CAP,
-  TOTEM_EFFECT_GAIN_BASE,
-  TOTEM_EFFECT_GAIN_STEP,
-  TOTEM_EFFECT_GAIN_LV_STEP,
-  TOTEM_EFFECT_GAIN_CAP,
+} from "./content/config.js";
+import {
   TOTEM_EFFECT_DECAY,
   TOTEM_DPS_BASE,
-  TOTEM_DPS_RAMP_BASE,
-  TOTEM_DPS_RAMP_GROWTH,
-  TOTEM_DPS_RAMP_LV_STEP,
-  TOTEM_DPS_RAMP_CAP,
   TOTEM_EFFECT_MAX,
-} from "./content/config.js";
+} from "./content/totem.js";
 import {
   TAU,
   JOY_HALF,
@@ -125,6 +112,7 @@ import { bindOptionsUI } from "./ui/options.js";
 import { createBossUI } from "./ui/bosses.js";
 import { createTotemTimerUI, createTotemWarningUI } from "./ui/totem.js";
 import { createInfoUI } from "./ui/info.js";
+import { createTimersUI } from "./ui/timers.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
 
@@ -150,12 +138,13 @@ import { createEffectUpdates } from "./render/effects/update.js";
     const {
       elTime, elLvl, elKills, elEnemiesCount, elShots, elDps, elFps, elWep, elRerolls, elThreat, elActionHint,
       activeItemsEl, activeItemsListEl, totemTimerEl, totemWarningEl, hpbar, hpbarPulse, xpbar,
-      hptext, xptext, totemBar, totemText, bossBar, bossText, chestBar, chestText, bossWrap, bossList,
+      hptext, xptext, bossWrap, bossList,
     } = hud.elements;
     const updateBossUI = createBossUI({ bossWrap, bossList });
     const updateTotemTimer = createTotemTimerUI({ totemTimerEl });
     const updateTotemWarning = createTotemWarningUI({ totemWarningEl });
     const updateInfo = createInfoUI({ elements: hud.elements });
+    const updateTimers = createTimersUI({ elements: hud.elements });
 
     // Overlays
     const {
@@ -525,11 +514,16 @@ canvas.addEventListener("pointercancel", (e)=>{
     const {
       getBaseMoveSpeed,
       getChestInterval,
+      getInvulnAfterHit,
+      getInvulnDuration,
       getLevel,
       getMoveSpeed,
       getOrbitalSize,
       getRicochetBounces,
+      getTotemDpsRamp,
+      getTotemEffectGain,
       getTotemInterval,
+      getTotemLife,
       getTurretAggroRadius,
       getTurretChance,
       getTurretDamage,
@@ -778,26 +772,6 @@ canvas.addEventListener("pointercancel", (e)=>{
     }
 
     // Totem
-    function getTotemLife(lv = player.lvl){
-      const bonus = Math.floor(Math.max(0, lv) / TOTEM_LIFE_LV_STEP) * TOTEM_LIFE_STEP;
-      return Math.min(TOTEM_LIFE_CAP, TOTEM_LIFE_BASE + bonus);
-    }
-    function getInvulnDuration(base, min, lv = player.lvl){
-      const steps = Math.floor(Math.max(0, lv) / INVULN_LV_STEP);
-      return Math.max(min, base - steps * INVULN_STEP);
-    }
-    function getInvulnAfterHit(base){
-      if (player.heroId === "tank") return base + Math.min(base * 0.3, TANK_INVULN_BONUS_CAP);
-      return base;
-    }
-    function getTotemEffectGain(lv = player.lvl){
-      const bonus = Math.floor(Math.max(0, lv) / TOTEM_EFFECT_GAIN_LV_STEP) * TOTEM_EFFECT_GAIN_STEP;
-      return Math.min(TOTEM_EFFECT_GAIN_CAP, TOTEM_EFFECT_GAIN_BASE + bonus);
-    }
-    function getTotemDpsRamp(lv = player.lvl){
-      const steps = Math.floor(Math.max(0, lv) / TOTEM_DPS_RAMP_LV_STEP);
-      return Math.min(TOTEM_DPS_RAMP_CAP, TOTEM_DPS_RAMP_BASE * Math.pow(TOTEM_DPS_RAMP_GROWTH, steps));
-    }
     const spawnTotem = createSpawnTotem({
       player,
       totem,
@@ -3082,14 +3056,13 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       updateBossUI(enemies);
 
       // HUD (info)
-      const dpsNow = getDps();
       updateInfo({
         player,
         state,
         enemies,
         bullets,
         enemyBullets,
-        dpsNow,
+        getDps,
       });
       updateTotemTimer(totem);
       updateTotemWarning(totem);
@@ -3104,28 +3077,15 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       xpbar.style.width = `${(player.xp/player.xpNeed)*100}%`;
       xptext.textContent = `${Math.floor(player.xp)} / ${player.xpNeed}`;
 
-      const totemLeft = totem.active ? totem.life : state.totemTimer;
-      const totemMax = totem.active ? (totem.lifeMax || getTotemLife()) : (state.totemTimerMax || getTotemInterval());
-      const totemPct = clamp(totemLeft / Math.max(1, totemMax), 0, 1);
-      totemBar.style.width = `${totemPct*100}%`;
-      totemText.textContent = `${Math.max(0, Math.ceil(totemLeft))}s`;
-
-      const bossLeft = Math.max(0, spawn.nextBossAt - state.t);
-      const bossMax = Math.max(1, spawn.bossEvery || 1);
-      const bossPct = clamp(bossLeft / bossMax, 0, 1);
-      bossBar.style.width = `${bossPct*100}%`;
-      bossText.textContent = `${Math.max(0, Math.ceil(bossLeft))}s`;
-
-      if (state.chestAlive){
-        chestBar.style.width = "100%";
-        chestText.textContent = chests.length ? "ON MAP" : "SPAWNING…";
-      } else {
-        const chestLeft = Math.max(0, state.chestTimer);
-        const chestMax = Math.max(1, getChestInterval());
-        const chestPct = clamp(chestLeft / chestMax, 0, 1);
-        chestBar.style.width = `${chestPct*100}%`;
-        chestText.textContent = `${Math.max(0, Math.ceil(chestLeft))}s`;
-      }
+      updateTimers({
+        totem,
+        state,
+        spawn,
+        chests,
+        getTotemLife,
+        getTotemInterval,
+        getChestInterval,
+      });
 
       if (hasUnique("max_shirt")){
         actionBar.style.display = "block";
