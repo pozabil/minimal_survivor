@@ -109,12 +109,7 @@ import { loadRecords, updateRecordsOnDeath } from "./systems/storage.js";
 import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
 import { bindOptionsUI } from "./ui/options.js";
-import { createBossUI } from "./ui/updates/bosses.js";
-import { createTotemTimerUI, createTotemWarningUI } from "./ui/updates/totem.js";
-import { createInfoUI } from "./ui/updates/info.js";
-import { createTimersUI } from "./ui/updates/timers.js";
-import { createPlayerBarsUI } from "./ui/updates/player_bars.js";
-import { createActiveItemsUI } from "./ui/updates/active_items.js";
+import { createUpdateUi } from "./ui/update.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
 
@@ -138,13 +133,10 @@ import { createEffectUpdates } from "./render/effects/update.js";
 
     // HUD
     const { elFps, elBossWrap } = hud.elements;
-    const updateBossUI = createBossUI({ elements: hud.elements });
-    const updateTotemTimer = createTotemTimerUI({ elements: hud.elements });
-    const updateTotemWarning = createTotemWarningUI({ elements: hud.elements });
-    const { updateInfo, forceUpdateRerollsUI } = createInfoUI({ elements: hud.elements });
-    const updateTimers = createTimersUI({ elements: hud.elements });
-    const { updatePlayerBars, forceUpdatePlayerHpBar } = createPlayerBarsUI({ elements: hud.elements });
-    const updateActiveItems = createActiveItemsUI({ hudElements: hud.elements, overlayElements: overlays.elements });
+    const { updateUI, forceUpdateRerollsUI, forceUpdatePlayerHpBar } = createUpdateUi({
+      hudElements: hud.elements,
+      overlayElements: overlays.elements,
+    });
 
     // Overlays
     const {
@@ -3049,37 +3041,16 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       updateShockwaves(dt);
       updateFloaters(dt, dampSlow);
 
-      // boss ui
-      updateBossUI(enemies);
-
-      // HUD (info)
-      updateInfo({
+      updateUI({
         player,
         state,
-        enemies,
-        bullets,
-        enemyBullets,
+        entities,
         getDps,
         getTurretLevel,
-      });
-      updateTotemTimer(totem);
-      updateTotemWarning(totem);
-
-      updatePlayerBars({ player, state });
-
-      updateTimers({
-        totem,
-        state,
         spawn,
-        chests,
         getTotemLife,
         getTotemInterval,
         getChestInterval,
-      });
-
-      updateActiveItems({
-        player,
-        state,
         hasUnique,
         hasAnyActionSkill,
         isTouch,
