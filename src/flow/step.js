@@ -1,4 +1,5 @@
 import { clamp } from "../utils/math.js";
+import { HUD_UPDATE_TIME_MS } from "../core/constants.js";
 import {
   LOW_HP_SLOW_THRESHOLD,
   LOW_HP_SLOW_DURATION,
@@ -14,7 +15,6 @@ export function createStep({
   elFps,
   update,
   render,
-  hasUnique,
 }){
   let fpsAcc = 0;
   let fpsN = 0;
@@ -24,17 +24,6 @@ export function createStep({
     const dtBase = clamp(dtRaw, 0, 0.05);
 
     if (!state.paused && !state.dead){
-      if (hasUnique("max_shirt")){
-        if (state.maxShirtSlowT > 0){
-          state.maxShirtSlowT = Math.max(0, state.maxShirtSlowT - dtRaw);
-        }
-        if (state.maxShirtCd > 0){
-          state.maxShirtCd = Math.max(0, state.maxShirtCd - dtRaw);
-        }
-      }
-      if (hasUnique("patriarch_doll") && state.patriarchDollCd > 0){
-        state.patriarchDollCd = Math.max(0, state.patriarchDollCd - dtRaw);
-      }
       const hpRatio = player.hpMax > 0 ? (player.hp / player.hpMax) : 1;
       if (!state.slowMoLocked && state.slowMoCd <= 0 && hpRatio > 0 && hpRatio <= LOW_HP_SLOW_THRESHOLD){
         state.slowMoT = LOW_HP_SLOW_DURATION;
@@ -60,7 +49,7 @@ export function createStep({
     if (elFps){
       fpsAcc += (dtRaw > 0 ? 1 / dtRaw : 0);
       fpsN++;
-      if (now - fpsLastTime > 250){
+      if (now - fpsLastTime > HUD_UPDATE_TIME_MS){
         elFps.textContent = "FPS " + Math.round(fpsAcc / Math.max(1, fpsN));
         fpsAcc = 0;
         fpsN = 0;

@@ -13,3 +13,6 @@ export const STORAGE_NS = {
 
 export const OPTION_KEYS = { showDamageNumbers: "showDamageNumbers" };
 export const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkills", dps: "maxdps" };
+
+export const HUD_UPDATE_TIME_MS = 1000 / 15;
+export const HUD_UPDATE_TIME = HUD_UPDATE_TIME_MS / 1000;

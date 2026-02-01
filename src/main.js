@@ -2540,7 +2540,6 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       elFps,
       update,
       render,
-      hasUnique,
     });
 
     const novaBulletsThisFrame = [];
@@ -2592,6 +2591,19 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       }
       updateHeal(dt);
       player.invuln = Math.max(0, player.invuln - dt);
+
+      // unique cooldown
+      if (hasUnique("patriarch_doll") && state.patriarchDollCd > 0){
+        state.patriarchDollCd = Math.max(0, state.patriarchDollCd - dt);
+      }
+      if (hasUnique("max_shirt")){
+        if (state.maxShirtSlowT > 0){
+          state.maxShirtSlowT = Math.max(0, state.maxShirtSlowT - dt);
+        }
+        if (state.maxShirtCd > 0){
+          state.maxShirtCd = Math.max(0, state.maxShirtCd - dt);
+        }
+      }
 
       // totem zone effect
       if (totem.active){
