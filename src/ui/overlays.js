@@ -39,6 +39,7 @@ export function initOverlays() {
     settingsOverlay: document.getElementById("settings"),
     btnSettingsClose: document.getElementById("btnSettingsClose"),
     optShowDamageNumbers: document.getElementById("optShowDamageNumbers"),
+    optShowProfiler: document.getElementById("optShowProfiler"),
     btnPause: document.getElementById("btnPause"),
     actionBar: document.getElementById("actionBar"),
     actionBarFill: document.getElementById("actionBarFill"),

@@ -7,23 +7,17 @@ export function createInfoUI({
     elTime,
     elLvl,
     elKills,
-    elEnemiesCount,
-    elShots,
     elDps,
     elWep,
     elRerolls,
     elThreat,
   } = elements;
 
-  function updateInfo({ player, state, enemies, bullets, enemyBullets, getDps, getTurretLevel }) {
+  function updateInfo({ player, state, getDps, getTurretLevel }) {
     const dpsNow = getDps();
     elLvl.textContent = `Lv ${player.lvl}`;
     elKills.textContent = `Kills ${state.kills}`;
-    let alive = 0;
-    for (const e of enemies) if (!e.dead) alive += 1;
-    elEnemiesCount.textContent = `Enemies ${alive}`;
-    elShots.textContent = `Bullets ${bullets.length + enemyBullets.length}`;
-    elDps.textContent = `Dmg ${dpsNow}`;
+    elDps.textContent = `DPS ${dpsNow}`;
     if (dpsNow > state.maxDps) state.maxDps = dpsNow;
     elTime.textContent = fmtTime(state.t);
     elWep.textContent = "W: Bullets"

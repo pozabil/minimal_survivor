@@ -24,6 +24,29 @@ canvas { display:block; width:100vw; height:100vh; image-rendering: pixelated; t
   text-shadow:var(--ui-shadow);
   z-index: 2;
 }
+.profiler{
+  position:fixed; right:12px; top:10px;
+  display:none;
+  font:12px/1.35 var(--ui-font);
+  color:var(--ui-text); pointer-events:none;
+  text-shadow:var(--ui-shadow);
+  padding:8px 10px; border-radius:10px;
+  background:var(--surface-2); box-shadow:inset 0 0 0 1px var(--border-2);
+  z-index: 3;
+}
+.profilerRow{
+  display:grid; grid-template-columns: 1fr auto auto; gap:10px;
+  align-items:center;
+  min-width:200px;
+}
+.profilerLabel{ opacity:.8; }
+.profilerVal,
+.profilerMax{
+  text-align:right;
+  font-variant-numeric: tabular-nums;
+  min-width:48px;
+}
+.profilerMax{ opacity:.7; }
 .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
 .badge{
   display:inline-flex; gap:10px; align-items:center; flex-wrap:wrap;

@@ -40,15 +40,7 @@ export function createUpdateUi({ hudElements, overlayElements }) {
     const { enemies, bullets, enemyBullets, chests, totem } = entities;
     updateBossUI(enemies);
 
-    updateInfo({
-      player,
-      state,
-      enemies,
-      bullets,
-      enemyBullets,
-      getDps,
-      getTurretLevel,
-    });
+    updateInfo({ player, state, getDps, getTurretLevel });
     updateTotemTimer(totem);
     updateTotemWarning(totem);
 

@@ -19,11 +19,13 @@ function writeBoolKey(ns, key, value){
 export function loadOptions(){
   return {
     showDamageNumbers: readBoolKey(STORAGE_NS.options, OPTION_KEYS.showDamageNumbers, true),
+    showProfiler: readBoolKey(STORAGE_NS.options, OPTION_KEYS.showProfiler, true),
   };
 }
 
 export function saveOptions(next){
   writeBoolKey(STORAGE_NS.options, OPTION_KEYS.showDamageNumbers, !!next.showDamageNumbers);
+  writeBoolKey(STORAGE_NS.options, OPTION_KEYS.showProfiler, !!next.showProfiler);
 }
 
 function readRecord(key){

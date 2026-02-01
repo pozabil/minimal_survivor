@@ -1,5 +1,4 @@
 import { clamp } from "../utils/math.js";
-import { HUD_UPDATE_TIME_MS } from "../core/constants.js";
 import {
   LOW_HP_SLOW_THRESHOLD,
   LOW_HP_SLOW_DURATION,
@@ -12,25 +11,16 @@ import {
 export function createStep({
   state,
   player,
-  elFps,
+  entities,
+  profiler,
   update,
   realtimeUpdate,
   render,
 }){
-  let fpsAcc = 0;
-  let fpsN = 0;
-  let fpsLastTime = 0;
-
-  function updateFps(now, dtRaw){
-    if (!elFps) return;
-    fpsAcc += (dtRaw > 0 ? 1 / dtRaw : 0);
-    fpsN++;
-    if (now - fpsLastTime > HUD_UPDATE_TIME_MS){
-      elFps.textContent = "FPS " + Math.round(fpsAcc / Math.max(1, fpsN));
-      fpsAcc = 0;
-      fpsN = 0;
-      fpsLastTime = now;
-    }
+  function measureMs(fn){
+    const start = performance.now();
+    fn();
+    return performance.now() - start;
   }
 
   return function step(now, dtRaw){
@@ -59,9 +49,17 @@ export function createStep({
     );
     const dt = dtBase * slowScale;
 
-    if (!state.paused && !state.dead) update(dt);
-    updateFps(now, dtRaw);
-    if (!state.paused && !state.dead) realtimeUpdate(dtRaw);
-    render();
+    // update
+    let updateMs = 0; if (!state.paused && !state.dead){ updateMs = measureMs(() => update(dt)); }
+    // realtimeUpdate
+    let rUpdateMs = 0; if (!state.paused && !state.dead){ rUpdateMs = measureMs(() => realtimeUpdate(dtRaw)); }
+    // render
+    const renderMs = measureMs(render);
+    // profiler
+    if (profiler.isEnabled){
+      let profilerMs = 0;
+      profilerMs = measureMs(() => profiler.updateProfiler(now, dtRaw, updateMs, rUpdateMs, renderMs, entities));
+      profiler.updateProfilerMs(now, dtRaw, updateMs, profilerMs);
+    }
   };
 }

@@ -1,18 +1,29 @@
 import { loadOptions, saveOptions } from "../systems/storage.js";
 
-export function bindOptionsUI({ optShowDamageNumbers }){
+export function bindOptionsUI({ optShowDamageNumbers, optShowProfiler, onOptionsChange }){
   const options = loadOptions();
 
-  function applyOptionsToUI(){
-    if (optShowDamageNumbers) optShowDamageNumbers.checked = !!options.showDamageNumbers;
+  function emitChange(){
+    if (onOptionsChange) onOptionsChange(options);
   }
 
-  if (optShowDamageNumbers){
-    optShowDamageNumbers.addEventListener("change", (e)=>{
-      options.showDamageNumbers = e.target.checked;
-      saveOptions(options);
-    });
+  function applyOptionsToUI(){
+    optShowDamageNumbers.checked = !!options.showDamageNumbers;
+    optShowProfiler.checked = !!options.showProfiler;
+    emitChange();
   }
+
+  optShowDamageNumbers.addEventListener("change", (e)=>{
+    options.showDamageNumbers = e.target.checked;
+    saveOptions(options);
+    emitChange();
+  });
+
+  optShowProfiler.addEventListener("change", (e)=>{
+    options.showProfiler = e.target.checked;
+    saveOptions(options);
+    emitChange();
+  });
 
   applyOptionsToUI();
   return { options, applyOptionsToUI };

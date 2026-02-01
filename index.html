@@ -19,10 +19,7 @@
       <span id="time">00:00</span><span>·</span>
       <span id="lvl">Lv 1</span><span>·</span>
       <span id="kills">Kills 0</span><span>·</span>
-      <span id="enemiesCount">Enemies 0</span><span>·</span>
-      <span id="shots">Bullets 0</span><span>·</span>
       <span id="dps">DPS 0</span><span>·</span>
-      <span id="fps">FPS --</span><span>·</span>
       <span id="wep">W: Bullets</span><span>·</span>
       <span id="rerolls">Reroll 2</span><span>·</span>
       <span id="threat">Threat 1.0</span>
@@ -62,6 +59,49 @@
   <div class="hint">
     PC: WASD/стрелки · Esc — билд/пауза · Авто-стрельба<br/>
     Mobile: сенсорный джойстик
+  </div>
+</div>
+
+<div class="profiler" id="profiler">
+  <div class="profilerRow">
+    <span class="profilerLabel">FPS</span>
+    <span class="profilerVal" id="profilerFps">--</span>
+    <span class="profilerMax" id="profilerFpsMax">--</span>
+  </div>
+  <div class="profilerRow">
+    <span class="profilerLabel">Frame ms</span>
+    <span class="profilerVal" id="profilerFrame">--</span>
+    <span class="profilerMax" id="profilerFrameMax">--</span>
+  </div>
+  <div class="profilerRow">
+    <span class="profilerLabel">Update ms</span>
+    <span class="profilerVal" id="profilerUpdate">--</span>
+    <span class="profilerMax" id="profilerUpdateMax">--</span>
+  </div>
+  <div class="profilerRow">
+    <span class="profilerLabel">rUpdate ms</span>
+    <span class="profilerVal" id="profilerRealtime">--</span>
+    <span class="profilerMax" id="profilerRealtimeMax">--</span>
+  </div>
+  <div class="profilerRow">
+    <span class="profilerLabel">Render ms</span>
+    <span class="profilerVal" id="profilerRender">--</span>
+    <span class="profilerMax" id="profilerRenderMax">--</span>
+  </div>
+  <div class="profilerRow">
+    <span class="profilerLabel">Enemies</span>
+    <span class="profilerVal" id="profilerEnemies">--</span>
+    <span class="profilerMax" id="profilerEnemiesMax">--</span>
+  </div>
+  <div class="profilerRow">
+    <span class="profilerLabel">Bullets</span>
+    <span class="profilerVal" id="profilerBullets">--</span>
+    <span class="profilerMax" id="profilerBulletsMax">--</span>
+  </div>
+  <div class="profilerRow">
+    <span class="profilerLabel">Profiler ms</span>
+    <span class="profilerVal" id="profilerSelf">--</span>
+    <span class="profilerMax" id="profilerSelfMax">--</span>
   </div>
 </div>
 
@@ -180,6 +220,10 @@
       <label class="settingRow">
         <span>Показывать числа урона</span>
         <input type="checkbox" id="optShowDamageNumbers" />
+      </label>
+      <label class="settingRow">
+        <span>Показывать профилировщик</span>
+        <input type="checkbox" id="optShowProfiler" />
       </label>
     </div>
     <div class="toolbar">

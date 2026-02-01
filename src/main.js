@@ -96,7 +96,7 @@ import {
 import { renderOffscreenArrow } from "./render/ui/arrows.js";
 import { COLORS } from "./render/colors.js";
 import { createEffectRenderer } from "./render/effects/render.js";
-import { renderSpatialGrid } from "./render/debug.js";
+// import { renderSpatialGrid } from "./render/debug.js";
 import {
   createSpawnBoss,
   createSpawnChest,
@@ -112,6 +112,8 @@ import { bindOptionsUI } from "./ui/options.js";
 import { createUpdateUi } from "./ui/update.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
+
+import { createProfilerUI } from "./ui/profiler.js";
 
 (() => {
   "use strict";
@@ -132,7 +134,7 @@ import { createEffectUpdates } from "./render/effects/update.js";
     const overlays = initOverlays();
 
     // HUD
-    const { elFps, elBossWrap } = hud.elements;
+    const { elBossWrap } = hud.elements;
     // Overlays
     const {
       mainMenuOverlay, btnFreePlay, btnMenuRecords, btnMenuSettings, startOverlay, charsWrap, pickerOverlay,
@@ -140,8 +142,11 @@ import { createEffectUpdates } from "./render/effects/update.js";
       tabUpgrades, tabInventory, buildStatsEl, btnResume, btnRestart2, btnCopy, btnRecords, btnSettings, btnHang,
       restartConfirmOverlay, btnRestartYes, btnRestartNo, gameoverOverlay, summaryEl, restartBtn, copyBtn,
       btnRecordsOver, recordsOverlay, recordsListEl, btnRecordsClose, settingsOverlay, btnSettingsClose,
-      optShowDamageNumbers, btnPause,
+      optShowDamageNumbers, optShowProfiler, btnPause,
     } = overlays.elements;
+
+    // Profiler
+    const profiler = createProfilerUI();
 
     const { updateUI, forceUpdateRerollsUI, forceUpdatePlayerHpBar } = createUpdateUi({
       hudElements: hud.elements,
@@ -415,7 +420,15 @@ canvas.addEventListener("pointercancel", (e)=>{
     } = createTargeting({ enemies, gridQueryCircle, player });
 
     // Storage + options
-    const { options, applyOptionsToUI } = bindOptionsUI({ optShowDamageNumbers });
+    const { options, applyOptionsToUI } = bindOptionsUI({
+      optShowDamageNumbers,
+      optShowProfiler,
+      onOptionsChange: (nextOptions) => {
+        const profileIsEnabled = !!nextOptions.showProfiler;
+        profiler.isEnabled = profileIsEnabled;
+        profiler.elProfiler.style.display = profileIsEnabled ? "block" : "none";
+      },
+    });
 
     function getDashDir(dirX, dirY){
       if (Number.isFinite(dirX) && Number.isFinite(dirY) && (dirX !== 0 || dirY !== 0)){
@@ -2537,7 +2550,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
     const step = createStep({
       state,
       player,
-      elFps,
+      entities,
+      profiler,
       update,
       realtimeUpdate,
       render,
@@ -3111,7 +3125,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       ctx.globalAlpha = 1;
 
       // debug
-      renderSpatialGrid(ctx, camX, camY, getGridCells());
+      // renderSpatialGrid(ctx, camX, camY, getGridCells());
 
       // totem
       if (totem.active){
