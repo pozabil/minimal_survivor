@@ -136,7 +136,7 @@ import { createEffectUpdates } from "./render/effects/update.js";
     const overlays = initOverlays();
 
     // HUD
-    const { elFps, elActionHint, activeItemsEl, activeItemsListEl, bossWrap } = hud.elements;
+    const { elFps, elActionHint, elActiveItems, elActiveItemsList, elBossWrap } = hud.elements;
     const updateBossUI = createBossUI({ elements: hud.elements });
     const updateTotemTimer = createTotemTimerUI({ elements: hud.elements });
     const updateTotemWarning = createTotemWarningUI({ elements: hud.elements });
@@ -741,7 +741,7 @@ canvas.addEventListener("pointercancel", (e)=>{
     const spawnBoss = createSpawnBoss({
       spawn,
       spawnEnemy,
-      bossWrap,
+      elBossWrap,
     });
 
     const spawnColossusElite = createSpawnColossusElite({
@@ -1844,7 +1844,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
       if (e.type==="boss"){
         spawn.bossActive = Math.max(0, spawn.bossActive - 1);
-        if (spawn.bossActive <= 0) bossWrap.style.display = "none";
+        if (spawn.bossActive <= 0) elBossWrap.style.display = "none";
         player.hp = Math.min(player.hpMax, player.hp + 30);
         for(let i=0;i<8;i++) dropXp(e.x+randf(-20,20), e.y+randf(-20,20), 14);
         if (Math.random() < 0.10){
@@ -3097,11 +3097,11 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         if (u && u.action) items.push(u.title);
       }
       if (!items.length){
-        activeItemsEl.style.display = "none";
-        activeItemsListEl.innerHTML = "";
+        elActiveItems.style.display = "none";
+        elActiveItemsList.innerHTML = "";
       } else {
-        activeItemsEl.style.display = "block";
-        activeItemsListEl.innerHTML = items.map((t)=>`<div class="item">${t}</div>`).join("");
+        elActiveItems.style.display = "block";
+        elActiveItemsList.innerHTML = items.map((t)=>`<div class="item">${t}</div>`).join("");
       }
     }
 

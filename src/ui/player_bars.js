@@ -2,23 +2,23 @@ import { clamp } from "../utils/math.js";
 
 export function createPlayerBarsUI({ elements }) {
   const {
-    hpbar,
-    hpbarPulse,
-    hptext,
-    xpbar,
-    xptext,
+    elHpbar,
+    elHpbarPulse,
+    elHptext,
+    elXpbar,
+    elXptext,
   } = elements;
 
   function updatePlayerBars({ player, state }) {
     const hpPct = clamp(player.hp / player.hpMax, 0, 1);
-    hpbar.style.width = `${hpPct*100}%`;
+    elHpbar.style.width = `${hpPct*100}%`;
     const healing = !!state.healActive || state.healQueue.length > 0;
-    hpbarPulse.style.display = healing ? "block" : "none";
-    if (healing) hpbarPulse.style.width = `${hpPct*100}%`;
-    hptext.textContent = `${Math.ceil(player.hp)} / ${player.hpMax}`;
+    elHpbarPulse.style.display = healing ? "block" : "none";
+    if (healing) elHpbarPulse.style.width = `${hpPct*100}%`;
+    elHptext.textContent = `${Math.ceil(player.hp)} / ${player.hpMax}`;
 
-    xpbar.style.width = `${(player.xp/player.xpNeed)*100}%`;
-    xptext.textContent = `${Math.floor(player.xp)} / ${player.xpNeed}`;
+    elXpbar.style.width = `${(player.xp/player.xpNeed)*100}%`;
+    elXptext.textContent = `${Math.floor(player.xp)} / ${player.xpNeed}`;
   }
 
   return updatePlayerBars;

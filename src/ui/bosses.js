@@ -2,7 +2,7 @@ import { BOSS_NAME } from "../content/enemies.js";
 import { clamp } from "../utils/math.js";
 
 export function createBossUI({ elements }) {
-  const { bossWrap, bossList } = elements;
+  const { elBossWrap, elBossList } = elements;
   const bossRows = [];
   const wrapState = { visible: null };
 
@@ -17,7 +17,7 @@ export function createBossUI({ elements }) {
   }
 
   function setWrapVisible(visible){
-    setIfChanged(wrapState, "visible", visible, (v)=>{ bossWrap.style.display = v ? "block" : "none"; });
+    setIfChanged(wrapState, "visible", visible, (v)=>{ elBossWrap.style.display = v ? "block" : "none"; });
   }
 
   function ensureBossRows(n){
@@ -37,7 +37,7 @@ export function createBossUI({ elements }) {
       bar.appendChild(fill);
       row.appendChild(name);
       row.appendChild(bar);
-      bossList.appendChild(row);
+      elBossList.appendChild(row);
 
       bossRows.push({
         el: row,

@@ -327,7 +327,7 @@ export function createSpawnEnemy({
   };
 }
 
-export function createSpawnBoss({ spawn, spawnEnemy, bossWrap }) {
+export function createSpawnBoss({ spawn, spawnEnemy, elBossWrap }) {
   function pickBossKind() {
     const maxUnlock = Math.min(BOSS_KINDS.length - 1, spawn.bossTier);
     const available = BOSS_KINDS.filter((b) => b.unlock <= maxUnlock);
@@ -342,7 +342,7 @@ export function createSpawnBoss({ spawn, spawnEnemy, bossWrap }) {
     spawn.bossCount += 1;
     spawn.bossTier = Math.max(spawn.bossTier, spawn.bossCount - 1);
     spawnEnemy(false, "boss", { bossKind: kind.id, bossTier: spawn.bossTier });
-    bossWrap.style.display = "block";
+    elBossWrap.style.display = "block";
   };
 }
 
