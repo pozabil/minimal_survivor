@@ -587,9 +587,9 @@ canvas.addEventListener("pointercancel", (e)=>{
       openStart();
     });
     btnMenuRecords.addEventListener("click", ()=>showRecords());
-    if (btnMenuSettings) btnMenuSettings.addEventListener("click", ()=>showSettings());
-    if (btnSettings) btnSettings.addEventListener("click", ()=>showSettings());
-    if (btnSettingsClose) btnSettingsClose.addEventListener("click", hideSettings);
+    btnMenuSettings.addEventListener("click", ()=>showSettings());
+    btnSettings.addEventListener("click", ()=>showSettings());
+    btnSettingsClose.addEventListener("click", hideSettings);
 
     // Drops/particles
     function dropXp(x,y,amount){
@@ -3085,68 +3085,57 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       // HUD
       elLvl.textContent = `Lv ${player.lvl}`;
       elKills.textContent = `Kills ${state.kills}`;
-      if (elEnemiesCount){
-        let alive = 0;
-        for (const e of enemies) if (!e.dead) alive += 1;
-        elEnemiesCount.textContent = `Enemies ${alive}`;
-      }
-      if (elShots) elShots.textContent = `Bullets ${bullets.length + enemyBullets.length}`;
+      let alive = 0;
+      for (const e of enemies) if (!e.dead) alive += 1;
+      elEnemiesCount.textContent = `Enemies ${alive}`;
+      elShots.textContent = `Bullets ${bullets.length + enemyBullets.length}`;
       const dpsNow = getDps();
       elDps.textContent = `Dmg ${dpsNow}`;
       if (dpsNow > state.maxDps) state.maxDps = dpsNow;
       elTime.textContent = fmtTime(state.t);
       updateTotemTimer(totem);
-      if (totemWarningEl){
-        const showWarning = totem.active && totem.grace <= 0 && !totem.inZone;
-        totemWarningEl.classList.toggle("show", showWarning);
-      }
+      const showWarning = totem.active && totem.grace <= 0 && !totem.inZone;
+      totemWarningEl.classList.toggle("show", showWarning);
 
       const hpPct = clamp(player.hp / player.hpMax, 0, 1);
       hpbar.style.width = `${hpPct*100}%`;
-      if (hpbarPulse){
-        const healing = !!state.healActive || state.healQueue.length > 0;
-        hpbarPulse.style.display = healing ? "block" : "none";
-        if (healing) hpbarPulse.style.width = `${hpPct*100}%`;
-      }
+      const healing = !!state.healActive || state.healQueue.length > 0;
+      hpbarPulse.style.display = healing ? "block" : "none";
+      if (healing) hpbarPulse.style.width = `${hpPct*100}%`;
       hptext.textContent = `${Math.ceil(player.hp)} / ${player.hpMax}`;
 
       xpbar.style.width = `${(player.xp/player.xpNeed)*100}%`;
       xptext.textContent = `${Math.floor(player.xp)} / ${player.xpNeed}`;
 
-      if (totemBar && totemText){
-        const totemLeft = totem.active ? totem.life : state.totemTimer;
-        const totemMax = totem.active ? (totem.lifeMax || getTotemLife()) : (state.totemTimerMax || getTotemInterval());
-        const totemPct = clamp(totemLeft / Math.max(1, totemMax), 0, 1);
-        totemBar.style.width = `${totemPct*100}%`;
-        totemText.textContent = `${Math.max(0, Math.ceil(totemLeft))}s`;
+      const totemLeft = totem.active ? totem.life : state.totemTimer;
+      const totemMax = totem.active ? (totem.lifeMax || getTotemLife()) : (state.totemTimerMax || getTotemInterval());
+      const totemPct = clamp(totemLeft / Math.max(1, totemMax), 0, 1);
+      totemBar.style.width = `${totemPct*100}%`;
+      totemText.textContent = `${Math.max(0, Math.ceil(totemLeft))}s`;
+
+      const bossLeft = Math.max(0, spawn.nextBossAt - state.t);
+      const bossMax = Math.max(1, spawn.bossEvery || 1);
+      const bossPct = clamp(bossLeft / bossMax, 0, 1);
+      bossBar.style.width = `${bossPct*100}%`;
+      bossText.textContent = `${Math.max(0, Math.ceil(bossLeft))}s`;
+
+      if (state.chestAlive){
+        chestBar.style.width = "100%";
+        chestText.textContent = chests.length ? "ON MAP" : "SPAWNING…";
+      } else {
+        const chestLeft = Math.max(0, state.chestTimer);
+        const chestMax = Math.max(1, getChestInterval());
+        const chestPct = clamp(chestLeft / chestMax, 0, 1);
+        chestBar.style.width = `${chestPct*100}%`;
+        chestText.textContent = `${Math.max(0, Math.ceil(chestLeft))}s`;
       }
-      if (bossBar && bossText){
-        const bossLeft = Math.max(0, spawn.nextBossAt - state.t);
-        const bossMax = Math.max(1, spawn.bossEvery || 1);
-        const bossPct = clamp(bossLeft / bossMax, 0, 1);
-        bossBar.style.width = `${bossPct*100}%`;
-        bossText.textContent = `${Math.max(0, Math.ceil(bossLeft))}s`;
-      }
-      if (chestBar && chestText){
-        if (state.chestAlive){
-          chestBar.style.width = "100%";
-          chestText.textContent = chests.length ? "ON MAP" : "SPAWNING…";
-        } else {
-          const chestLeft = Math.max(0, state.chestTimer);
-          const chestMax = Math.max(1, getChestInterval());
-          const chestPct = clamp(chestLeft / chestMax, 0, 1);
-          chestBar.style.width = `${chestPct*100}%`;
-          chestText.textContent = `${Math.max(0, Math.ceil(chestLeft))}s`;
-        }
-      }
-      if (actionBar && actionBarFill){
-        if (hasUnique("max_shirt")){
-          actionBar.style.display = "block";
-          const pct = clamp(1 - (state.maxShirtCd / MAX_SHIRT_COOLDOWN), 0, 1);
-          actionBarFill.style.height = `${pct*100}%`;
-        } else {
-          actionBar.style.display = "none";
-        }
+
+      if (hasUnique("max_shirt")){
+        actionBar.style.display = "block";
+        const pct = clamp(1 - (state.maxShirtCd / MAX_SHIRT_COOLDOWN), 0, 1);
+        actionBarFill.style.height = `${pct*100}%`;
+      } else {
+        actionBar.style.display = "none";
       }
 
       elWep.textContent = "W: Bullets"
@@ -3155,34 +3144,30 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         + (player.novaCount>0?` + Nova x${player.novaCount * 3}`:"")
         + (getTurretLevel()>0?` + Turret L${getTurretLevel()}`:"");
 
-      if (elChestRespawn) elChestRespawn.textContent = String(getChestInterval());
+      elChestRespawn.textContent = String(getChestInterval());
 
       elRerolls.textContent = `Reroll ${player.rerolls}`;
-      if (elThreat) elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;
-      if (elActionHint){
-        const hasActionSkill = hasAnyActionSkill();
-        if (hasActionSkill){
-          elActionHint.style.display = "";
-          elActionHint.textContent = isTouch ? "Кнопка действия: двойной тап" : "Кнопка действия: Space";
-        } else {
-          elActionHint.style.display = "none";
-          elActionHint.textContent = "";
-        }
+      elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;
+      const hasActionSkill = hasAnyActionSkill();
+      if (hasActionSkill){
+        elActionHint.style.display = "";
+        elActionHint.textContent = isTouch ? "Кнопка действия: двойной тап" : "Кнопка действия: Space";
+      } else {
+        elActionHint.style.display = "none";
+        elActionHint.textContent = "";
       }
-      if (activeItemsEl && activeItemsListEl){
-        const items = [];
-        for (const id of player.uniquesOrder){
-          if (!player.uniques.has(id)) continue;
-          const u = UNIQUES[id];
-          if (u && u.action) items.push(u.title);
-        }
-        if (!items.length){
-          activeItemsEl.style.display = "none";
-          activeItemsListEl.innerHTML = "";
-        } else {
-          activeItemsEl.style.display = "block";
-          activeItemsListEl.innerHTML = items.map((t)=>`<div class="item">${t}</div>`).join("");
-        }
+      const items = [];
+      for (const id of player.uniquesOrder){
+        if (!player.uniques.has(id)) continue;
+        const u = UNIQUES[id];
+        if (u && u.action) items.push(u.title);
+      }
+      if (!items.length){
+        activeItemsEl.style.display = "none";
+        activeItemsListEl.innerHTML = "";
+      } else {
+        activeItemsEl.style.display = "block";
+        activeItemsListEl.innerHTML = items.map((t)=>`<div class="item">${t}</div>`).join("");
       }
     }
 
