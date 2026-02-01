@@ -4,6 +4,7 @@ import { createInfoUI } from "./updates/info.js";
 import { createTimersUI } from "./updates/timers.js";
 import { createPlayerBarsUI } from "./updates/player_bars.js";
 import { createActiveItemsUI } from "./updates/active_items.js";
+import { HUD_UPDATE_TIME } from "../core/constants.js";
 
 export function createUpdateUi({ hudElements, overlayElements }) {
   const updateBossUI = createBossUI({ elements: hudElements });
@@ -14,7 +15,10 @@ export function createUpdateUi({ hudElements, overlayElements }) {
   const { updatePlayerBars, forceUpdatePlayerHpBar } = createPlayerBarsUI({ elements: hudElements });
   const updateActiveItems = createActiveItemsUI({ hudElements, overlayElements });
 
+  let hudUpdateAcc = HUD_UPDATE_TIME;
+
   function updateUI({
+    dtRaw,
     player,
     state,
     entities,
@@ -29,6 +33,10 @@ export function createUpdateUi({ hudElements, overlayElements }) {
     isTouch,
     uniques,
   }) {
+    hudUpdateAcc += dtRaw;
+    if (hudUpdateAcc < HUD_UPDATE_TIME) return;
+    hudUpdateAcc = 0;
+
     const { enemies, bullets, enemyBullets, chests, totem } = entities;
     updateBossUI(enemies);
 

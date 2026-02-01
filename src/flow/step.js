@@ -14,11 +14,24 @@ export function createStep({
   player,
   elFps,
   update,
+  realtimeUpdate,
   render,
 }){
   let fpsAcc = 0;
   let fpsN = 0;
   let fpsLastTime = 0;
+
+  function updateFps(now, dtRaw){
+    if (!elFps) return;
+    fpsAcc += (dtRaw > 0 ? 1 / dtRaw : 0);
+    fpsN++;
+    if (now - fpsLastTime > HUD_UPDATE_TIME_MS){
+      elFps.textContent = "FPS " + Math.round(fpsAcc / Math.max(1, fpsN));
+      fpsAcc = 0;
+      fpsN = 0;
+      fpsLastTime = now;
+    }
+  }
 
   return function step(now, dtRaw){
     const dtBase = clamp(dtRaw, 0, 0.05);
@@ -46,18 +59,9 @@ export function createStep({
     );
     const dt = dtBase * slowScale;
 
-    if (elFps){
-      fpsAcc += (dtRaw > 0 ? 1 / dtRaw : 0);
-      fpsN++;
-      if (now - fpsLastTime > HUD_UPDATE_TIME_MS){
-        elFps.textContent = "FPS " + Math.round(fpsAcc / Math.max(1, fpsN));
-        fpsAcc = 0;
-        fpsN = 0;
-        fpsLastTime = now;
-      }
-    }
-
     if (!state.paused && !state.dead) update(dt);
+    updateFps(now, dtRaw);
+    if (!state.paused && !state.dead) realtimeUpdate(dtRaw);
     render();
   };
 }

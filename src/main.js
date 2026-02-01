@@ -133,11 +133,6 @@ import { createEffectUpdates } from "./render/effects/update.js";
 
     // HUD
     const { elFps, elBossWrap } = hud.elements;
-    const { updateUI, forceUpdateRerollsUI, forceUpdatePlayerHpBar } = createUpdateUi({
-      hudElements: hud.elements,
-      overlayElements: overlays.elements,
-    });
-
     // Overlays
     const {
       mainMenuOverlay, btnFreePlay, btnMenuRecords, btnMenuSettings, startOverlay, charsWrap, pickerOverlay,
@@ -147,6 +142,11 @@ import { createEffectUpdates } from "./render/effects/update.js";
       btnRecordsOver, recordsOverlay, recordsListEl, btnRecordsClose, settingsOverlay, btnSettingsClose,
       optShowDamageNumbers, btnPause,
     } = overlays.elements;
+
+    const { updateUI, forceUpdateRerollsUI, forceUpdatePlayerHpBar } = createUpdateUi({
+      hudElements: hud.elements,
+      overlayElements: overlays.elements,
+    });
 
     // Mobile joystick
     const joy = document.getElementById("joy");
@@ -2539,6 +2539,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       player,
       elFps,
       update,
+      realtimeUpdate,
       render,
     });
 
@@ -3052,8 +3053,11 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       updateParticles(dt, dampSlow);
       updateShockwaves(dt);
       updateFloaters(dt, dampSlow);
+    }
 
+    function realtimeUpdate(dtRaw){
       updateUI({
+        dtRaw,
         player,
         state,
         entities,
