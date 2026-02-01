@@ -1,7 +1,8 @@
 import { BOSS_NAME } from "../content/enemies.js";
 import { clamp } from "../utils/math.js";
 
-export function createBossUI({ bossWrap, bossList }) {
+export function createBossUI({ elements }) {
+  const { bossWrap, bossList } = elements;
   const bossRows = [];
   const wrapState = { visible: null };
 

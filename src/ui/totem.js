@@ -1,4 +1,5 @@
-export function createTotemTimerUI({ totemTimerEl }) {
+export function createTotemTimerUI({ elements }) {
+  const { totemTimerEl } = elements;
   const totemTimerText = document.createTextNode("0");
   const totemTimerSub = document.createElement("span");
   totemTimerSub.className = "sub";
@@ -18,7 +19,8 @@ export function createTotemTimerUI({ totemTimerEl }) {
   return updateTotemTimer;
 }
 
-export function createTotemWarningUI({ totemWarningEl }) {
+export function createTotemWarningUI({ elements }) {
+  const { totemWarningEl } = elements;
   function updateTotemWarning(totem){
     const showWarning = totem.active && totem.grace <= 0 && !totem.inZone;
     totemWarningEl.classList.toggle("show", showWarning);

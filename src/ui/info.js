@@ -10,9 +10,12 @@ export function createInfoUI({
     elEnemiesCount,
     elShots,
     elDps,
+    elWep,
+    elRerolls,
+    elThreat,
   } = elements;
 
-  function updateInfo({ player, state, enemies, bullets, enemyBullets, getDps }) {
+  function updateInfo({ player, state, enemies, bullets, enemyBullets, getDps, getTurretLevel }) {
     const dpsNow = getDps();
     elLvl.textContent = `Lv ${player.lvl}`;
     elKills.textContent = `Kills ${state.kills}`;
@@ -23,7 +26,18 @@ export function createInfoUI({
     elDps.textContent = `Dmg ${dpsNow}`;
     if (dpsNow > state.maxDps) state.maxDps = dpsNow;
     elTime.textContent = fmtTime(state.t);
+    elWep.textContent = "W: Bullets"
+      + (player.orbitals>0?` + Orbit x${player.orbitals}`:"")
+      + (player.aura?" + Aura":"")
+      + (player.novaCount>0?` + Nova x${player.novaCount * 3}`:"")
+      + (getTurretLevel()>0?` + Turret L${getTurretLevel()}`:"");
+    elRerolls.textContent = `Reroll ${player.rerolls}`;
+    elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;
   }
 
-  return updateInfo;
+  function forceUpdateRerollsUI({ player }) {
+    elRerolls.textContent = `Reroll ${player.rerolls}`;
+  }
+
+  return { updateInfo, forceUpdateRerollsUI };
 }

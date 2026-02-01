@@ -113,6 +113,7 @@ import { createBossUI } from "./ui/bosses.js";
 import { createTotemTimerUI, createTotemWarningUI } from "./ui/totem.js";
 import { createInfoUI } from "./ui/info.js";
 import { createTimersUI } from "./ui/timers.js";
+import { createPlayerBarsUI } from "./ui/player_bars.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
 
@@ -135,16 +136,13 @@ import { createEffectUpdates } from "./render/effects/update.js";
     const overlays = initOverlays();
 
     // HUD
-    const {
-      elTime, elLvl, elKills, elEnemiesCount, elShots, elDps, elFps, elWep, elRerolls, elThreat, elActionHint,
-      activeItemsEl, activeItemsListEl, totemTimerEl, totemWarningEl, hpbar, hpbarPulse, xpbar,
-      hptext, xptext, bossWrap, bossList,
-    } = hud.elements;
-    const updateBossUI = createBossUI({ bossWrap, bossList });
-    const updateTotemTimer = createTotemTimerUI({ totemTimerEl });
-    const updateTotemWarning = createTotemWarningUI({ totemWarningEl });
-    const updateInfo = createInfoUI({ elements: hud.elements });
+    const { elFps, elActionHint, activeItemsEl, activeItemsListEl, bossWrap } = hud.elements;
+    const updateBossUI = createBossUI({ elements: hud.elements });
+    const updateTotemTimer = createTotemTimerUI({ elements: hud.elements });
+    const updateTotemWarning = createTotemWarningUI({ elements: hud.elements });
+    const { updateInfo, forceUpdateRerollsUI } = createInfoUI({ elements: hud.elements });
     const updateTimers = createTimersUI({ elements: hud.elements });
+    const updatePlayerBars = createPlayerBarsUI({ elements: hud.elements });
 
     // Overlays
     const {
@@ -1964,10 +1962,6 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     let currentChoices = [];
     let pickerSource = "level";
 
-    function updateRerollsUI(){
-      elRerolls.textContent = `Reroll ${player.rerolls}`;
-    }
-
     function buildChoices(source){
       pickerSource = source;
       currentChoices = [];
@@ -2067,7 +2061,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       renderChoices();
       btnReroll.style.display = isUnique ? "none" : "";
       btnReroll.disabled = isUnique || player.rerolls <= 0;
-      updateRerollsUI();
+      forceUpdateRerollsUI({ player });
     }
 
     function maybeOpenLevelPicker(){
@@ -2139,7 +2133,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       buildChoices(pickerSource);
       renderChoices();
       btnReroll.disabled = player.rerolls <= 0;
-      updateRerollsUI();
+      forceUpdateRerollsUI({ player });
     }
 
     function doSkip(){
@@ -3063,19 +3057,12 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         bullets,
         enemyBullets,
         getDps,
+        getTurretLevel,
       });
       updateTotemTimer(totem);
       updateTotemWarning(totem);
 
-      const hpPct = clamp(player.hp / player.hpMax, 0, 1);
-      hpbar.style.width = `${hpPct*100}%`;
-      const healing = !!state.healActive || state.healQueue.length > 0;
-      hpbarPulse.style.display = healing ? "block" : "none";
-      if (healing) hpbarPulse.style.width = `${hpPct*100}%`;
-      hptext.textContent = `${Math.ceil(player.hp)} / ${player.hpMax}`;
-
-      xpbar.style.width = `${(player.xp/player.xpNeed)*100}%`;
-      xptext.textContent = `${Math.floor(player.xp)} / ${player.xpNeed}`;
+      updatePlayerBars({ player, state });
 
       updateTimers({
         totem,
@@ -3095,14 +3082,6 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         actionBar.style.display = "none";
       }
 
-      elWep.textContent = "W: Bullets"
-        + (player.orbitals>0?` + Orbit x${player.orbitals}`:"")
-        + (player.aura?" + Aura":"")
-        + (player.novaCount>0?` + Nova x${player.novaCount * 3}`:"")
-        + (getTurretLevel()>0?` + Turret L${getTurretLevel()}`:"");
-
-      elRerolls.textContent = `Reroll ${player.rerolls}`;
-      elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;
       const hasActionSkill = hasAnyActionSkill();
       if (hasActionSkill){
         elActionHint.style.display = "";
