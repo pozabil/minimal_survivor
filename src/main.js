@@ -123,7 +123,8 @@ import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
 import { bindOptionsUI } from "./ui/options.js";
 import { createBossUI } from "./ui/bosses.js";
-import { createTotemTimerUI } from "./ui/totem.js";
+import { createTotemTimerUI, createTotemWarningUI } from "./ui/totem.js";
+import { createInfoUI } from "./ui/info.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
 
@@ -153,6 +154,8 @@ import { createEffectUpdates } from "./render/effects/update.js";
     } = hud.elements;
     const updateBossUI = createBossUI({ bossWrap, bossList });
     const updateTotemTimer = createTotemTimerUI({ totemTimerEl });
+    const updateTotemWarning = createTotemWarningUI({ totemWarningEl });
+    const updateInfo = createInfoUI({ elements: hud.elements });
 
     // Overlays
     const {
@@ -3076,26 +3079,20 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       updateFloaters(dt, dampSlow);
 
       // boss ui
-      const bosses = [];
-      for (const ee of enemies){
-        if (ee.type === "boss" && !ee.dead) bosses.push(ee);
-      }
-      updateBossUI(bosses);
+      updateBossUI(enemies);
 
-      // HUD
-      elLvl.textContent = `Lv ${player.lvl}`;
-      elKills.textContent = `Kills ${state.kills}`;
-      let alive = 0;
-      for (const e of enemies) if (!e.dead) alive += 1;
-      elEnemiesCount.textContent = `Enemies ${alive}`;
-      elShots.textContent = `Bullets ${bullets.length + enemyBullets.length}`;
+      // HUD (info)
       const dpsNow = getDps();
-      elDps.textContent = `Dmg ${dpsNow}`;
-      if (dpsNow > state.maxDps) state.maxDps = dpsNow;
-      elTime.textContent = fmtTime(state.t);
+      updateInfo({
+        player,
+        state,
+        enemies,
+        bullets,
+        enemyBullets,
+        dpsNow,
+      });
       updateTotemTimer(totem);
-      const showWarning = totem.active && totem.grace <= 0 && !totem.inZone;
-      totemWarningEl.classList.toggle("show", showWarning);
+      updateTotemWarning(totem);
 
       const hpPct = clamp(player.hp / player.hpMax, 0, 1);
       hpbar.style.width = `${hpPct*100}%`;

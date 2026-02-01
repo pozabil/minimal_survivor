@@ -56,7 +56,11 @@ export function createBossUI({ bossWrap, bossList }) {
     }
   }
 
-  function updateBossUI(bosses){
+  function updateBossUI(enemies){
+    const bosses = [];
+    for (const e of enemies){
+      if (e.type === "boss" && !e.dead) bosses.push(e);
+    }
     const wrapVisible = bosses.length > 0;
     setWrapVisible(wrapVisible);
     if (!wrapVisible){

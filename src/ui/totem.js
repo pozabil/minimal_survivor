@@ -17,3 +17,12 @@ export function createTotemTimerUI({ totemTimerEl }) {
 
   return updateTotemTimer;
 }
+
+export function createTotemWarningUI({ totemWarningEl }) {
+  function updateTotemWarning(totem){
+    const showWarning = totem.active && totem.grace <= 0 && !totem.inZone;
+    totemWarningEl.classList.toggle("show", showWarning);
+  }
+
+  return updateTotemWarning;
+}
