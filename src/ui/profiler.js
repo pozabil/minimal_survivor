@@ -98,7 +98,7 @@ export function createProfilerUI({ root = document } = {}) {
     }
   }
 
-  function updateProfilerMs(now, _dtRaw, _updateMs, profilerMs) {
+  function updateProfilerMs(now, profilerMs) {
     accProfiler += profilerMs;
     profilerFrames += 1;
     if (now - lastProfilerTime > HUD_UPDATE_TIME_MS) {

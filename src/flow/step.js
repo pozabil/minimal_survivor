@@ -59,7 +59,7 @@ export function createStep({
     if (profiler.isEnabled){
       let profilerMs = 0;
       profilerMs = measureMs(() => profiler.updateProfiler(now, dtRaw, updateMs, rUpdateMs, renderMs, entities));
-      profiler.updateProfilerMs(now, dtRaw, updateMs, profilerMs);
+      profiler.updateProfilerMs(now, profilerMs);
     }
   };
 }
