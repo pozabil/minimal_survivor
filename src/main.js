@@ -114,6 +114,7 @@ import { createTotemTimerUI, createTotemWarningUI } from "./ui/totem.js";
 import { createInfoUI } from "./ui/info.js";
 import { createTimersUI } from "./ui/timers.js";
 import { createPlayerBarsUI } from "./ui/player_bars.js";
+import { createActiveItemsUI } from "./ui/active_items.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
 
@@ -136,13 +137,14 @@ import { createEffectUpdates } from "./render/effects/update.js";
     const overlays = initOverlays();
 
     // HUD
-    const { elFps, elActionHint, elActiveItems, elActiveItemsList, elBossWrap } = hud.elements;
+    const { elFps, elBossWrap } = hud.elements;
     const updateBossUI = createBossUI({ elements: hud.elements });
     const updateTotemTimer = createTotemTimerUI({ elements: hud.elements });
     const updateTotemWarning = createTotemWarningUI({ elements: hud.elements });
     const { updateInfo, forceUpdateRerollsUI } = createInfoUI({ elements: hud.elements });
     const updateTimers = createTimersUI({ elements: hud.elements });
     const updatePlayerBars = createPlayerBarsUI({ elements: hud.elements });
+    const updateActiveItems = createActiveItemsUI({ hudElements: hud.elements, overlayElements: overlays.elements });
 
     // Overlays
     const {
@@ -151,7 +153,7 @@ import { createEffectUpdates } from "./render/effects/update.js";
       tabUpgrades, tabInventory, buildStatsEl, btnResume, btnRestart2, btnCopy, btnRecords, btnSettings, btnHang,
       restartConfirmOverlay, btnRestartYes, btnRestartNo, gameoverOverlay, summaryEl, restartBtn, copyBtn,
       btnRecordsOver, recordsOverlay, recordsListEl, btnRecordsClose, settingsOverlay, btnSettingsClose,
-      optShowDamageNumbers, btnPause, actionBar, actionBarFill,
+      optShowDamageNumbers, btnPause,
     } = overlays.elements;
 
     // Mobile joystick
@@ -567,6 +569,7 @@ canvas.addEventListener("pointercancel", (e)=>{
         div.className = "choice";
         div.innerHTML = `<div class="t">${c.name}</div><div class="d">${c.desc}</div><div class="d" style="margin-top:8px; opacity:.75">${c.perk}</div>`;
         div.addEventListener("click", ()=>{
+          addUniqueItem('max_shirt')
           c.apply(player);
           maybeAddStartingDog(c.id);
           startOverlay.style.display = "none";
@@ -3074,35 +3077,14 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         getChestInterval,
       });
 
-      if (hasUnique("max_shirt")){
-        actionBar.style.display = "block";
-        const pct = clamp(1 - (state.maxShirtCd / MAX_SHIRT_COOLDOWN), 0, 1);
-        actionBarFill.style.height = `${pct*100}%`;
-      } else {
-        actionBar.style.display = "none";
-      }
-
-      const hasActionSkill = hasAnyActionSkill();
-      if (hasActionSkill){
-        elActionHint.style.display = "";
-        elActionHint.textContent = isTouch ? "Кнопка действия: двойной тап" : "Кнопка действия: Space";
-      } else {
-        elActionHint.style.display = "none";
-        elActionHint.textContent = "";
-      }
-      const items = [];
-      for (const id of player.uniquesOrder){
-        if (!player.uniques.has(id)) continue;
-        const u = UNIQUES[id];
-        if (u && u.action) items.push(u.title);
-      }
-      if (!items.length){
-        elActiveItems.style.display = "none";
-        elActiveItemsList.innerHTML = "";
-      } else {
-        elActiveItems.style.display = "block";
-        elActiveItemsList.innerHTML = items.map((t)=>`<div class="item">${t}</div>`).join("");
-      }
+      updateActiveItems({
+        player,
+        state,
+        hasUnique,
+        hasAnyActionSkill,
+        isTouch,
+        uniques: UNIQUES,
+      });
     }
 
     function render(){
