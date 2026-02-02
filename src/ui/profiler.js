@@ -6,6 +6,8 @@ export function createProfilerUI({ root = document } = {}) {
   const elProfilerFpsMax = root.getElementById("profilerFpsMax");
   const elProfilerFrame = root.getElementById("profilerFrame");
   const elProfilerFrameMax = root.getElementById("profilerFrameMax");
+  const elProfilerP50 = root.getElementById("profilerP50");
+  const elProfilerP50Max = root.getElementById("profilerP50Max");
   const elProfilerP95 = root.getElementById("profilerP95");
   const elProfilerP95Max = root.getElementById("profilerP95Max");
   const elProfilerP99 = root.getElementById("profilerP99");
@@ -37,6 +39,7 @@ export function createProfilerUI({ root = document } = {}) {
   let lastTime = 0;
   let minFps = Infinity;
   let maxFrame = 0;
+  let maxP50 = 0;
   let maxP95 = 0;
   let maxP99 = 0;
   let minLow1 = Infinity;
@@ -52,8 +55,8 @@ export function createProfilerUI({ root = document } = {}) {
   let lastProfilerTime = 0;
   let maxProfiler = 0;
   const frameTimes = [];
-  const FRAME_PACE_SAMPLES = 240;
-  const JANK_THRESHOLD_MS = (1000 / 60) * 1.01;
+  const FRAME_PACE_SAMPLES = 480;
+  const JANK_THRESHOLD_MS = (1000 / 60) * 1.05;
 
   function updateProfiler(now, dtRaw, updateMs, rUpdateMs, renderMs, entities) {
     const { enemies, bullets, enemyBullets, drops } = entities;
@@ -89,48 +92,55 @@ export function createProfilerUI({ root = document } = {}) {
       const sampleCount = frameTimes.length;
       const samples = sampleCount > 0 ? frameTimes.slice() : [0];
       samples.sort((a, b) => a - b);
+      const p50 = samples[Math.floor((samples.length - 1) * 0.5)];
       const p95 = samples[Math.floor((samples.length - 1) * 0.95)];
       const p99 = samples[Math.floor((samples.length - 1) * 0.99)];
       const low1 = p99 > 0 ? (1000 / p99) : 0;
       let jank = 0;
       for (const t of frameTimes) if (t > JANK_THRESHOLD_MS) jank += 1;
+      const jankPerSec = jank / (FRAME_PACE_SAMPLES / 60);
       const fps = accTime > 0 ? (frames / accTime) : 0;
       const frameMs = (accTime / denom) * 1000;
       const updateAvg = accUpdate / denom;
       const realtimeAvg = accRealtime / denom;
       const renderAvg = accRender / denom;
-      elProfilerFps.textContent = fps.toFixed(0);
-      elProfilerFrame.textContent = frameMs.toFixed(1);
-      elProfilerP95.textContent = p95.toFixed(1);
-      elProfilerP99.textContent = p99.toFixed(1);
-      elProfilerLow1.textContent = low1.toFixed(1);
-      elProfilerJank.textContent = String(jank);
+      elProfilerFps.textContent = fps.toFixed(2);
+      elProfilerFrame.textContent = frameMs.toFixed(2);
+      elProfilerP50.textContent = p50.toFixed(2);
+      elProfilerP95.textContent = p95.toFixed(2);
+      elProfilerP99.textContent = p99.toFixed(2);
+      elProfilerLow1.textContent = low1.toFixed(2);
+      elProfilerJank.textContent = jankPerSec.toFixed(2);
       elProfilerUpdate.textContent = updateAvg.toFixed(2);
       elProfilerRealtime.textContent = realtimeAvg.toFixed(2);
       elProfilerRender.textContent = renderAvg.toFixed(2);
       if (fps < minFps) {
         minFps = fps;
-        elProfilerFpsMax.textContent = minFps.toFixed(0);
+        elProfilerFpsMax.textContent = minFps.toFixed(2);
       }
       if (frameMs > maxFrame) {
         maxFrame = frameMs;
-        elProfilerFrameMax.textContent = maxFrame.toFixed(1);
+        elProfilerFrameMax.textContent = maxFrame.toFixed(2);
+      }
+      if (p50 > maxP50) {
+        maxP50 = p50;
+        elProfilerP50Max.textContent = maxP50.toFixed(2);
       }
       if (p95 > maxP95) {
         maxP95 = p95;
-        elProfilerP95Max.textContent = maxP95.toFixed(1);
+        elProfilerP95Max.textContent = maxP95.toFixed(2);
       }
       if (p99 > maxP99) {
         maxP99 = p99;
-        elProfilerP99Max.textContent = maxP99.toFixed(1);
+        elProfilerP99Max.textContent = maxP99.toFixed(2);
       }
       if (low1 < minLow1) {
         minLow1 = low1;
-        elProfilerLow1Max.textContent = minLow1.toFixed(1);
+        elProfilerLow1Max.textContent = minLow1.toFixed(2);
       }
-      if (jank > maxJank) {
-        maxJank = jank;
-        elProfilerJankMax.textContent = String(maxJank);
+      if (jankPerSec > maxJank) {
+        maxJank = jankPerSec;
+        elProfilerJankMax.textContent = maxJank.toFixed(2);
       }
       if (updateAvg > maxUpdate) {
         maxUpdate = updateAvg;
