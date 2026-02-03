@@ -15,6 +15,10 @@ import {
   ENEMY_BASE,
   BOSS_KINDS,
 } from "../content/enemies.js";
+import {
+  TURRET_MIN_DIST,
+  TURRET_SPAWN_RADIUS,
+} from "../content/upgrades.js";
 import { clamp, len2Sq } from "../utils/math.js";
 import { randf, randi } from "../utils/rand.js";
 
@@ -422,6 +426,35 @@ export function createSpawnTotem({ player, totem, hasUnique, getTotemLife }) {
     totem.grace = TOTEM_GRACE;
     totem.active = true;
     totem.inZone = false;
+  };
+}
+
+export function createSpawnTurret({
+  player,
+  turrets,
+  getTurretLevel,
+  getTurretMax,
+  getTurretSize,
+  getTurretHpMax,
+}) {
+  return function spawnTurret() {
+    if (getTurretLevel() <= 0) return;
+    if (turrets.length >= getTurretMax()) return;
+    const a = randf(0, TAU);
+    const d = randf(TURRET_MIN_DIST, TURRET_SPAWN_RADIUS);
+    const x = player.x + Math.cos(a) * d;
+    const y = player.y + Math.sin(a) * d;
+    const size = getTurretSize();
+    const hpMax = getTurretHpMax();
+    turrets.push({
+      x, y,
+      r: size * 0.5,
+      size,
+      hpMax,
+      hp: hpMax,
+      shotTimer: randf(0, 0.4),
+      hitCd: 0,
+    });
   };
 }
 

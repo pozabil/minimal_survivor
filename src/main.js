@@ -71,11 +71,6 @@ import {
   ORBITAL_KNOCKBACK_FORCE,
   PIERCE_DAMAGE_FALLOFF,
   PIERCE_DAMAGE_MIN_RATIO,
-  TURRET_BULLET_SIZE,
-  TURRET_BULLET_SPEED,
-  TURRET_MIN_DIST,
-  TURRET_RANGE,
-  TURRET_SPAWN_RADIUS,
   createUpgrades,
 } from "./content/upgrades.js";
 import { createUniques, SAME_CIRCLE_INTERVAL } from "./content/uniques.js";
@@ -87,6 +82,7 @@ import { createStep } from "./flow/step.js";
 import { updateMovement } from "./systems/movement.js";
 import { createSpatialGrid } from "./systems/spatial_grid.js";
 import { createTargeting } from "./systems/targeting.js";
+import { createRicochetHelpers, createShootingSystem } from "./systems/combat.js";
 import {
   createRenderBatch,
   batchCirclePush,
@@ -105,6 +101,7 @@ import {
   createSpawnColossusElite,
   createSpawnEnemy,
   createSpawnTotem,
+  createSpawnTurret,
   updateSpawning,
 } from "./systems/spawning.js";
 import { loadRecords, updateRecordsOnDeath } from "./systems/storage.js";
@@ -419,6 +416,16 @@ canvas.addEventListener("pointercancel", (e)=>{
       findRicochetTarget,
       findRicochetTargetWithinAngle,
     } = createTargeting({ enemies, gridQueryCircle });
+    const {
+      canRicochet,
+      tryFindRicochetTarget,
+      applyRicochetRedirect,
+      spawnCheapRicochetSplits,
+    } = createRicochetHelpers({
+      bullets,
+      findRicochetTarget,
+      findRicochetTargetWithinAngle,
+    });
 
     // Storage + options
     const { options, applyOptionsToUI } = bindOptionsUI({
@@ -549,7 +556,6 @@ canvas.addEventListener("pointercancel", (e)=>{
       uniques: UNIQUES,
       uniquesList,
     });
-
     // Characters
 
     function maybeAddStartingDog(heroId){
@@ -785,45 +791,29 @@ canvas.addEventListener("pointercancel", (e)=>{
       hasUnique,
       getTotemLife,
     });
-    function spawnCheapRicochetSplits(b, hitEnemy, target, spd, baseAng){
-      const ricochetLeft = Math.max(0, (b.ricochetLeft || 0) - 1);
-      const shrink = 0.707;
-      const dmgShrink = 0.56;
-      const newR = b.r * shrink;
-      const newDmg = b.dmg * dmgShrink;
-      const newBaseDmg = (b.baseDmg || b.dmg) * dmgShrink;
-      const maxSpread = Math.PI / 3; // <= 60°
-      const target2 = findRicochetTargetWithinAngle(
-        hitEnemy.x, hitEnemy.y,
-        target.id, hitEnemy.id, b.lastHitId,
-        baseAng, maxSpread
-      );
-      const ang2 = target2
-        ? Math.atan2(target2.y - hitEnemy.y, target2.x - hitEnemy.x)
-        : (baseAng + randf(-maxSpread, maxSpread));
-      const spawnSplit = (ang)=>{
-        const hitIds = b.hitIds ? new Set(b.hitIds) : null;
-        bullets.push({
-          x: hitEnemy.x + Math.cos(ang) * (hitEnemy.r + newR + 2),
-          y: hitEnemy.y + Math.sin(ang) * (hitEnemy.r + newR + 2),
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd,
-          r: newR,
-          dmg: newDmg,
-          baseDmg: newBaseDmg,
-          pierce: b.pierce,
-          life: b.life,
-          t: b.t,
-          isNova: b.isNova,
-          ricochetLeft,
-          ricochetChance: b.ricochetChance,
-          lastHitId: hitEnemy.id,
-          hitIds,
-        });
-      };
-      spawnSplit(baseAng);
-      spawnSplit(ang2);
-    }
+
+    // Turret
+    const spawnTurret = createSpawnTurret({
+      player,
+      turrets,
+      getTurretLevel,
+      getTurretMax,
+      getTurretSize,
+      getTurretHpMax,
+    });
+    const shooting = createShootingSystem({
+      player,
+      bullets,
+      findNearestEnemyFrom,
+      findNearestEnemyTo,
+      getWoundedDamageMult,
+      getRicochetBounces,
+      getTurretDamage,
+      getTurretFireRate,
+      getTurretChance,
+      spawnTurret,
+    });
+
     function getEnemyTarget(e){
       if (e.type === "boss") return { x: player.x, y: player.y, turret: null };
       const aggro = getTurretAggroRadius();
@@ -845,131 +835,6 @@ canvas.addEventListener("pointercancel", (e)=>{
       return { x: player.x, y: player.y, turret: null };
     }
 
-    // Shooting (bullet life doubled)
-    function tryFireShotsFrom(source, dt, targetFn){
-      source.shotTimer -= dt;
-      if (source.shotTimer > 0) return false;
-      const target = targetFn(source.x, source.y);
-      if (!target) return false;
-
-      const baseAngle = Math.atan2(target.y - source.y, target.x - source.x);
-      const shots = player.multishot;
-      // For 2-shot, force 0.16 rad between bullets (spread is half of that).
-      const spread = (shots === 2) ? 0.08 : player.spread;
-
-      for(let i=0;i<shots;i++){
-        const t = (shots===1) ? 0 : (i/(shots-1))*2 - 1;
-        const a = baseAngle + t*spread + randf(-0.01,0.01);
-        bullets.push({
-          x: source.x, y: source.y,
-          vx: Math.cos(a)*player.bulletSpeed,
-          vy: Math.sin(a)*player.bulletSpeed,
-          r: player.bulletSize,
-          dmg: player.damage * getWoundedDamageMult(),
-          baseDmg: player.damage * getWoundedDamageMult(),
-          pierce: player.pierce,
-          life: 3.2, // было 1.6
-          t: 0,
-          ricochetLeft: getRicochetBounces(),
-          ricochetChance: player.ricochetChance,
-          lastHitId: null,
-        });
-      }
-      source.shotTimer = 1 / player.fireRate;
-      return true;
-    }
-
-    function tryFireNovaFrom(source, dt){
-      if (player.novaCount <= 0) return false;
-      source.novaTimer -= dt;
-      if (source.novaTimer > 0) return false;
-
-      const shots = Math.max(1, player.novaCount * 3);
-      const offset = randf(0, TAU);
-      for(let i=0;i<shots;i++){
-        const a = offset + i*(TAU/shots);
-        bullets.push({
-          x: source.x, y: source.y,
-          vx: Math.cos(a)*player.novaSpeed,
-          vy: Math.sin(a)*player.novaSpeed,
-          r: Math.max(4, player.bulletSize * 1.15),
-          dmg: player.novaDamage * getWoundedDamageMult(),
-          baseDmg: player.novaDamage * getWoundedDamageMult(),
-          pierce: 1,
-          life: 3.0,
-          t: 0,
-          isNova: true,
-          ricochetLeft: getRicochetBounces(),
-          ricochetChance: player.ricochetChance,
-          lastHitId: null,
-        });
-      }
-      source.novaTimer = 1 / player.novaRate;
-      return true;
-    }
-
-    function shoot(dt){
-      const didShoot = tryFireShotsFrom(player, dt, (x, y)=>findNearestEnemyFrom(x, y));
-      if (didShoot && getTurretChance() > 0 && Math.random() < getTurretChance()) spawnTurret();
-    }
-
-    function shootNova(dt){
-      tryFireNovaFrom(player, dt);
-    }
-
-    function cloneShoot(c, dt){
-      tryFireShotsFrom(c, dt, (x, y)=>findNearestEnemyFrom(x, y));
-    }
-
-    function cloneShootNova(c, dt){
-      tryFireNovaFrom(c, dt);
-    }
-
-    function spawnTurret(){
-      if (getTurretLevel() <= 0) return;
-      if (turrets.length >= getTurretMax()) return;
-      const a = randf(0, TAU);
-      const d = randf(TURRET_MIN_DIST, TURRET_SPAWN_RADIUS);
-      const x = player.x + Math.cos(a) * d;
-      const y = player.y + Math.sin(a) * d;
-      const size = getTurretSize();
-      const hpMax = getTurretHpMax();
-      turrets.push({
-        x, y,
-        r: size * 0.5,
-        size,
-        hpMax,
-        hp: hpMax,
-        shotTimer: randf(0, 0.4),
-        hitCd: 0,
-      });
-    }
-
-    function tryFireTurret(t, dt){
-      t.shotTimer -= dt;
-      if (t.shotTimer > 0) return false;
-      const target = findNearestEnemyTo(t.x, t.y, TURRET_RANGE);
-      if (target){
-        const ang = Math.atan2(target.y - t.y, target.x - t.x);
-        bullets.push({
-          x: t.x, y: t.y,
-          vx: Math.cos(ang) * TURRET_BULLET_SPEED,
-          vy: Math.sin(ang) * TURRET_BULLET_SPEED,
-          r: TURRET_BULLET_SIZE,
-          dmg: getTurretDamage(),
-          baseDmg: getTurretDamage(),
-          pierce: 1,
-          life: 2.6,
-          t: 0,
-          ricochetLeft: getRicochetBounces(),
-          ricochetChance: player.ricochetChance,
-          lastHitId: null,
-        });
-      }
-      t.shotTimer = 1 / getTurretFireRate();
-      return !!target;
-    }
-
     function updateTurrets(dt){
       for (let i=turrets.length-1; i>=0; i--){
         const t = turrets[i];
@@ -985,7 +850,7 @@ canvas.addEventListener("pointercancel", (e)=>{
         t.hitCd = Math.max(0, t.hitCd - dt);
         if (t.hp <= 0){ turrets.splice(i,1); continue; }
 
-        tryFireTurret(t, dt);
+        shooting.tryFireTurret(t, dt);
       }
     }
 
@@ -1276,8 +1141,8 @@ canvas.addEventListener("pointercancel", (e)=>{
       for (let i=clones.length-1; i>=0; i--){
         const c = clones[i];
         c.t += dt;
-        cloneShoot(c, dt);
-        cloneShootNova(c, dt);
+        shooting.cloneShoot(c, dt);
+        shooting.cloneShootNova(c, dt);
         updateCloneOrbitals(c, dt);
         applyCloneAura(c, dt);
         if (c.t >= c.life){
@@ -2506,8 +2371,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
       gridBuild();
       updateTurrets(dt);
-      shoot(dt);
-      shootNova(dt);
+      shooting.shoot(dt);
+      shooting.shootNova(dt);
       updateOrbitals(dt);
       applyAura(dt);
       updateDogs(dt);
@@ -2551,27 +2416,21 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
           let didRicochet = false;
           let removedOnRicochet = false;
-          if ((b.ricochetLeft || 0) > 0 && (b.ricochetChance || 0) > 0 && Math.random() < b.ricochetChance){
-            const target = findRicochetTarget(e.x, e.y, e.id, b.lastHitId);
+          if (canRicochet(b) && Math.random() < b.ricochetChance){
+            const target = tryFindRicochetTarget(e, b);
             if (target){
               const dx = target.x - e.x;
               const dy = target.y - e.y;
-              const d = len2(dx,dy) || 1;
               const spd = len2(b.vx, b.vy) || player.bulletSpeed;
               const baseAng = Math.atan2(dy, dx);
 
               if (hasUnique("cheap_bullets")){
-                spawnCheapRicochetSplits(b, e, target, spd, baseAng);
+                spawnCheapRicochetSplits(b, e, target.id, spd, baseAng);
                 bullets.splice(i,1);
                 removedOnRicochet = true;
                 didRicochet = true;
               } else {
-                b.vx = (dx/d) * spd;
-                b.vy = (dy/d) * spd;
-                b.x = e.x + (dx/d) * (e.r + b.r + 2);
-                b.y = e.y + (dy/d) * (e.r + b.r + 2);
-                b.ricochetLeft -= 1;
-                b.lastHitId = e.id;
+                applyRicochetRedirect(b, e, target, spd);
                 didRicochet = true;
               }
             }
