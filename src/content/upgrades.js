@@ -32,12 +32,7 @@ export const PIERCE_DAMAGE_MIN_RATIO = 0.2;
 export const TURRET_SIZE_MULT = 1.20;
 export const TURRET_SIZE_LV_BONUS = 0.04;
 
-export function createUpgrades({
-  player,
-  state,
-  getLevel,
-  getAuraWaveCooldown,
-}) {
+export function createUpgrades({ player, state, pF }) {
   return {
     fireRate: { title:"Скорость атаки", max: 12, desc:(lv)=>`+18% fire rate (ур. ${lv+1}/12)`, apply:()=>{ player.fireRate *= 1.18; } },
     damage:   { title:"Урон",           max: 12, desc:(lv)=>`+20% bullet damage (ур. ${lv+1}/12)`, apply:()=>{ player.damage *= 1.20; } },
@@ -81,13 +76,13 @@ export function createUpgrades({
     regen:    { title:"Регенерация",    max: 10, desc:(lv)=>`+1.0 HP/сек (ур. ${lv+1}/10)`, apply:()=>{ player.regen += 1.0; } },
     magnet:   { title:"Магнит",         max: 8,  desc:(lv)=>`+40 радиус подбора XP (ур. ${lv+1}/8)`,  apply:()=>{ player.magnet += 40; } },
 
-    orbital:  { title:"Орбиталка",      max: 11, desc:(lv)=>`Орбиталок +${lv === 0 ? 2 : 1} (ур. ${lv+1}/11)`, apply:()=>{ const lv = getLevel("orbital"); const add = (lv === 0) ? 2 : 1; const cap = (player.heroId === "mage") ? 13 : 12; player.orbitals = Math.min(cap, player.orbitals + add); } },
+    orbital:  { title:"Орбиталка",      max: 11, desc:(lv)=>`Орбиталок +${lv === 0 ? 2 : 1} (ур. ${lv+1}/11)`, apply:()=>{ const lv = pF.getLevel("orbital"); const add = (lv === 0) ? 2 : 1; const cap = (player.heroId === "mage") ? 13 : 12; player.orbitals = Math.min(cap, player.orbitals + add); } },
     orbitalDmg:{title:"Орбиталки: урон",max: 12, desc:(lv)=>`+25% orbital damage (ур. ${lv+1}/12)`, apply:()=>{ player.orbitalDamage *= 1.25; } },
     orbitalRadius:{title:"Орбиталки: радиус",max: 10, desc:(lv)=>`+16 orbital radius (ур. ${lv+1}/10)`, apply:()=>{ player.orbitalRadius += 16; } },
 
     aura:     { title:"Аура",           max: 1,  desc:()=>`Включить ауру урона рядом`, apply:()=>{ player.aura = true; } },
     auraRadius:{title:"Аура: радиус",   max: 10, desc:(lv)=>`+16 aura radius (ур. ${lv+1}/10)`, apply:()=>{ player.auraRadius += 16; } },
     auraDps:  { title:"Аура: DPS",      max: 12, desc:(lv)=>`+30% aura DPS (ур. ${lv+1}/12)`, apply:()=>{ player.auraDps *= 1.30; } },
-    auraWave: { title:"Аура: волна",    max: 5,  desc:(lv)=>`Волна каждые ${fmtNum(getAuraWaveCooldown(lv + 1), 1)}с · сила +${AURA_WAVE_FORCE_STEP} (ур. ${lv+1}/5)`, apply:()=>{ if (getLevel("auraWave") === 0) state.auraWaveT = getAuraWaveCooldown(1); } },
+    auraWave: { title:"Аура: волна",    max: 5,  desc:(lv)=>`Волна каждые ${fmtNum(pF.getAuraWaveCooldown(lv + 1), 1)}с · сила +${AURA_WAVE_FORCE_STEP} (ур. ${lv+1}/5)`, apply:()=>{ if (pF.getLevel("auraWave") === 0) state.auraWaveT = pF.getAuraWaveCooldown(1); } },
   };
 }

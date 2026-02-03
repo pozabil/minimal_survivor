@@ -26,6 +26,10 @@ import {
   ORBITAL_BASE_DISTANCE,
   ORBITAL_BASE_SIZE,
   ORBITAL_SIZE_EXP,
+  AURA_WAVE_BASE_FORCE,
+  AURA_WAVE_COOLDOWN_BASE,
+  AURA_WAVE_COOLDOWN_STEP,
+  AURA_WAVE_FORCE_STEP,
   TURRET_AGGRO_BASE,
   TURRET_DAMAGE,
   TURRET_FIRE_RATE,
@@ -138,6 +142,13 @@ export function createPlayerFunctions({
     const remaining = uniquesList.filter((id)=>!player.uniquesSeen.has(id) && !player.uniques.has(id));
     return remaining.length >= 3;
   }
+  function addUniqueItem(id){
+    const item = uniques ? uniques[id] : null;
+    if (!item || player.uniques.has(id)) return;
+    player.uniques.add(id);
+    player.uniquesOrder.push(id);
+    if (item.apply) item.apply();
+  }
 
   function getChestInterval(){
     const reduce = Math.floor((player.lvl - 1) / 4);
@@ -232,16 +243,36 @@ export function createPlayerFunctions({
   function hasTurretHeal(){
     return getLevel("turretHeal") > 0;
   }
+  function getNovaMagnetRadius(){
+    const enabled = getLevel("novaMagnet") > 0;
+    if (!enabled) return 0;
+    const novaLv = getLevel("nova");
+    const dmgLv = getLevel("novaDamage");
+    return 82 + 2 * novaLv + dmgLv * 4;
+  }
+  function getAuraWaveForce(){
+    const lv = getLevel("auraWave");
+    if (lv <= 0) return 0;
+    return AURA_WAVE_BASE_FORCE + (lv - 1) * AURA_WAVE_FORCE_STEP;
+  }
+  function getAuraWaveCooldown(lv = getLevel("auraWave")){
+    if (lv <= 0) return AURA_WAVE_COOLDOWN_BASE;
+    return Math.max(0.1, AURA_WAVE_COOLDOWN_BASE - (lv - 1) * AURA_WAVE_COOLDOWN_STEP);
+  }
 
   return {
+    addUniqueItem,
     getBaseMoveSpeed,
     getChestInterval,
     getLevel,
     getMoveSpeed,
+    getNovaMagnetRadius,
     getOrbitalSize,
     getRicochetBounces,
     getInvulnAfterHit,
     getInvulnDuration,
+    getAuraWaveForce,
+    getAuraWaveCooldown,
     getTotemInterval,
     getTotemDpsRamp,
     getTotemEffectGain,

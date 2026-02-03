@@ -10,19 +10,11 @@ export function createTimersUI({ elements }) {
     elChestText,
   } = elements;
 
-  function updateTimers({
-    totem,
-    state,
-    spawn,
-    chests,
-    getTotemLife,
-    getTotemInterval,
-    getChestInterval,
-  }) {
+  function updateTimers({ totem, state, spawn, chests, pF }) {
     const totemLeft = totem.active ? totem.life : state.totemTimer;
     const totemMax = totem.active
-      ? (totem.lifeMax || getTotemLife())
-      : (state.totemTimerMax || getTotemInterval());
+      ? (totem.lifeMax || pF.getTotemLife())
+      : (state.totemTimerMax || pF.getTotemInterval());
     const totemPct = clamp(totemLeft / Math.max(1, totemMax), 0, 1);
     elTotemBar.style.width = `${totemPct*100}%`;
     elTotemText.textContent = `${Math.max(0, Math.ceil(totemLeft))}s`;
@@ -38,7 +30,7 @@ export function createTimersUI({ elements }) {
       elChestText.textContent = chests.length ? "ON MAP" : "SPAWNING…";
     } else {
       const chestLeft = Math.max(0, state.chestTimer);
-      const chestMax = Math.max(1, getChestInterval());
+      const chestMax = Math.max(1, pF.getChestInterval());
       const chestPct = clamp(chestLeft / chestMax, 0, 1);
       elChestBar.style.width = `${chestPct*100}%`;
       elChestText.textContent = `${Math.max(0, Math.ceil(chestLeft))}s`;

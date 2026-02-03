@@ -237,12 +237,7 @@ function spawnPack({
   }
 }
 
-export function createSpawnEnemy({
-  player,
-  state,
-  enemies,
-  spawnScale,
-}) {
+export function createSpawnEnemy({ player, state, enemies, spawnScale }) {
   let enemyId = 1;
   const nextEnemyId = () => enemyId++;
   return function spawnEnemy(pack = false, forcedType = null, extra = null) {
@@ -372,13 +367,13 @@ export function createSpawnColossusElite({ player, state, spawnEnemy }) {
   };
 }
 
-export function createSpawnChest({ state, chests, totem, player, hasRemainingUnique }) {
+export function createSpawnChest({ state, chests, totem, player, pF }) {
   return function spawnChest() {
     if (state.chestAlive) return;
     if (chests.length > 0) { state.chestAlive = true; return; }
     state.chestAlive = true;
     state.chestCount += 1;
-    const isSpecial = (state.chestCount % UNIQUE_CHEST_EVERY === 0) && hasRemainingUnique();
+    const isSpecial = (state.chestCount % UNIQUE_CHEST_EVERY === 0) && pF.hasRemainingUnique();
     if (isSpecial) state.uniqueChestCount += 1;
     const chestR = isSpecial ? 22 : 16;
 
@@ -410,7 +405,7 @@ export function createSpawnChest({ state, chests, totem, player, hasRemainingUni
   };
 }
 
-export function createSpawnTotem({ player, totem, hasUnique, getTotemLife }) {
+export function createSpawnTotem({ player, totem, pF }) {
   return function spawnTotem() {
     if (totem.active) return;
     const a = randf(0, TAU);
@@ -419,9 +414,9 @@ export function createSpawnTotem({ player, totem, hasUnique, getTotemLife }) {
     totem.y = player.y + Math.sin(a) * d;
     const lvlScale = 1 + Math.min(0.8, Math.max(0, player.lvl - 1) * 0.005);
     totem.r = randf(TOTEM_RADIUS_MIN, TOTEM_RADIUS_MAX) * lvlScale;
-    if (hasUnique("nose_ring")) totem.r *= 1.08;
+    if (pF.hasUnique("nose_ring")) totem.r *= 1.08;
     totem.t = 0;
-    totem.life = getTotemLife();
+    totem.life = pF.getTotemLife();
     totem.lifeMax = totem.life;
     totem.grace = TOTEM_GRACE;
     totem.active = true;
@@ -429,23 +424,16 @@ export function createSpawnTotem({ player, totem, hasUnique, getTotemLife }) {
   };
 }
 
-export function createSpawnTurret({
-  player,
-  turrets,
-  getTurretLevel,
-  getTurretMax,
-  getTurretSize,
-  getTurretHpMax,
-}) {
+export function createSpawnTurret({ player, turrets, pF }) {
   return function spawnTurret() {
-    if (getTurretLevel() <= 0) return;
-    if (turrets.length >= getTurretMax()) return;
+    if (pF.getTurretLevel() <= 0) return;
+    if (turrets.length >= pF.getTurretMax()) return;
     const a = randf(0, TAU);
     const d = randf(TURRET_MIN_DIST, TURRET_SPAWN_RADIUS);
     const x = player.x + Math.cos(a) * d;
     const y = player.y + Math.sin(a) * d;
-    const size = getTurretSize();
-    const hpMax = getTurretHpMax();
+    const size = pF.getTurretSize();
+    const hpMax = pF.getTurretHpMax();
     turrets.push({
       x, y,
       r: size * 0.5,
@@ -469,8 +457,7 @@ export function updateSpawning({
   spawnChest,
   spawnTotem,
   spawnEnemy,
-  getChestInterval,
-  getTotemInterval,
+  pF,
 }) {
   const lvl = player.lvl;
   const bossReduce = Math.floor((lvl - 1) / 5);
@@ -497,7 +484,7 @@ export function updateSpawning({
   if (!state.chestAlive) {
     state.chestTimer -= dt;
     if (state.chestTimer <= 0) {
-      state.chestTimer = getChestInterval();
+      state.chestTimer = pF.getChestInterval();
       spawnChest();
     }
   }
@@ -507,7 +494,7 @@ export function updateSpawning({
     state.totemTimer -= dt;
     if (state.totemTimer <= 0) {
       spawnTotem();
-      const interval = getTotemInterval();
+      const interval = pF.getTotemInterval();
       state.totemTimer = interval;
       state.totemTimerMax = interval;
     }

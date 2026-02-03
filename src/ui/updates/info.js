@@ -13,7 +13,7 @@ export function createInfoUI({
     elThreat,
   } = elements;
 
-  function updateInfo({ player, state, getDps, getTurretLevel }) {
+  function updateInfo({ player, state, pF, getDps }) {
     const dpsNow = getDps();
     elLvl.textContent = `Lv ${player.lvl}`;
     elKills.textContent = `Kills ${state.kills}`;
@@ -24,7 +24,7 @@ export function createInfoUI({
       + (player.orbitals>0?` + Orbit x${player.orbitals}`:"")
       + (player.aura?" + Aura":"")
       + (player.novaCount>0?` + Nova x${player.novaCount * 3}`:"")
-      + (getTurretLevel()>0?` + Turret L${getTurretLevel()}`:"");
+      + (pF.getTurretLevel()>0?` + Turret L${pF.getTurretLevel()}`:"");
     elRerolls.textContent = `Reroll ${player.rerolls}`;
     elThreat.textContent = `Threat ${state.difficulty.toFixed(1)}`;
   }

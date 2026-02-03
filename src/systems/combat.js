@@ -83,13 +83,9 @@ export function createRicochetHelpers({
 export function createShootingSystem({
   player,
   bullets,
+  pF,
   findNearestEnemyFrom,
   findNearestEnemyTo,
-  getWoundedDamageMult,
-  getRicochetBounces,
-  getTurretDamage,
-  getTurretFireRate,
-  getTurretChance,
   spawnTurret,
 }) {
   function tryFireShotsFrom(source, dt, targetFn) {
@@ -111,12 +107,12 @@ export function createShootingSystem({
         vx: Math.cos(a) * player.bulletSpeed,
         vy: Math.sin(a) * player.bulletSpeed,
         r: player.bulletSize,
-        dmg: player.damage * getWoundedDamageMult(),
-        baseDmg: player.damage * getWoundedDamageMult(),
+        dmg: player.damage * pF.getWoundedDamageMult(),
+        baseDmg: player.damage * pF.getWoundedDamageMult(),
         pierce: player.pierce,
         life: 3.2, // было 1.6
         t: 0,
-        ricochetLeft: getRicochetBounces(),
+        ricochetLeft: pF.getRicochetBounces(),
         ricochetChance: player.ricochetChance,
         lastHitId: null,
       });
@@ -139,13 +135,13 @@ export function createShootingSystem({
         vx: Math.cos(a) * player.novaSpeed,
         vy: Math.sin(a) * player.novaSpeed,
         r: Math.max(4, player.bulletSize * 1.15),
-        dmg: player.novaDamage * getWoundedDamageMult(),
-        baseDmg: player.novaDamage * getWoundedDamageMult(),
+        dmg: player.novaDamage * pF.getWoundedDamageMult(),
+        baseDmg: player.novaDamage * pF.getWoundedDamageMult(),
         pierce: 1,
         life: 3.0,
         t: 0,
         isNova: true,
-        ricochetLeft: getRicochetBounces(),
+        ricochetLeft: pF.getRicochetBounces(),
         ricochetChance: player.ricochetChance,
         lastHitId: null,
       });
@@ -156,7 +152,7 @@ export function createShootingSystem({
 
   function shoot(dt) {
     const didShoot = tryFireShotsFrom(player, dt, (x, y) => findNearestEnemyFrom(x, y));
-    if (didShoot && getTurretChance() > 0 && Math.random() < getTurretChance()) spawnTurret();
+    if (didShoot && pF.getTurretChance() > 0 && Math.random() < pF.getTurretChance()) spawnTurret();
   }
 
   function shootNova(dt) {
@@ -182,17 +178,17 @@ export function createShootingSystem({
         vx: Math.cos(ang) * TURRET_BULLET_SPEED,
         vy: Math.sin(ang) * TURRET_BULLET_SPEED,
         r: TURRET_BULLET_SIZE,
-        dmg: getTurretDamage(),
-        baseDmg: getTurretDamage(),
+        dmg: pF.getTurretDamage(),
+        baseDmg: pF.getTurretDamage(),
         pierce: 1,
         life: 2.6,
         t: 0,
-        ricochetLeft: getRicochetBounces(),
+        ricochetLeft: pF.getRicochetBounces(),
         ricochetChance: player.ricochetChance,
         lastHitId: null,
       });
     }
-    t.shotTimer = 1 / getTurretFireRate();
+    t.shotTimer = 1 / pF.getTurretFireRate();
     return !!target;
   }
 

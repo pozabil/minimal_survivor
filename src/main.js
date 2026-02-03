@@ -56,12 +56,8 @@ import { circleHit, circleRectHit, pushAway } from "./utils/collision.js";
 import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "./utils/format.js";
 import {
   AURA_TICK_INTERVAL,
-  AURA_WAVE_BASE_FORCE,
   AURA_WAVE_BOSS_MULT,
-  AURA_WAVE_COOLDOWN_BASE,
-  AURA_WAVE_COOLDOWN_STEP,
   AURA_WAVE_ELITE_MULT,
-  AURA_WAVE_FORCE_STEP,
   AURA_WAVE_HIT_COOLDOWN,
   AURA_WAVE_POS_MULT,
   AURA_WAVE_THICKNESS,
@@ -197,8 +193,8 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     function triggerAction(){
       if (state.paused || state.dead) return;
-      if (hasUnique("max_shirt")) tryActivateMaxShirt();
-      if (hasUnique("british_citizenship")) triggerDash();
+      if (pF.hasUnique("max_shirt")) tryActivateMaxShirt();
+      if (pF.hasUnique("british_citizenship")) triggerDash();
     }
     addEventListener("keydown",(e)=>{
       if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
@@ -294,7 +290,7 @@ canvas.addEventListener("pointerdown", (e)=>{
 
   // не давать стартовать джойстик при тапе по кнопке паузы (и другим UI при желании)
   if (e.target.closest("#btnPause")) return;
-  if (hasAnyActionSkill()){
+  if (pF.hasAnyActionSkill()){
     const now = performance.now();
     const dtTap = now - lastTapTime;
     const dx = e.clientX - lastTapX;
@@ -457,7 +453,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       return { x: (player.lastDirX || 1) / ld, y: (player.lastDirY || 0) / ld };
     }
     function triggerDash(dirX, dirY){
-      if (!hasUnique("british_citizenship")) return false;
+      if (!pF.hasUnique("british_citizenship")) return false;
       if (player.dashCd > 0 || state.dashT > 0) return false;
       const dir = getDashDir(dirX, dirY);
       const ux = dir.x;
@@ -475,14 +471,14 @@ canvas.addEventListener("pointercancel", (e)=>{
       return true;
     }
     function tryActivateMaxShirt(){
-      if (!hasUnique("max_shirt")) return false;
+      if (!pF.hasUnique("max_shirt")) return false;
       if (state.maxShirtCd > 0 || state.maxShirtSlowT > 0) return false;
       state.maxShirtSlowT = MAX_SHIRT_SLOW_DURATION;
       state.maxShirtCd = MAX_SHIRT_COOLDOWN;
       return true;
     }
     function tryActivatePatriarchDoll(){
-      if (!hasUnique("patriarch_doll")) return false;
+      if (!pF.hasUnique("patriarch_doll")) return false;
       if (state.patriarchDollCd > 0) return false;
       const alive = [];
       const range = Math.min(800, 380 + player.lvl * 4);
@@ -516,52 +512,17 @@ canvas.addEventListener("pointercancel", (e)=>{
       return true;
     }
 
-    const UNIQUES = createUniques({
-      player,
-      state,
-      totem,
-      spawnDog,
-    });
+    const UNIQUES = createUniques({ player, state, totem, spawnDog });
     const uniquesList = Object.keys(UNIQUES);
 
-    const {
-      getBaseMoveSpeed,
-      getChestInterval,
-      getInvulnAfterHit,
-      getInvulnDuration,
-      getLevel,
-      getMoveSpeed,
-      getOrbitalSize,
-      getRicochetBounces,
-      getTotemDpsRamp,
-      getTotemEffectGain,
-      getTotemInterval,
-      getTotemLife,
-      getTurretAggroRadius,
-      getTurretChance,
-      getTurretDamage,
-      getTurretFireRate,
-      getTurretHpMax,
-      getTurretLevel,
-      getTurretMax,
-      getTurretSize,
-      getWoundedDamageMult,
-      hasAnyActionSkill,
-      hasRemainingUnique,
-      hasTurretHeal,
-      hasUnique,
-    } = createPlayerFunctions({
-      player,
-      totem,
-      uniques: UNIQUES,
-      uniquesList,
-    });
-    // Characters
+    // PlayerFunctions
+    const pF = createPlayerFunctions({ player, totem, uniques: UNIQUES, uniquesList });
 
+    // Characters
     function maybeAddStartingDog(heroId){
       const hero = getPlayerClass(heroId);
       const chance = hero ? (hero.dogStartChance || 0) : 0;
-      if (chance > 0 && Math.random() < chance) addUniqueItem("dog");
+      if (chance > 0 && Math.random() < chance) pF.addUniqueItem("dog");
     }
 
     function openMainMenu(){
@@ -713,7 +674,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       return dmg;
     }
     function tryConsumeSpareTire(){
-      if (!hasUnique("spare_tire")) return false;
+      if (!pF.hasUnique("spare_tire")) return false;
       player.uniques.delete("spare_tire");
       const reviveHp = Math.max(1, Math.ceil(player.hpMax * 0.25));
       player.hp = reviveHp;
@@ -739,40 +700,19 @@ canvas.addEventListener("pointercancel", (e)=>{
         player.xp -= player.xpNeed;
         player.lvl += 1;
         player.xpNeed = Math.floor(player.xpNeed * 1.12 * player.xpNeedMult + 8);
-        state.chestTimer = Math.min(state.chestTimer, getChestInterval());
+        state.chestTimer = Math.min(state.chestTimer, pF.getChestInterval());
         state.pendingLevelUps += 1;
       }
       maybeOpenLevelPicker();
     }
 
     // Enemies
-    const spawnEnemy = createSpawnEnemy({
-      player,
-      state,
-      enemies,
-      spawnScale: SPAWN_SCALE,
-    });
-
-    const spawnBoss = createSpawnBoss({
-      spawn,
-      spawnEnemy,
-      elBossWrap,
-    });
-
-    const spawnColossusElite = createSpawnColossusElite({
-      player,
-      state,
-      spawnEnemy,
-    });
+    const spawnEnemy = createSpawnEnemy({ player, state, enemies, spawnScale: SPAWN_SCALE });
+    const spawnBoss = createSpawnBoss({ spawn, spawnEnemy, elBossWrap });
+    const spawnColossusElite = createSpawnColossusElite({ player, state, spawnEnemy, });
 
     // Chest
-    const spawnChest = createSpawnChest({
-      state,
-      chests,
-      totem,
-      player,
-      hasRemainingUnique,
-    });
+    const spawnChest = createSpawnChest({ state, chests, totem, player, pF });
     function pickUpChest(){
       if (!chests.length) { state.chestAlive = false; return; }
       const c = chests[0];
@@ -785,38 +725,23 @@ canvas.addEventListener("pointercancel", (e)=>{
     }
 
     // Totem
-    const spawnTotem = createSpawnTotem({
-      player,
-      totem,
-      hasUnique,
-      getTotemLife,
-    });
+    const spawnTotem = createSpawnTotem({ player, totem, pF });
 
     // Turret
-    const spawnTurret = createSpawnTurret({
-      player,
-      turrets,
-      getTurretLevel,
-      getTurretMax,
-      getTurretSize,
-      getTurretHpMax,
-    });
+    const spawnTurret = createSpawnTurret({ player, turrets, pF, });
+
     const shooting = createShootingSystem({
       player,
       bullets,
+      pF,
       findNearestEnemyFrom,
       findNearestEnemyTo,
-      getWoundedDamageMult,
-      getRicochetBounces,
-      getTurretDamage,
-      getTurretFireRate,
-      getTurretChance,
       spawnTurret,
     });
 
     function getEnemyTarget(e){
       if (e.type === "boss") return { x: player.x, y: player.y, turret: null };
-      const aggro = getTurretAggroRadius();
+      const aggro = pF.getTurretAggroRadius();
       let best = null;
       let bestD = Infinity;
       if (aggro > 0){
@@ -838,8 +763,8 @@ canvas.addEventListener("pointercancel", (e)=>{
     function updateTurrets(dt){
       for (let i=turrets.length-1; i>=0; i--){
         const t = turrets[i];
-        const size = getTurretSize();
-        const hpMax = getTurretHpMax();
+        const size = pF.getTurretSize();
+        const hpMax = pF.getTurretHpMax();
         t.size = size;
         t.r = size * 0.5;
         if (t.hpMax !== hpMax){
@@ -859,7 +784,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       if (player.orbitals <= 0) return;
       orbitalsState.orbitalAngle = (orbitalsState.orbitalAngle || 0) + player.orbitalSpeed * dt;
       const candidates = [];
-      const orbSize = getOrbitalSize();
+      const orbSize = pF.getOrbitalSize();
 
       for(let k=0;k<player.orbitals;k++){
         const a = orbitalsState.orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
@@ -876,7 +801,7 @@ canvas.addEventListener("pointercancel", (e)=>{
 
           if (circleHit(ox,oy, orbSize, e.x,e.y,e.r)){
             e[hitKey][k] = player.orbitalHitCD;
-            const dmg = player.orbitalDamage * getWoundedDamageMult();
+            const dmg = player.orbitalDamage * pF.getWoundedDamageMult();
             e.hp -= dmg;
             e.hitFlash = 0.09;
             recordDamage(dmg, e.x, e.y);
@@ -954,7 +879,7 @@ canvas.addEventListener("pointercancel", (e)=>{
         if (dog.target){
           tx = dog.target.x;
           ty = dog.target.y;
-        } else if (hasUnique("baltika9")){
+        } else if (pF.hasUnique("baltika9")){
           const dxp = dog.x - player.x;
           const dyp = dog.y - player.y;
           const avoid = DOG_BALTIKA_AVOID_R;
@@ -1001,11 +926,11 @@ canvas.addEventListener("pointercancel", (e)=>{
       if (!player.aura) return;
 
       auraState.auraWaveT = Number.isFinite(auraState.auraWaveT) ? auraState.auraWaveT : 0;
-      const waveLv = getLevel("auraWave");
+      const waveLv = pF.getLevel("auraWave");
       if (waveLv > 0){
         auraState.auraWaveT -= dt;
         if (auraState.auraWaveT <= 0){
-          auraState.auraWaveT = getAuraWaveCooldown();
+          auraState.auraWaveT = pF.getAuraWaveCooldown();
           auraState.auraWaveActive = true;
           auraState.auraWaveR = 0;
           auraState.auraWaveMaxR = player.auraRadius;
@@ -1036,7 +961,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       }
       if (auraTicks > 0){
         const candidates = [];
-        const dmgPerTick = player.auraDps * getWoundedDamageMult() * AURA_TICK_INTERVAL;
+        const dmgPerTick = player.auraDps * pF.getWoundedDamageMult() * AURA_TICK_INTERVAL;
         gridQueryCircle(source.x, source.y, radius + ENEMY_MAX_R, candidates);
         for (let i=candidates.length-1; i>=0; i--){
           const e = candidates[i];
@@ -1067,7 +992,7 @@ canvas.addEventListener("pointercancel", (e)=>{
         const waveY = auraState.auraWaveY;
         const travel = Math.abs(waveR - wavePrevR);
         const range = maxR + AURA_WAVE_THICKNESS + ENEMY_MAX_R + travel;
-        const force = getAuraWaveForce();
+        const force = pF.getAuraWaveForce();
         if (force > 0){
           gridQueryCircle(waveX, waveY, range, waveCandidates);
           for (let i=waveCandidates.length-1; i>=0; i--){
@@ -1115,7 +1040,7 @@ canvas.addEventListener("pointercancel", (e)=>{
     }
 
     function updateSameCircle(dt){
-      if (hasUnique("same_circle")){
+      if (pF.hasUnique("same_circle")){
         state.sameCircleCd -= dt;
         if (state.sameCircleCd <= 0){
           clones.push({
@@ -1153,11 +1078,11 @@ canvas.addEventListener("pointercancel", (e)=>{
     }
 
     function explodeSameCircle(c){
-      const dmg = player.damage * SAME_CIRCLE_DAMAGE_MULT * getWoundedDamageMult();
+      const dmg = player.damage * SAME_CIRCLE_DAMAGE_MULT * pF.getWoundedDamageMult();
       spawnBurst(c.x, c.y, randi(26, 38), 380, 0.75);
       spawnBurst(c.x, c.y, randi(10, 16), 220, 0.55);
       spawnShockwave(c.x, c.y, 12, SAME_CIRCLE_RADIUS * 0.9, 0.38, COLORS.blueShockwave95);
-      const force = getAuraWaveForce();
+      const force = pF.getAuraWaveForce();
       for (let i=enemies.length-1; i>=0; i--){
         const e = enemies[i];
         if (!e || e.dead || e.dying) continue;
@@ -1427,8 +1352,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         const mult = 1 - (dp / e.explodeR); // 0..1
         const dmg = e.explodeDmg * (0.55 + 0.45 * mult) * player.damageTakenMult;
         player.hp -= dmg;
-        const baseInvuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN);
-        player.invuln = getInvulnAfterHit(baseInvuln);
+        const baseInvuln = pF.getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN);
+        player.invuln = pF.getInvulnAfterHit(baseInvuln);
 
         const push = pushAway(player.x, player.y, e.x, e.y, 18 + 22 * mult);
         player.x += push.x;
@@ -1489,7 +1414,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
       e.dead = true;
       state.kills += 1;
-      if (hasUnique("max_shirt") && state.maxShirtCd > 0){
+      if (pF.hasUnique("max_shirt") && state.maxShirtCd > 0){
         state.maxShirtCd = Math.max(0, state.maxShirtCd - MAX_SHIRT_KILL_CD_REDUCE);
       }
       spawnBurst(e.x,e.y, randi(10,16), 220, 0.35);
@@ -1575,35 +1500,10 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     const UPGRADES = createUpgrades({
       player,
       state,
-      getLevel,
-      getAuraWaveCooldown,
+      pF,
     });
     const upgradeList = Object.keys(UPGRADES);
-    const atMax = (id)=>getLevel(id)>=UPGRADES[id].max;
-    function addUniqueItem(id){
-      const item = UNIQUES[id];
-      if (!item || player.uniques.has(id)) return;
-      player.uniques.add(id);
-      player.uniquesOrder.push(id);
-      if (item.apply) item.apply();
-      if (pauseMenu.style.display === "grid") updateBuildUI();
-    }
-    function getNovaMagnetRadius(){
-      const enabled = getLevel("novaMagnet") > 0;
-      if (!enabled) return 0;
-      const novaLv = getLevel("nova");
-      const dmgLv = getLevel("novaDamage");
-      return 82 + 2 * novaLv + dmgLv * 4;
-    }
-    function getAuraWaveForce(){
-      const lv = getLevel("auraWave");
-      if (lv <= 0) return 0;
-      return AURA_WAVE_BASE_FORCE + (lv - 1) * AURA_WAVE_FORCE_STEP;
-    }
-    function getAuraWaveCooldown(lv = getLevel("auraWave")){
-      if (lv <= 0) return AURA_WAVE_COOLDOWN_BASE;
-      return Math.max(0.1, AURA_WAVE_COOLDOWN_BASE - (lv - 1) * AURA_WAVE_COOLDOWN_STEP);
-    }
+    const atMax = (id)=>pF.getLevel(id)>=UPGRADES[id].max;
 
     function isEligible(id){
       if (atMax(id)) return false;
@@ -1611,7 +1511,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if ((id === "orbitalDmg" || id === "orbitalRadius" || id === "orbitalSpeedUp") && player.orbitals <= 0) return false;
       if ((id === "novaDamage" || id === "novaRate" || id === "novaSpeed" || id === "novaMagnet") && player.novaCount <= 0) return false;
       if (id === "ricochetBounces" && player.ricochetChance <= 0) return false;
-      if ((id === "turretLevel" || id === "turretHeal") && getTurretLevel() <= 0) return false;
+      if ((id === "turretLevel" || id === "turretHeal") && pF.getTurretLevel() <= 0) return false;
       return true;
     }
 
@@ -1642,12 +1542,12 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
           w *= (id==="speed"||id==="fireRate"||id==="damage"||id==="hp"||id==="magnet") ? 1.3 : 1.0;
         }
         const hpRatio = player.hpMax > 0 ? (player.hp / player.hpMax) : 1;
-        const hasSustain = getLevel("regen") > 0 || getLevel("lifesteal") > 0;
+        const hasSustain = pF.getLevel("regen") > 0 || pF.getLevel("lifesteal") > 0;
         if (hpRatio < 0.20 && !hasSustain){
           if (id === "regen" || id === "lifesteal") w *= 2.8;
         }
         if (hpRatio < 0.10 && id === "hp") w *= 2.6;
-        const lvl = getLevel(id);
+        const lvl = pF.getLevel(id);
         w *= 1 / (1 + lvl * 0.36);
         if (id === "orbital" && lvl > 0) w *= 1 / (1 - lvl * 0.05);
         if (id === "lifesteal" && lvl > 0) w *= 1 / (1 + lvl * 0.4);
@@ -1794,7 +1694,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       currentChoices.forEach((c, i)=>{
         const isUnique = c.kind === "unique";
         const entry = isUnique ? UNIQUES[c.id] : UPGRADES[c.id];
-        const lv = isUnique ? 0 : getLevel(c.id);
+        const lv = isUnique ? 0 : pF.getLevel(c.id);
         const desc = isUnique ? entry.desc : entry.desc(lv);
         const div = document.createElement("div");
         div.className = "choice";
@@ -1816,7 +1716,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if (!c) return;
       const id = c.id;
       if (c.kind === "unique"){
-        addUniqueItem(id);
+        pF.addUniqueItem(id);
+        if (pauseMenu.style.display === "grid") updateBuildUI();
         pickerOverlay.style.display = "none";
         ui.buildFromPicker = false;
         btnResume.textContent = "Resume";
@@ -1827,7 +1728,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       if (!isEligible(id)) return;
 
       UPGRADES[id].apply();
-      player.upgrades[id] = getLevel(id) + 1;
+      player.upgrades[id] = pF.getLevel(id) + 1;
 
       pickerOverlay.style.display = "none";
       ui.buildFromPicker = false;
@@ -1904,7 +1805,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     btnCopy.addEventListener("click", ()=>copyStats());
     btnRecords.addEventListener("click", ()=>showRecords());
     btnHang.addEventListener("click", ()=>{
-      if (!hasUnique("rope")) return;
+      if (!pF.hasUnique("rope")) return;
       handlePlayerDeath("(он все таки смог)");
     });
 
@@ -1927,13 +1828,13 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         case "novaSpeed":
           return `Нова: скорость ${fmtNum(player.novaSpeed)}`;
         case "novaMagnet":
-          return `Нова: радиус магнита ${fmtNum(getNovaMagnetRadius())}`;
+          return `Нова: радиус магнита ${fmtNum(pF.getNovaMagnetRadius())}`;
         case "turret":
-          return `Турели: ${fmtPct(getTurretChance())} шанс · макс ${getTurretMax()} · агро ${fmtNum(getTurretAggroRadius())}`;
+          return `Турели: ${fmtPct(pF.getTurretChance())} шанс · макс ${pF.getTurretMax()} · агро ${fmtNum(pF.getTurretAggroRadius())}`;
         case "turretLevel":
-          return `Турели: урон ${fmtNum(getTurretDamage())} · скоростр. ${fmtNum(getTurretFireRate(), 2)}/с · HP ${fmtNum(getTurretHpMax())}`;
+          return `Турели: урон ${fmtNum(pF.getTurretDamage())} · скоростр. ${fmtNum(pF.getTurretFireRate(), 2)}/с · HP ${fmtNum(pF.getTurretHpMax())}`;
         case "turretHeal":
-          return `Турели: притягивают XP (радиус ${fmtNum(getTurretAggroRadius())})`;
+          return `Турели: притягивают XP (радиус ${fmtNum(pF.getTurretAggroRadius())})`;
         case "bulletSpeed":
           return `Скорость пули: ${fmtNum(player.bulletSpeed)}`;
         case "crit":
@@ -1945,7 +1846,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         case "ricochetChance":
           return `Рикошет: шанс ${fmtPct(player.ricochetChance)}`;
         case "ricochetBounces":
-          return `Рикошет: отскоков ${getRicochetBounces()}`;
+          return `Рикошет: отскоков ${pF.getRicochetBounces()}`;
         case "armor":
           return `Броня: ${fmtPct(player.armor)}`;
         case "dodge":
@@ -1963,9 +1864,9 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         case "auraSlow":
           return `Аура: замедление ${fmtPct(player.auraSlow)}`;
         case "auraWave":
-          return `Аура: волна ${fmtNum(getAuraWaveCooldown(), 1)}с · сила ${fmtNum(getAuraWaveForce())}`;
+          return `Аура: волна ${fmtNum(pF.getAuraWaveCooldown(), 1)}с · сила ${fmtNum(pF.getAuraWaveForce())}`;
         case "speed":
-          return `Скорость: ${fmtNum(getMoveSpeed())}`;
+          return `Скорость: ${fmtNum(pF.getMoveSpeed())}`;
         case "hp":
           return `HP max: ${fmtNum(player.hpMax)}`;
         case "regen":
@@ -2105,14 +2006,14 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
 
       updateInventoryUI();
       setBuildTab(ui.buildTab || "upgrades");
-      btnHang.style.display = hasUnique("rope") ? "inline-flex" : "none";
+      btnHang.style.display = pF.hasUnique("rope") ? "inline-flex" : "none";
 
       const wparts = [];
       wparts.push("Bullets");
       if (player.orbitals>0) wparts.push(`Orbit x${player.orbitals}`);
       if (player.aura) wparts.push("Aura");
       if (player.novaCount>0) wparts.push(`Nova x${player.novaCount * 3}`);
-      if (getTurretLevel()>0) wparts.push(`Turret L${getTurretLevel()}`);
+      if (pF.getTurretLevel()>0) wparts.push(`Turret L${pF.getTurretLevel()}`);
 
       buildStatsEl.innerHTML = `
         <div class="item"><div class="k">Hero</div><div class="v">${player.heroName}</div></div>
@@ -2122,7 +2023,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         <div class="item"><div class="k">Kills</div><div class="v">${state.kills}</div></div>
         <div class="item"><div class="k">DPS (2s)</div><div class="v">${getDps()}</div></div>
         <div class="item"><div class="k">HP</div><div class="v">${Math.ceil(player.hp)} / ${player.hpMax}</div></div>
-        <div class="item"><div class="k">Speed</div><div class="v">${Math.round(getMoveSpeed())}</div></div>
+        <div class="item"><div class="k">Speed</div><div class="v">${Math.round(pF.getMoveSpeed())}</div></div>
         <div class="item"><div class="k">Rerolls</div><div class="v">${player.rerolls}</div></div>
         <div class="item"><div class="k">Weapons</div><div class="v">${wparts.join(" + ")}</div></div>
       `;
@@ -2280,11 +2181,10 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         spawnChest,
         spawnTotem,
         spawnEnemy,
-        getChestInterval,
-        getTotemInterval,
+        pF,
       });
 
-      const moveSpeed = getMoveSpeed();
+      const moveSpeed = pF.getMoveSpeed();
       updateMovement({
         dt,
         keys,
@@ -2298,7 +2198,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       });
       const spd = len2(player.vx, player.vy) || 0;
       const ratio = clamp(spd / Math.max(1, moveSpeed), 0, 1);
-      const baseSpd = getBaseMoveSpeed();
+      const baseSpd = pF.getBaseMoveSpeed();
       const speedBonus = moveSpeed / baseSpd;
       const targetScale = GAME_SCALE * (1 - CAMERA_ZOOM_OUT * speedBonus * ratio);
       cameraScale = lerp(cameraScale, targetScale, lerpFast);
@@ -2311,10 +2211,10 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       player.invuln = Math.max(0, player.invuln - dt);
 
       // unique cooldown
-      if (hasUnique("patriarch_doll") && state.patriarchDollCd > 0){
+      if (pF.hasUnique("patriarch_doll") && state.patriarchDollCd > 0){
         state.patriarchDollCd = Math.max(0, state.patriarchDollCd - dt);
       }
-      if (hasUnique("max_shirt")){
+      if (pF.hasUnique("max_shirt")){
         if (state.maxShirtSlowT > 0){
           state.maxShirtSlowT = Math.max(0, state.maxShirtSlowT - dt);
         }
@@ -2335,16 +2235,16 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         totem.inZone = inZone;
 
         if (totem.grace <= 0 && !inZone){
-          totem.effect = Math.min(TOTEM_EFFECT_MAX, totem.effect + dt * getTotemEffectGain());
-          const dps = TOTEM_DPS_BASE + getTotemDpsRamp() * totem.effect;
+          totem.effect = Math.min(TOTEM_EFFECT_MAX, totem.effect + dt * pF.getTotemEffectGain());
+          const dps = TOTEM_DPS_BASE + pF.getTotemDpsRamp() * totem.effect;
           const dmg = applyDamageToPlayer(dps * dt);
           if (dmg > 0 && player.hp <= 0){
             if (handlePlayerDeath("totem")) return;
           }
         } else if (inZone){
           totem.effect = Math.max(0, totem.effect - dt * TOTEM_EFFECT_DECAY);
-          if (hasUnique("peace_pipe") && player.hp > 0){
-            const regenLv = getLevel("regen");
+          if (pF.hasUnique("peace_pipe") && player.hp > 0){
+            const regenLv = pF.getLevel("regen");
             const bonus = 1 + Math.round(0.5 * regenLv);
             player.hp = Math.min(player.hpMax, player.hp + bonus * dt);
           }
@@ -2379,7 +2279,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       updateSameCircle(dt);
       updateDashTrail(dt, spawnDashTrail);
       updateLightning(dt);
-      if (hasUnique("patriarch_doll") && state.patriarchDollCd <= 0){
+      if (pF.hasUnique("patriarch_doll") && state.patriarchDollCd <= 0){
         const didHit = tryActivatePatriarchDoll();
         if (!didHit){
           state.patriarchDollCd = PATRIARCH_DOLL_COOLDOWN;
@@ -2424,7 +2324,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
               const spd = len2(b.vx, b.vy) || player.bulletSpeed;
               const baseAng = Math.atan2(dy, dx);
 
-              if (hasUnique("cheap_bullets")){
+              if (pF.hasUnique("cheap_bullets")){
                 spawnCheapRicochetSplits(b, e, target.id, spd, baseAng);
                 bullets.splice(i,1);
                 removedOnRicochet = true;
@@ -2480,8 +2380,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         if (circleHit(b.x,b.y,b.r, player.x,player.y, player.r)){
           if (player.invuln<=0){
             applyDamageToPlayer(b.dmg);
-            const baseInvuln = getInvulnDuration(INVULN_BULLET_BASE, INVULN_BULLET_MIN);
-            player.invuln = getInvulnAfterHit(baseInvuln);
+            const baseInvuln = pF.getInvulnDuration(INVULN_BULLET_BASE, INVULN_BULLET_MIN);
+            player.invuln = pF.getInvulnAfterHit(baseInvuln);
             if (b.explodeR){
               const push = pushAway(player.x, player.y, b.x, b.y, b.explodePush || 16);
               player.x += push.x;
@@ -2650,8 +2550,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
           if (player.invuln<=0){
             applyDamageToPlayer(e.dmg);
-            const baseInvuln = getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN);
-            player.invuln = getInvulnAfterHit(baseInvuln);
+            const baseInvuln = pF.getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN);
+            player.invuln = pF.getInvulnAfterHit(baseInvuln);
             spawnBurst(player.x,player.y, randi(12,20), 260, 0.35);
             if (player.hp<=0){
               if (handlePlayerDeath(`contact ${enemyLabel(e.type, e.bossKind)}`)) return;
@@ -2691,15 +2591,15 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         + xpNearBoss * XP_BONUS_BOSS;
 
       // XP drops update + pickup
-      const novaMagnetR = getNovaMagnetRadius();
+      const novaMagnetR = pF.getNovaMagnetRadius();
       novaBulletsThisFrame.length = 0;
       if (novaMagnetR > 0){
         for (const b of bullets){
           if (b.isNova) novaBulletsThisFrame.push(b);
         }
       }
-      const turretPull = hasTurretHeal() && turrets.length > 0;
-      const turretAggro = turretPull ? getTurretAggroRadius() : 0;
+      const turretPull = pF.hasTurretHeal() && turrets.length > 0;
+      const turretAggro = turretPull ? pF.getTurretAggroRadius() : 0;
       for (let i = drops.length - 1; i >= 0; i--) {
         const g = drops[i];
         g.t += dt;
@@ -2772,14 +2672,9 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         player,
         state,
         entities,
-        getDps,
-        getTurretLevel,
         spawn,
-        getTotemLife,
-        getTotemInterval,
-        getChestInterval,
-        hasUnique,
-        hasAnyActionSkill,
+        pF,
+        getDps,
         isTouch,
         uniques: UNIQUES,
       });
@@ -3293,7 +3188,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
 
       // orbitals
       if (player.orbitals>0){
-        const orbSize = getOrbitalSize();
+        const orbSize = pF.getOrbitalSize();
         for(let k=0;k<player.orbitals;k++){
           const a = state.orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
           const ox = player.x + Math.cos(a)*player.orbitalRadius;
@@ -3304,7 +3199,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         batchCircleDraw(ctx, batch.orbitals, COLORS.bluePlayer95);
       }
       if (player.orbitals>0 && clones.length){
-        const orbSize = getOrbitalSize();
+        const orbSize = pF.getOrbitalSize();
         for (const sc of clones){
           const base = sc.orbitalAngle || 0;
           for(let k=0;k<player.orbitals;k++){

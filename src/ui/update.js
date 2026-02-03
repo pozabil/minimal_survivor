@@ -22,14 +22,9 @@ export function createUpdateUi({ hudElements, overlayElements }) {
     player,
     state,
     entities,
-    getDps,
-    getTurretLevel,
     spawn,
-    getTotemLife,
-    getTotemInterval,
-    getChestInterval,
-    hasUnique,
-    hasAnyActionSkill,
+    pF,
+    getDps,
     isTouch,
     uniques,
   }) {
@@ -37,33 +32,15 @@ export function createUpdateUi({ hudElements, overlayElements }) {
     if (hudUpdateAcc < HUD_UPDATE_TIME) return;
     hudUpdateAcc = 0;
 
-    const { enemies, bullets, enemyBullets, chests, totem } = entities;
-    updateBossUI(enemies);
+    const { enemies, chests, totem } = entities;
 
-    updateInfo({ player, state, getDps, getTurretLevel });
+    updateBossUI(enemies);
+    updateInfo({ player, state, pF, getDps });
     updateTotemTimer(totem);
     updateTotemWarning(totem);
-
     updatePlayerBars({ player, state });
-
-    updateTimers({
-      totem,
-      state,
-      spawn,
-      chests,
-      getTotemLife,
-      getTotemInterval,
-      getChestInterval,
-    });
-
-    updateActiveItems({
-      player,
-      state,
-      hasUnique,
-      hasAnyActionSkill,
-      isTouch,
-      uniques,
-    });
+    updateTimers({ totem, state, spawn, chests, pF });
+    updateActiveItems({ player, state, pF, isTouch, uniques });
   }
 
   return {

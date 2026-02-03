@@ -5,15 +5,8 @@ export function createActiveItemsUI({ hudElements, overlayElements }) {
   const { elActionHint, elActiveItems, elActiveItemsList } = hudElements;
   const { actionBar, actionBarFill } = overlayElements;
 
-  function updateActiveItems({
-    player,
-    state,
-    hasUnique,
-    hasAnyActionSkill,
-    isTouch,
-    uniques,
-  }) {
-    if (hasUnique("max_shirt")){
+  function updateActiveItems({ player, state, pF, isTouch, uniques }) {
+    if (pF.hasUnique("max_shirt")){
       actionBar.style.display = "block";
       const pct = clamp(1 - (state.maxShirtCd / MAX_SHIRT_COOLDOWN), 0, 1);
       actionBarFill.style.height = `${pct*100}%`;
@@ -21,7 +14,7 @@ export function createActiveItemsUI({ hudElements, overlayElements }) {
       actionBar.style.display = "none";
     }
 
-    const hasActionSkill = hasAnyActionSkill();
+    const hasActionSkill = pF.hasAnyActionSkill();
     if (hasActionSkill){
       elActionHint.style.display = "";
       elActionHint.textContent = isTouch ? "Кнопка действия: двойной тап" : "Кнопка действия: Space";
