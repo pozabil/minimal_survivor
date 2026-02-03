@@ -20,6 +20,15 @@ import {
   PATRIARCH_DOLL_DAMAGE_MULT,
   PATRIARCH_DOLL_TARGETS_MIN,
   PATRIARCH_DOLL_TARGETS_MAX,
+  XP_BONUS_NORMAL,
+  XP_BONUS_ELITE,
+  XP_BONUS_BOSS,
+  INVULN_BULLET_BASE,
+  INVULN_BULLET_MIN,
+  INVULN_CONTACT_BASE,
+  INVULN_CONTACT_MIN,
+} from "./content/config.js";
+import {
   DOG_RADIUS,
   DOG_SPEED,
   DOG_TURN_RATE,
@@ -29,14 +38,7 @@ import {
   DOG_BROWN_COLORS,
   DOG_GRAY_COLOR,
   DOG_GRAY_CHANCE,
-  XP_BONUS_NORMAL,
-  XP_BONUS_ELITE,
-  XP_BONUS_BOSS,
-  INVULN_BULLET_BASE,
-  INVULN_BULLET_MIN,
-  INVULN_CONTACT_BASE,
-  INVULN_CONTACT_MIN,
-} from "./content/config.js";
+} from "./content/dog.js";
 import {
   TOTEM_EFFECT_DECAY,
   TOTEM_DPS_BASE,
@@ -412,12 +414,11 @@ canvas.addEventListener("pointercancel", (e)=>{
     });
     const { gridBuild, gridQueryCircle, getGridCells } = createSpatialGrid(enemies);
     const {
-      findNearestEnemy,
       findNearestEnemyFrom,
       findNearestEnemyTo,
       findRicochetTarget,
       findRicochetTargetWithinAngle,
-    } = createTargeting({ enemies, gridQueryCircle, player });
+    } = createTargeting({ enemies, gridQueryCircle });
 
     // Storage + options
     const { options, applyOptionsToUI } = bindOptionsUI({
@@ -845,13 +846,13 @@ canvas.addEventListener("pointercancel", (e)=>{
     }
 
     // Shooting (bullet life doubled)
-    function shoot(dt){
-      player.shotTimer -= dt;
-      if (player.shotTimer > 0) return;
-      const target = findNearestEnemy();
-      if (!target) return;
+    function tryFireShotsFrom(source, dt, targetFn){
+      source.shotTimer -= dt;
+      if (source.shotTimer > 0) return false;
+      const target = targetFn(source.x, source.y);
+      if (!target) return false;
 
-      const baseAngle = Math.atan2(target.y-player.y, target.x-player.x);
+      const baseAngle = Math.atan2(target.y - source.y, target.x - source.x);
       const shots = player.multishot;
       // For 2-shot, force 0.16 rad between bullets (spread is half of that).
       const spread = (shots === 2) ? 0.08 : player.spread;
@@ -860,7 +861,7 @@ canvas.addEventListener("pointercancel", (e)=>{
         const t = (shots===1) ? 0 : (i/(shots-1))*2 - 1;
         const a = baseAngle + t*spread + randf(-0.01,0.01);
         bullets.push({
-          x: player.x, y: player.y,
+          x: source.x, y: source.y,
           vx: Math.cos(a)*player.bulletSpeed,
           vy: Math.sin(a)*player.bulletSpeed,
           r: player.bulletSize,
@@ -874,95 +875,54 @@ canvas.addEventListener("pointercancel", (e)=>{
           lastHitId: null,
         });
       }
-      if (getTurretChance() > 0 && Math.random() < getTurretChance()) spawnTurret();
-      player.shotTimer = 1 / player.fireRate;
+      source.shotTimer = 1 / player.fireRate;
+      return true;
+    }
+
+    function tryFireNovaFrom(source, dt){
+      if (player.novaCount <= 0) return false;
+      source.novaTimer -= dt;
+      if (source.novaTimer > 0) return false;
+
+      const shots = Math.max(1, player.novaCount * 3);
+      const offset = randf(0, TAU);
+      for(let i=0;i<shots;i++){
+        const a = offset + i*(TAU/shots);
+        bullets.push({
+          x: source.x, y: source.y,
+          vx: Math.cos(a)*player.novaSpeed,
+          vy: Math.sin(a)*player.novaSpeed,
+          r: Math.max(4, player.bulletSize * 1.15),
+          dmg: player.novaDamage * getWoundedDamageMult(),
+          baseDmg: player.novaDamage * getWoundedDamageMult(),
+          pierce: 1,
+          life: 3.0,
+          t: 0,
+          isNova: true,
+          ricochetLeft: getRicochetBounces(),
+          ricochetChance: player.ricochetChance,
+          lastHitId: null,
+        });
+      }
+      source.novaTimer = 1 / player.novaRate;
+      return true;
+    }
+
+    function shoot(dt){
+      const didShoot = tryFireShotsFrom(player, dt, (x, y)=>findNearestEnemyFrom(x, y));
+      if (didShoot && getTurretChance() > 0 && Math.random() < getTurretChance()) spawnTurret();
     }
 
     function shootNova(dt){
-      if (player.novaCount <= 0) return;
-      player.novaTimer -= dt;
-      if (player.novaTimer > 0) return;
-
-      const shots = Math.max(1, player.novaCount * 3);
-      const offset = randf(0, TAU);
-      for(let i=0;i<shots;i++){
-        const a = offset + i*(TAU/shots);
-        bullets.push({
-          x: player.x, y: player.y,
-          vx: Math.cos(a)*player.novaSpeed,
-          vy: Math.sin(a)*player.novaSpeed,
-          r: Math.max(4, player.bulletSize * 1.15),
-          dmg: player.novaDamage * getWoundedDamageMult(),
-          baseDmg: player.novaDamage * getWoundedDamageMult(),
-          pierce: 1,
-          life: 3.0,
-          t: 0,
-          isNova: true,
-          ricochetLeft: getRicochetBounces(),
-          ricochetChance: player.ricochetChance,
-          lastHitId: null,
-        });
-      }
-      player.novaTimer = 1 / player.novaRate;
+      tryFireNovaFrom(player, dt);
     }
 
     function cloneShoot(c, dt){
-      c.shotTimer -= dt;
-      if (c.shotTimer > 0) return;
-      const target = findNearestEnemyFrom(c.x, c.y);
-      if (!target) return;
-
-      const baseAngle = Math.atan2(target.y - c.y, target.x - c.x);
-      const shots = player.multishot;
-      const spread = (shots === 2) ? 0.08 : player.spread;
-
-      for(let i=0;i<shots;i++){
-        const t = (shots===1) ? 0 : (i/(shots-1))*2 - 1;
-        const a = baseAngle + t*spread + randf(-0.01,0.01);
-        bullets.push({
-          x: c.x, y: c.y,
-          vx: Math.cos(a)*player.bulletSpeed,
-          vy: Math.sin(a)*player.bulletSpeed,
-          r: player.bulletSize,
-          dmg: player.damage * getWoundedDamageMult(),
-          baseDmg: player.damage * getWoundedDamageMult(),
-          pierce: player.pierce,
-          life: 3.2,
-          t: 0,
-          ricochetLeft: getRicochetBounces(),
-          ricochetChance: player.ricochetChance,
-          lastHitId: null,
-        });
-      }
-      c.shotTimer = 1 / player.fireRate;
+      tryFireShotsFrom(c, dt, (x, y)=>findNearestEnemyFrom(x, y));
     }
 
     function cloneShootNova(c, dt){
-      if (player.novaCount <= 0) return;
-      c.novaTimer -= dt;
-      if (c.novaTimer > 0) return;
-
-      const shots = Math.max(1, player.novaCount * 3);
-      const offset = randf(0, TAU);
-      for(let i=0;i<shots;i++){
-        const a = offset + i*(TAU/shots);
-        bullets.push({
-          x: c.x, y: c.y,
-          vx: Math.cos(a)*player.novaSpeed,
-          vy: Math.sin(a)*player.novaSpeed,
-          r: Math.max(4, player.bulletSize * 1.15),
-          dmg: player.novaDamage * getWoundedDamageMult(),
-          baseDmg: player.novaDamage * getWoundedDamageMult(),
-          pierce: 1,
-          life: 3.0,
-          t: 0,
-          isNova: true,
-          ricochetLeft: getRicochetBounces(),
-          ricochetChance: player.ricochetChance,
-          lastHitId: null,
-        });
-      }
-      c.novaTimer = 1 / player.novaRate;
+      tryFireNovaFrom(c, dt);
     }
 
     function spawnTurret(){
@@ -985,6 +945,31 @@ canvas.addEventListener("pointercancel", (e)=>{
       });
     }
 
+    function tryFireTurret(t, dt){
+      t.shotTimer -= dt;
+      if (t.shotTimer > 0) return false;
+      const target = findNearestEnemyTo(t.x, t.y, TURRET_RANGE);
+      if (target){
+        const ang = Math.atan2(target.y - t.y, target.x - t.x);
+        bullets.push({
+          x: t.x, y: t.y,
+          vx: Math.cos(ang) * TURRET_BULLET_SPEED,
+          vy: Math.sin(ang) * TURRET_BULLET_SPEED,
+          r: TURRET_BULLET_SIZE,
+          dmg: getTurretDamage(),
+          baseDmg: getTurretDamage(),
+          pierce: 1,
+          life: 2.6,
+          t: 0,
+          ricochetLeft: getRicochetBounces(),
+          ricochetChance: player.ricochetChance,
+          lastHitId: null,
+        });
+      }
+      t.shotTimer = 1 / getTurretFireRate();
+      return !!target;
+    }
+
     function updateTurrets(dt){
       for (let i=turrets.length-1; i>=0; i--){
         const t = turrets[i];
@@ -1000,54 +985,32 @@ canvas.addEventListener("pointercancel", (e)=>{
         t.hitCd = Math.max(0, t.hitCd - dt);
         if (t.hp <= 0){ turrets.splice(i,1); continue; }
 
-        t.shotTimer -= dt;
-        if (t.shotTimer <= 0){
-          const target = findNearestEnemyTo(t.x, t.y, TURRET_RANGE);
-          if (target){
-            const ang = Math.atan2(target.y - t.y, target.x - t.x);
-            bullets.push({
-              x: t.x, y: t.y,
-              vx: Math.cos(ang) * TURRET_BULLET_SPEED,
-              vy: Math.sin(ang) * TURRET_BULLET_SPEED,
-              r: TURRET_BULLET_SIZE,
-              dmg: getTurretDamage(),
-              baseDmg: getTurretDamage(),
-              pierce: 1,
-              life: 2.6,
-              t: 0,
-              ricochetLeft: getRicochetBounces(),
-              ricochetChance: player.ricochetChance,
-              lastHitId: null,
-            });
-          }
-          t.shotTimer = 1 / getTurretFireRate();
-        }
+        tryFireTurret(t, dt);
       }
     }
 
     // Orbitals/Aura
-    let orbitalAngle = 0;
-    function updateOrbitals(dt){
+    function updateOrbitalsFor(source, orbitalsState, dt, hitKey){
       if (player.orbitals <= 0) return;
-      orbitalAngle += player.orbitalSpeed * dt;
+      orbitalsState.orbitalAngle = (orbitalsState.orbitalAngle || 0) + player.orbitalSpeed * dt;
       const candidates = [];
       const orbSize = getOrbitalSize();
 
       for(let k=0;k<player.orbitals;k++){
-        const a = orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
-        const ox = player.x + Math.cos(a)*player.orbitalRadius;
-        const oy = player.y + Math.sin(a)*player.orbitalRadius;
+        const a = orbitalsState.orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
+        const ox = source.x + Math.cos(a)*player.orbitalRadius;
+        const oy = source.y + Math.sin(a)*player.orbitalRadius;
 
         gridQueryCircle(ox, oy, orbSize + ENEMY_MAX_R, candidates);
         for (let i=candidates.length-1; i>=0; i--){
           const e = candidates[i];
           if (e.dead || e.dying) continue;
-          if (!e._oh) e._oh = new Float32Array(24);
-          e._oh[k] = Math.max(0, (e._oh[k]||0) - dt);
-          if (e._oh[k] > 0) continue;
+          if (!e[hitKey]) e[hitKey] = new Float32Array(24);
+          e[hitKey][k] = Math.max(0, (e[hitKey][k]||0) - dt);
+          if (e[hitKey][k] > 0) continue;
 
           if (circleHit(ox,oy, orbSize, e.x,e.y,e.r)){
-            e._oh[k] = player.orbitalHitCD;
+            e[hitKey][k] = player.orbitalHitCD;
             const dmg = player.orbitalDamage * getWoundedDamageMult();
             e.hp -= dmg;
             e.hitFlash = 0.09;
@@ -1064,6 +1027,10 @@ canvas.addEventListener("pointercancel", (e)=>{
           }
         }
       }
+    }
+
+    function updateOrbitals(dt){
+      updateOrbitalsFor(player, state, dt, "_oh");
     }
 
     function pickDogColor(){
@@ -1153,7 +1120,7 @@ canvas.addEventListener("pointercancel", (e)=>{
 
         if (dog.target && dog.hitCd <= 0 && circleHit(dog.x, dog.y, dog.r, dog.target.x, dog.target.y, dog.target.r)){
           const isCrit = Math.random() < DOG_CRIT_CHANCE;
-          let dmg = player.damage * 2 * (isCrit ? player.critMult : 1);
+          let dmg = player.damage * 2 * (isCrit ? player.critMult * 1.2 : 1);
           if (dog.target.type === "shield") dmg *= 0.65;
           dog.target.hp -= dmg;
           dog.target.hitFlash = Math.max(dog.target.hitFlash, 0.09);
@@ -1165,50 +1132,52 @@ canvas.addEventListener("pointercancel", (e)=>{
         }
       }
     }
-    function applyAura(dt){
+    function applyAuraFor(source, auraState, dt){
       if (!player.aura) return;
 
+      auraState.auraWaveT = Number.isFinite(auraState.auraWaveT) ? auraState.auraWaveT : 0;
       const waveLv = getLevel("auraWave");
       if (waveLv > 0){
-        state.auraWaveT -= dt;
-        if (state.auraWaveT <= 0){
-          state.auraWaveT = getAuraWaveCooldown();
-          state.auraWaveActive = true;
-          state.auraWaveR = 0;
-          state.auraWaveMaxR = player.auraRadius;
-          state.auraWaveX = player.x;
-          state.auraWaveY = player.y;
-          state.auraWaveId += 1;
+        auraState.auraWaveT -= dt;
+        if (auraState.auraWaveT <= 0){
+          auraState.auraWaveT = getAuraWaveCooldown();
+          auraState.auraWaveActive = true;
+          auraState.auraWaveR = 0;
+          auraState.auraWaveMaxR = player.auraRadius;
+          auraState.auraWaveX = source.x;
+          auraState.auraWaveY = source.y;
+          auraState.auraWaveId = (auraState.auraWaveId || 0) + 1;
         }
       }
 
-      const wavePrevR = state.auraWaveR;
-      if (state.auraWaveActive){
-        const speed = state.auraWaveMaxR / Math.max(0.1, AURA_WAVE_TRAVEL_TIME);
-        state.auraWaveR += speed * dt;
-        if (state.auraWaveR >= state.auraWaveMaxR + AURA_WAVE_THICKNESS){
-          state.auraWaveActive = false;
+      const wavePrevR = auraState.auraWaveR || 0;
+      if (auraState.auraWaveActive){
+        const speed = auraState.auraWaveMaxR / Math.max(0.1, AURA_WAVE_TRAVEL_TIME);
+        auraState.auraWaveR += speed * dt;
+        if (auraState.auraWaveR >= auraState.auraWaveMaxR + AURA_WAVE_THICKNESS){
+          auraState.auraWaveActive = false;
         }
-        state.auraWaveX = player.x;
-        state.auraWaveY = player.y;
+        auraState.auraWaveX = source.x;
+        auraState.auraWaveY = source.y;
       }
 
       const radius = player.auraRadius;
-      state.auraTickT -= dt;
+      auraState.auraTickT = Number.isFinite(auraState.auraTickT) ? auraState.auraTickT : 0;
+      auraState.auraTickT -= dt;
       let auraTicks = 0;
-      if (state.auraTickT <= 0){
-        auraTicks = Math.floor(-state.auraTickT / AURA_TICK_INTERVAL) + 1;
-        state.auraTickT += auraTicks * AURA_TICK_INTERVAL;
+      if (auraState.auraTickT <= 0){
+        auraTicks = Math.floor(-auraState.auraTickT / AURA_TICK_INTERVAL) + 1;
+        auraState.auraTickT += auraTicks * AURA_TICK_INTERVAL;
       }
       if (auraTicks > 0){
         const candidates = [];
         const dmgPerTick = player.auraDps * getWoundedDamageMult() * AURA_TICK_INTERVAL;
-        gridQueryCircle(player.x, player.y, radius + ENEMY_MAX_R, candidates);
+        gridQueryCircle(source.x, source.y, radius + ENEMY_MAX_R, candidates);
         for (let i=candidates.length-1; i>=0; i--){
           const e = candidates[i];
           if (e.dead || e.dying) continue;
-          const dx = e.x - player.x;
-          const dy = e.y - player.y;
+          const dx = e.x - source.x;
+          const dy = e.y - source.y;
           const maxR = radius + e.r;
           if (len2Sq(dx, dy) > maxR * maxR) continue;
 
@@ -1224,13 +1193,13 @@ canvas.addEventListener("pointercancel", (e)=>{
         }
       }
 
-      if (state.auraWaveActive){
+      if (auraState.auraWaveActive){
         const waveCandidates = [];
-        const waveR = state.auraWaveR;
+        const waveR = auraState.auraWaveR;
         const minR = Math.min(wavePrevR, waveR);
         const maxR = Math.max(wavePrevR, waveR);
-        const waveX = state.auraWaveX;
-        const waveY = state.auraWaveY;
+        const waveX = auraState.auraWaveX;
+        const waveY = auraState.auraWaveY;
         const travel = Math.abs(waveR - wavePrevR);
         const range = maxR + AURA_WAVE_THICKNESS + ENEMY_MAX_R + travel;
         const force = getAuraWaveForce();
@@ -1244,7 +1213,7 @@ canvas.addEventListener("pointercancel", (e)=>{
             const dx = e.x - waveX;
             const dy = e.y - waveY;
             const dist = len2(dx, dy);
-            if (dist > state.auraWaveMaxR) continue;
+            if (dist > auraState.auraWaveMaxR) continue;
             const band = AURA_WAVE_THICKNESS + e.r + travel;
             const inner = Math.max(0, minR - band);
             const outer = maxR + band;
@@ -1269,146 +1238,15 @@ canvas.addEventListener("pointercancel", (e)=>{
     }
 
     function updateCloneOrbitals(c, dt){
-      if (player.orbitals <= 0) return;
-      c.orbitalAngle = (c.orbitalAngle || 0) + player.orbitalSpeed * dt;
-      const candidates = [];
-      const orbSize = getOrbitalSize();
+      updateOrbitalsFor(c, c, dt, "_ohClone");
+    }
 
-      for(let k=0;k<player.orbitals;k++){
-        const a = c.orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
-        const ox = c.x + Math.cos(a)*player.orbitalRadius;
-        const oy = c.y + Math.sin(a)*player.orbitalRadius;
-
-        gridQueryCircle(ox, oy, orbSize + ENEMY_MAX_R, candidates);
-        for (let i=candidates.length-1; i>=0; i--){
-          const e = candidates[i];
-          if (e.dead || e.dying) continue;
-          if (!e._ohClone) e._ohClone = new Float32Array(24);
-          e._ohClone[k] = Math.max(0, (e._ohClone[k]||0) - dt);
-          if (e._ohClone[k] > 0) continue;
-
-          if (circleHit(ox,oy, orbSize, e.x,e.y,e.r)){
-            e._ohClone[k] = player.orbitalHitCD;
-            const dmg = player.orbitalDamage * getWoundedDamageMult();
-            e.hp -= dmg;
-            e.hitFlash = 0.09;
-            recordDamage(dmg, e.x, e.y);
-
-            if (Math.random() < ORBITAL_KNOCKBACK_CHANCE){
-              const dx = e.x-ox, dy = e.y-oy;
-              const d = len2(dx,dy) || 1;
-              e.vx += (dx/d) * ORBITAL_KNOCKBACK_FORCE;
-              e.vy += (dy/d) * ORBITAL_KNOCKBACK_FORCE;
-            }
-
-            if (e.hp <= 0) killEnemy(e);
-          }
-        }
-      }
+    function applyAura(dt){
+      applyAuraFor(player, state, dt);
     }
 
     function applyCloneAura(c, dt){
-      if (!player.aura) return;
-
-      const waveLv = getLevel("auraWave");
-      if (waveLv > 0){
-        c.auraWaveT -= dt;
-        if (c.auraWaveT <= 0){
-          c.auraWaveT = getAuraWaveCooldown();
-          c.auraWaveActive = true;
-          c.auraWaveR = 0;
-          c.auraWaveMaxR = player.auraRadius;
-          c.auraWaveX = c.x;
-          c.auraWaveY = c.y;
-          c.auraWaveId = (c.auraWaveId || 0) + 1;
-        }
-      }
-
-      const wavePrevR = c.auraWaveR || 0;
-      if (c.auraWaveActive){
-        const speed = c.auraWaveMaxR / Math.max(0.1, AURA_WAVE_TRAVEL_TIME);
-        c.auraWaveR += speed * dt;
-        if (c.auraWaveR >= c.auraWaveMaxR + AURA_WAVE_THICKNESS){
-          c.auraWaveActive = false;
-        }
-        c.auraWaveX = c.x;
-        c.auraWaveY = c.y;
-      }
-
-      const radius = player.auraRadius;
-      c.auraTickT = Number.isFinite(c.auraTickT) ? c.auraTickT : 0;
-      c.auraTickT -= dt;
-      let auraTicks = 0;
-      if (c.auraTickT <= 0){
-        auraTicks = Math.floor(-c.auraTickT / AURA_TICK_INTERVAL) + 1;
-        c.auraTickT += auraTicks * AURA_TICK_INTERVAL;
-      }
-      if (auraTicks > 0){
-        const candidates = [];
-        const dmgPerTick = player.auraDps * getWoundedDamageMult() * AURA_TICK_INTERVAL;
-        gridQueryCircle(c.x, c.y, radius + ENEMY_MAX_R, candidates);
-        for (let i=candidates.length-1; i>=0; i--){
-          const e = candidates[i];
-          if (e.dead || e.dying) continue;
-          const dx = e.x - c.x;
-          const dy = e.y - c.y;
-          const maxR = radius + e.r;
-          if (len2Sq(dx, dy) > maxR * maxR) continue;
-
-          for (let t=0; t<auraTicks; t++){
-            if (e.dead || e.dying) break;
-            const dmg = dmgPerTick;
-            e.hp -= dmg;
-            e.auraFlash = Math.max(e.auraFlash || 0, 0.05);
-            recordDamage(dmg, e.x, e.y);
-            if (player.auraSlow > 0){ e._slowT = Math.max(e._slowT||0, 0.25); e._slowMult = 1 - clamp(player.auraSlow, 0, 0.55); }
-            if (e.hp <= 0){ killEnemy(e); break; }
-          }
-        }
-      }
-
-      if (c.auraWaveActive){
-        const waveCandidates = [];
-        const waveR = c.auraWaveR;
-        const minR = Math.min(wavePrevR, waveR);
-        const maxR = Math.max(wavePrevR, waveR);
-        const waveX = c.auraWaveX;
-        const waveY = c.auraWaveY;
-        const travel = Math.abs(waveR - wavePrevR);
-        const range = maxR + AURA_WAVE_THICKNESS + ENEMY_MAX_R + travel;
-        const force = getAuraWaveForce();
-        if (force > 0){
-          gridQueryCircle(waveX, waveY, range, waveCandidates);
-          for (let i=waveCandidates.length-1; i>=0; i--){
-            const e = waveCandidates[i];
-            if (e.dead || e.dying) continue;
-            const lastHit = Number.isFinite(e._auraWaveHitT) ? e._auraWaveHitT : -Infinity;
-            if (state.t - lastHit < AURA_WAVE_HIT_COOLDOWN) continue;
-            const dx = e.x - waveX;
-            const dy = e.y - waveY;
-            const dist = len2(dx, dy);
-            if (dist > c.auraWaveMaxR) continue;
-            const band = AURA_WAVE_THICKNESS + e.r + travel;
-            const inner = Math.max(0, minR - band);
-            const outer = maxR + band;
-            if (dist < inner || dist > outer) continue;
-
-            let mult = 1;
-            if (e.type === "boss") mult = AURA_WAVE_BOSS_MULT;
-            else if (e.elite) mult = AURA_WAVE_ELITE_MULT;
-
-            const centerR = (minR + maxR) * 0.5;
-            const waveBand = clamp(1 - Math.abs(dist - centerR) / Math.max(1, band), 0, 1);
-            const smooth = Math.max(0.5, waveBand * waveBand * (3 - 2 * waveBand));
-            const push = pushAway(e.x, e.y, waveX, waveY, force * mult * smooth);
-            e.x += push.x * AURA_WAVE_POS_MULT;
-            e.y += push.y * AURA_WAVE_POS_MULT;
-            e.vx += push.x * AURA_WAVE_VEL_MULT;
-            e.vy += push.y * AURA_WAVE_VEL_MULT;
-            e._auraWaveHitT = state.t;
-          }
-        }
-      }
+      applyAuraFor(c, c, dt);
     }
 
     function updateSameCircle(dt){
@@ -3598,7 +3436,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       if (player.orbitals>0){
         const orbSize = getOrbitalSize();
         for(let k=0;k<player.orbitals;k++){
-          const a = orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
+          const a = state.orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
           const ox = player.x + Math.cos(a)*player.orbitalRadius;
           const oy = player.y + Math.sin(a)*player.orbitalRadius;
           const sx=ox-camX, sy=oy-camY;

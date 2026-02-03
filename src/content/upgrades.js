@@ -1,8 +1,6 @@
 import { clamp } from "../utils/math.js";
 import { fmtNum } from "../utils/format.js";
 
-export const TURRET_SPAWN_RADIUS = 280;
-export const TURRET_MIN_DIST = 120;
 export const ORBITAL_BASE_DISTANCE = 48;
 export const ORBITAL_BASE_SIZE = 7.5;
 export const ORBITAL_SIZE_EXP = 0.85;
@@ -21,6 +19,8 @@ export const AURA_WAVE_TRAVEL_TIME = 0.42;
 export const AURA_WAVE_THICKNESS = 18;
 export const AURA_TICKS_PER_SEC = 5;
 export const AURA_TICK_INTERVAL = 1 / AURA_TICKS_PER_SEC;
+export const TURRET_SPAWN_RADIUS = 280;
+export const TURRET_MIN_DIST = 120;
 export const TURRET_AGGRO_BASE = 220;
 export const TURRET_RANGE = 520;
 export const TURRET_FIRE_RATE = 1.8;
