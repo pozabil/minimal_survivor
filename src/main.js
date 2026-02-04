@@ -406,22 +406,13 @@ canvas.addEventListener("pointercancel", (e)=>{
       dashTrail,
     });
     const { gridBuild, gridQueryCircle, getGridCells } = createSpatialGrid(enemies);
-    const {
-      findNearestEnemyFrom,
-      findNearestEnemyTo,
-      findRicochetTarget,
-      findRicochetTargetWithinAngle,
-    } = createTargeting({ enemies, gridQueryCircle });
+    const targeting = createTargeting({ enemies, gridQueryCircle });
     const {
       canRicochet,
       tryFindRicochetTarget,
       applyRicochetRedirect,
       spawnCheapRicochetSplits,
-    } = createRicochetHelpers({
-      bullets,
-      findRicochetTarget,
-      findRicochetTargetWithinAngle,
-    });
+    } = createRicochetHelpers({ bullets, targeting });
 
     // Storage + options
     const { options, applyOptionsToUI } = bindOptionsUI({
@@ -730,14 +721,7 @@ canvas.addEventListener("pointercancel", (e)=>{
     // Turret
     const spawnTurret = createSpawnTurret({ player, turrets, pF, });
 
-    const shooting = createShootingSystem({
-      player,
-      bullets,
-      pF,
-      findNearestEnemyFrom,
-      findNearestEnemyTo,
-      spawnTurret,
-    });
+    const shooting = createShootingSystem({ player, bullets, pF, targeting, spawnTurret });
 
     function getEnemyTarget(e){
       if (e.type === "boss") return { x: player.x, y: player.y, turret: null };

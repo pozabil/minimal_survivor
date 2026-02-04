@@ -7,17 +7,13 @@ import {
 import { len2 } from "../utils/math.js";
 import { randf } from "../utils/rand.js";
 
-export function createRicochetHelpers({
-  bullets,
-  findRicochetTarget,
-  findRicochetTargetWithinAngle,
-}) {
+export function createRicochetHelpers({ bullets, targeting }) {
   function canRicochet(b) {
     return (b.ricochetLeft || 0) > 0 && (b.ricochetChance || 0) > 0;
   }
 
   function tryFindRicochetTarget(hitEnemy, b) {
-    return findRicochetTarget(hitEnemy.x, hitEnemy.y, hitEnemy.id, b.lastHitId);
+    return targeting.findRicochetTarget(hitEnemy.x, hitEnemy.y, hitEnemy.id, b.lastHitId);
   }
 
   function applyRicochetRedirect(b, hitEnemy, target, spd) {
@@ -40,7 +36,7 @@ export function createRicochetHelpers({
     const newDmg = b.dmg * dmgShrink;
     const newBaseDmg = (b.baseDmg || b.dmg) * dmgShrink;
     const maxSpread = Math.PI / 3; // <= 60°
-    const target2 = findRicochetTargetWithinAngle(
+    const target2 = targeting.findRicochetTargetWithinAngle(
       hitEnemy.x, hitEnemy.y,
       targetId, hitEnemy.id, b.lastHitId,
       baseAng, maxSpread
@@ -80,14 +76,7 @@ export function createRicochetHelpers({
   };
 }
 
-export function createShootingSystem({
-  player,
-  bullets,
-  pF,
-  findNearestEnemyFrom,
-  findNearestEnemyTo,
-  spawnTurret,
-}) {
+export function createShootingSystem({ player, bullets, pF, targeting, spawnTurret }) {
   function tryFireShotsFrom(source, dt, targetFn) {
     source.shotTimer -= dt;
     if (source.shotTimer > 0) return false;
@@ -151,7 +140,7 @@ export function createShootingSystem({
   }
 
   function shoot(dt) {
-    const didShoot = tryFireShotsFrom(player, dt, (x, y) => findNearestEnemyFrom(x, y));
+    const didShoot = tryFireShotsFrom(player, dt, (x, y) => targeting.findNearestEnemyFrom(x, y));
     if (didShoot && pF.getTurretChance() > 0 && Math.random() < pF.getTurretChance()) spawnTurret();
   }
 
@@ -160,7 +149,7 @@ export function createShootingSystem({
   }
 
   function cloneShoot(c, dt) {
-    return tryFireShotsFrom(c, dt, (x, y) => findNearestEnemyFrom(x, y));
+    return tryFireShotsFrom(c, dt, (x, y) => targeting.findNearestEnemyFrom(x, y));
   }
 
   function cloneShootNova(c, dt) {
@@ -170,7 +159,7 @@ export function createShootingSystem({
   function tryFireTurret(t, dt) {
     t.shotTimer -= dt;
     if (t.shotTimer > 0) return false;
-    const target = findNearestEnemyTo(t.x, t.y, TURRET_RANGE);
+    const target = targeting.findNearestEnemyTo(t.x, t.y, TURRET_RANGE);
     if (target) {
       const ang = Math.atan2(target.y - t.y, target.x - t.x);
       bullets.push({
