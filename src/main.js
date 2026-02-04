@@ -70,7 +70,7 @@ import {
   createUpgrades,
 } from "./content/upgrades.js";
 import { createUniques, SAME_CIRCLE_INTERVAL } from "./content/uniques.js";
-import { getPlayerClass, PLAYER_CLASSES } from "./content/players.js";
+import { getPlayerClass } from "./content/players.js";
 import { initState } from "./core/init.js";
 import { createPlayerFunctions } from "./core/player.js";
 import { startLoop } from "./core/loop.js";
@@ -100,11 +100,12 @@ import {
   createSpawnTurret,
   updateSpawning,
 } from "./systems/spawning.js";
-import { loadRecords, updateRecordsOnDeath } from "./systems/storage.js";
+import { updateRecordsOnDeath } from "./systems/storage.js";
 import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
 import { bindOptionsUI } from "./ui/options.js";
 import { createUpdateUi } from "./ui/update.js";
+import { createMenus } from "./ui/menus.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
 
@@ -132,11 +133,11 @@ import { createProfilerUI } from "./ui/profiler.js";
     const { elBossWrap } = hud.elements;
     // Overlays
     const {
-      mainMenuOverlay, btnFreePlay, btnMenuRecords, btnMenuSettings, startOverlay, charsWrap, pickerOverlay,
+      mainMenuOverlay, btnFreePlay, btnMenuRecords, btnMenuSettings, startOverlay, pickerOverlay,
       pickerTitle, pickerHint, choicesWrap, btnReroll, btnSkip, btnShowBuild, pauseMenu, buildListEl, invListEl,
       tabUpgrades, tabInventory, buildStatsEl, btnResume, btnRestart2, btnCopy, btnRecords, btnSettings, btnHang,
-      restartConfirmOverlay, btnRestartYes, btnRestartNo, gameoverOverlay, summaryEl, restartBtn, copyBtn,
-      btnRecordsOver, recordsOverlay, recordsListEl, btnRecordsClose, settingsOverlay, btnSettingsClose,
+      restartConfirmOverlay, btnRestartYes, btnRestartNo, gameoverOverlay, restartBtn, copyBtn,
+      btnRecordsOver, recordsOverlay, btnRecordsClose, settingsOverlay, btnSettingsClose,
       optShowDamageNumbers, optShowProfiler, btnPause,
     } = overlays.elements;
 
@@ -159,18 +160,6 @@ import { createProfilerUI } from "./ui/profiler.js";
       (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     if (isTouch) { joy.style.display = "none"; }
 
-    const isPauseToggleBlocked = () =>
-      (pickerOverlay.style.display === "grid") ||
-      (startOverlay.style.display === "grid") ||
-      (mainMenuOverlay.style.display === "grid") ||
-      (gameoverOverlay.style.display === "grid") ||
-      (recordsOverlay.style.display === "grid") ||
-      (settingsOverlay.style.display === "grid") ||
-      (restartConfirmOverlay.style.display === "grid");
-    const updatePauseBtnVisibility = () => {
-      btnPause.style.display = isPauseToggleBlocked() ? "none" : "block";
-    };
-
     const minDim = Math.min(innerWidth, innerHeight);
     const GAME_SCALE = (isTouch && minDim <= 640) ? 0.5 : 1;
     const SPAWN_SCALE = 1 / GAME_SCALE;
@@ -184,164 +173,6 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     // roundRect polyfill
     ensureRoundRectPolyfill();
-
-    // Input
-    const keys = new Set();
-    let lastTapTime = 0;
-    let lastTapX = 0;
-    let lastTapY = 0;
-
-    function triggerAction(){
-      if (state.paused || state.dead) return;
-      if (pF.hasUnique("max_shirt")) tryActivateMaxShirt();
-      if (pF.hasUnique("british_citizenship")) triggerDash();
-    }
-    addEventListener("keydown",(e)=>{
-      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
-
-      if (e.code==="Escape"){
-        if (restartConfirmOverlay.style.display === "grid"){
-          hideRestartConfirm();
-          return;
-        }
-        if (settingsOverlay.style.display === "grid"){
-          hideSettings();
-          return;
-        }
-        if (recordsOverlay.style.display === "grid"){
-          hideRecords();
-          return;
-        }
-        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
-        togglePauseMenu();
-        return;
-      }
-
-      if (pickerOverlay.style.display==="grid"){
-        if (e.key==="1") pickChoice(0);
-        if (e.key==="2") pickChoice(1);
-        if (e.key==="3") pickChoice(2);
-        if (e.key.toLowerCase()==="r") doReroll();
-      }
-
-      if (e.code === "Space"){
-        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || pauseMenu.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
-        triggerAction();
-      }
-
-      keys.add(e.code);
-    }, { passive:false });
-    addEventListener("keyup",(e)=>keys.delete(e.code), { passive:true });
-
-    // Mobile joystick
-    let joyActive = false;
-    let joyVec = { x: 0, y: 0 };
-    let joyCenter = { x: 0, y: 0 };
-    const joyRadius = 70;
-
-    if (isTouch){
-
-// virtual joystick appears where you touch (left side)
-let joyPointerId = null;
-
-const overlaysBlockInput = () =>
-  (pickerOverlay.style.display === "grid") ||
-  (startOverlay.style.display === "grid") ||
-  (mainMenuOverlay.style.display === "grid") ||
-  (gameoverOverlay.style.display === "grid") ||
-  (pauseMenu.style.display === "grid") ||
-  (recordsOverlay.style.display === "grid") ||
-  (settingsOverlay.style.display === "grid") ||
-  (restartConfirmOverlay.style.display === "grid");
-
-function placeJoystick(cx, cy){
-  // keep fully on-screen
-  const x = clamp(cx, JOY_HALF + JOY_MARGIN, innerWidth - JOY_HALF - JOY_MARGIN);
-  const y = clamp(cy, JOY_HALF + JOY_MARGIN, innerHeight - JOY_HALF - JOY_MARGIN);
-  joy.style.left = `${x}px`;
-  joy.style.top  = `${y}px`;
-}
-
-function joyMove(px, py){
-  const dx = px - joyCenter.x;
-  const dy = py - joyCenter.y;
-  const d = len2(dx, dy) || 1;
-  const m = Math.min(1, d / joyRadius);
-  joyVec.x = (dx / d) * m;
-  joyVec.y = (dy / d) * m;
-
-  const ox = joyVec.x * (joyRadius*0.70);
-  const oy = joyVec.y * (joyRadius*0.70);
-  knob.style.transform = `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px))`;
-}
-
-function joyReset(){
-  joyActive = false;
-  joyPointerId = null;
-  joyVec.x = 0; joyVec.y = 0;
-  knob.style.transform = `translate(-50%, -50%)`;
-  joy.style.display = "none";
-}
-
-canvas.addEventListener("pointerdown", (e)=>{
-  // only for touch/pen
-  if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
-  if (overlaysBlockInput()) return;
-
-  // не давать стартовать джойстик при тапе по кнопке паузы (и другим UI при желании)
-  if (e.target.closest("#btnPause")) return;
-  if (pF.hasAnyActionSkill()){
-    const now = performance.now();
-    const dtTap = now - lastTapTime;
-    const dx = e.clientX - lastTapX;
-    const dy = e.clientY - lastTapY;
-    const distSq = len2Sq(dx, dy);
-    if (dtTap < 280 && distSq < 40 * 40){
-      triggerAction();
-      lastTapTime = 0;
-    } else {
-      lastTapTime = now;
-      lastTapX = e.clientX;
-      lastTapY = e.clientY;
-    }
-  }
-
-  joyPointerId = e.pointerId;
-  canvas.setPointerCapture(e.pointerId);
-
-  // joystick center = initial touch point
-  joyCenter.x = e.clientX;
-  joyCenter.y = e.clientY;
-
-  placeJoystick(e.clientX, e.clientY);
-  joy.style.display = "block";
-  joyActive = true;
-  joyMove(e.clientX, e.clientY);
-}, { passive:true });
-
-canvas.addEventListener("pointermove", (e)=>{
-  if (!joyActive || joyPointerId !== e.pointerId) return;
-  joyMove(e.clientX, e.clientY);
-}, { passive:true });
-
-canvas.addEventListener("pointerup", (e)=>{
-  if (joyPointerId !== e.pointerId) return;
-  joyReset();
-}, { passive:true });
-
-canvas.addEventListener("pointercancel", (e)=>{
-  if (joyPointerId !== e.pointerId) return;
-  joyReset();
-}, { passive:true });
-
-    }
-
-    // Pause button
-    btnPause.addEventListener("click", (e)=>{
-      e.preventDefault();
-      if (isPauseToggleBlocked()) return;
-      togglePauseMenu();
-    });
 
     // State
     const { player, state, ui, entities, spawn, effects } = initState();
@@ -516,41 +347,186 @@ canvas.addEventListener("pointercancel", (e)=>{
       if (chance > 0 && Math.random() < chance) pF.addUniqueItem("dog");
     }
 
-    function openMainMenu(){
-      state.paused = true;
-      mainMenuOverlay.style.display = "grid";
-      updatePauseBtnVisibility();
+    function handleSelectHero(hero){
+      hero.apply(player);
+      maybeAddStartingDog(hero.id);
     }
 
-    function openStart(){
-      state.paused = true;
-      mainMenuOverlay.style.display = "none";
-      startOverlay.style.display = "grid";
-      updatePauseBtnVisibility();
-      charsWrap.innerHTML = "";
-      PLAYER_CLASSES.forEach((c)=>{
-        const div = document.createElement("div");
-        div.className = "choice";
-        div.innerHTML = `<div class="t">${c.name}</div><div class="d">${c.desc}</div><div class="d" style="margin-top:8px; opacity:.75">${c.perk}</div>`;
-        div.addEventListener("click", ()=>{
-          c.apply(player);
-          maybeAddStartingDog(c.id);
-          startOverlay.style.display = "none";
-          state.paused = false;
-          updatePauseBtnVisibility();
-        });
-        charsWrap.appendChild(div);
-      });
-    }
+    const menus = createMenus({
+      state,
+      player,
+      ui,
+      elements: overlays.elements,
+      updateBuildUI,
+      applyOptionsToUI,
+      onSelectHero: handleSelectHero,
+    });
 
     btnFreePlay.addEventListener("click", ()=>{
-      mainMenuOverlay.style.display = "none";
-      openStart();
+      menus.openStart();
     });
-    btnMenuRecords.addEventListener("click", ()=>showRecords());
-    btnMenuSettings.addEventListener("click", ()=>showSettings());
-    btnSettings.addEventListener("click", ()=>showSettings());
-    btnSettingsClose.addEventListener("click", hideSettings);
+    btnMenuRecords.addEventListener("click", ()=>menus.showRecords());
+    btnMenuSettings.addEventListener("click", ()=>menus.showSettings());
+    btnSettings.addEventListener("click", ()=>menus.showSettings());
+    btnSettingsClose.addEventListener("click", menus.hideSettings);
+
+    // Input
+    const keys = new Set();
+    let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+
+    function triggerAction(){
+      if (state.paused || state.dead) return;
+      if (pF.hasUnique("max_shirt")) tryActivateMaxShirt();
+      if (pF.hasUnique("british_citizenship")) triggerDash();
+    }
+    addEventListener("keydown",(e)=>{
+      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+
+      if (e.code==="Escape"){
+        if (restartConfirmOverlay.style.display === "grid"){
+          menus.hideRestartConfirm();
+          return;
+        }
+        if (settingsOverlay.style.display === "grid"){
+          menus.hideSettings();
+          return;
+        }
+        if (recordsOverlay.style.display === "grid"){
+          menus.hideRecords();
+          return;
+        }
+        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
+        menus.togglePauseMenu();
+        return;
+      }
+
+      if (pickerOverlay.style.display==="grid"){
+        if (e.key==="1") pickChoice(0);
+        if (e.key==="2") pickChoice(1);
+        if (e.key==="3") pickChoice(2);
+        if (e.key.toLowerCase()==="r") doReroll();
+      }
+
+      if (e.code === "Space"){
+        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || pauseMenu.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
+        triggerAction();
+      }
+
+      keys.add(e.code);
+    }, { passive:false });
+    addEventListener("keyup",(e)=>keys.delete(e.code), { passive:true });
+
+    // Mobile joystick
+    let joyActive = false;
+    let joyVec = { x: 0, y: 0 };
+    let joyCenter = { x: 0, y: 0 };
+    const joyRadius = 70;
+
+    if (isTouch){
+
+// virtual joystick appears where you touch (left side)
+let joyPointerId = null;
+
+const overlaysBlockInput = () =>
+  (pickerOverlay.style.display === "grid") ||
+  (startOverlay.style.display === "grid") ||
+  (mainMenuOverlay.style.display === "grid") ||
+  (gameoverOverlay.style.display === "grid") ||
+  (pauseMenu.style.display === "grid") ||
+  (recordsOverlay.style.display === "grid") ||
+  (settingsOverlay.style.display === "grid") ||
+  (restartConfirmOverlay.style.display === "grid");
+
+function placeJoystick(cx, cy){
+  // keep fully on-screen
+  const x = clamp(cx, JOY_HALF + JOY_MARGIN, innerWidth - JOY_HALF - JOY_MARGIN);
+  const y = clamp(cy, JOY_HALF + JOY_MARGIN, innerHeight - JOY_HALF - JOY_MARGIN);
+  joy.style.left = `${x}px`;
+  joy.style.top  = `${y}px`;
+}
+
+function joyMove(px, py){
+  const dx = px - joyCenter.x;
+  const dy = py - joyCenter.y;
+  const d = len2(dx, dy) || 1;
+  const m = Math.min(1, d / joyRadius);
+  joyVec.x = (dx / d) * m;
+  joyVec.y = (dy / d) * m;
+
+  const ox = joyVec.x * (joyRadius*0.70);
+  const oy = joyVec.y * (joyRadius*0.70);
+  knob.style.transform = `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px))`;
+}
+
+function joyReset(){
+  joyActive = false;
+  joyPointerId = null;
+  joyVec.x = 0; joyVec.y = 0;
+  knob.style.transform = `translate(-50%, -50%)`;
+  joy.style.display = "none";
+}
+
+canvas.addEventListener("pointerdown", (e)=>{
+  // only for touch/pen
+  if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+  if (overlaysBlockInput()) return;
+
+  // не давать стартовать джойстик при тапе по кнопке паузы (и другим UI при желании)
+  if (e.target.closest("#btnPause")) return;
+  if (pF.hasAnyActionSkill()){
+    const now = performance.now();
+    const dtTap = now - lastTapTime;
+    const dx = e.clientX - lastTapX;
+    const dy = e.clientY - lastTapY;
+    const distSq = len2Sq(dx, dy);
+    if (dtTap < 280 && distSq < 40 * 40){
+      triggerAction();
+      lastTapTime = 0;
+    } else {
+      lastTapTime = now;
+      lastTapX = e.clientX;
+      lastTapY = e.clientY;
+    }
+  }
+
+  joyPointerId = e.pointerId;
+  canvas.setPointerCapture(e.pointerId);
+
+  // joystick center = initial touch point
+  joyCenter.x = e.clientX;
+  joyCenter.y = e.clientY;
+
+  placeJoystick(e.clientX, e.clientY);
+  joy.style.display = "block";
+  joyActive = true;
+  joyMove(e.clientX, e.clientY);
+}, { passive:true });
+
+canvas.addEventListener("pointermove", (e)=>{
+  if (!joyActive || joyPointerId !== e.pointerId) return;
+  joyMove(e.clientX, e.clientY);
+}, { passive:true });
+
+canvas.addEventListener("pointerup", (e)=>{
+  if (joyPointerId !== e.pointerId) return;
+  joyReset();
+}, { passive:true });
+
+canvas.addEventListener("pointercancel", (e)=>{
+  if (joyPointerId !== e.pointerId) return;
+  joyReset();
+}, { passive:true });
+
+    }
+
+    // Pause button
+    btnPause.addEventListener("click", (e)=>{
+      e.preventDefault();
+      if (menus.isPauseToggleBlocked()) return;
+      menus.togglePauseMenu();
+    });
 
     // Drops/particles
     function dropXp(x,y,amount){
@@ -678,8 +654,10 @@ canvas.addEventListener("pointercancel", (e)=>{
       if (tryConsumeSpareTire()) return false;
       forceUpdatePlayerHpBar({ player, state });
       player.hp = 0;
+      state.dead = true;
+      updateRecordsOnDeath({ state, player });
       if (reason) setDeathReason(reason);
-      gameOver();
+      menus.gameOver();
       return true;
     }
 
@@ -1762,18 +1740,6 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     tabUpgrades.addEventListener("click", ()=>setBuildTab("upgrades"));
     tabInventory.addEventListener("click", ()=>setBuildTab("inventory"));
 
-    function togglePauseMenu(){
-      if (state.dead) return;
-      if (restartConfirmOverlay.style.display === "grid") return;
-      state.paused = !state.paused;
-      if (state.paused){
-        ui.buildFromPicker = false;
-        btnResume.textContent = "Resume";
-        updateBuildUI();
-        pauseMenu.style.display = "grid";
-      } else pauseMenu.style.display = "none";
-    }
-
     btnResume.addEventListener("click", ()=>{
       if (ui.buildFromPicker && pickerOverlay.style.display === "grid"){
         pauseMenu.style.display = "none";
@@ -1783,11 +1749,11 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       state.paused = false;
     });
 
-    btnRestart2.addEventListener("click", ()=>resetGame());
+    btnRestart2.addEventListener("click", ()=>menus.resetGame());
     btnRestartYes.addEventListener("click", ()=>location.reload());
-    btnRestartNo.addEventListener("click", hideRestartConfirm);
+    btnRestartNo.addEventListener("click", menus.hideRestartConfirm);
     btnCopy.addEventListener("click", ()=>copyStats());
-    btnRecords.addEventListener("click", ()=>showRecords());
+    btnRecords.addEventListener("click", ()=>menus.showRecords());
     btnHang.addEventListener("click", ()=>{
       if (!pF.hasUnique("rope")) return;
       handlePlayerDeath("(он все таки смог)");
@@ -2013,100 +1979,6 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       `;
     }
 
-    let recordsReturnToPause = false;
-    let recordsReturnToMenu = false;
-    let settingsReturnToPause = false;
-    let settingsReturnToMenu = false;
-    let restartReturnToPause = false;
-    let restartReturnToPlay = false;
-
-    function renderRecords(){
-      const records = loadRecords();
-      const levelText = records.level > 0 ? records.level : "--";
-      const timeText = records.time > 0 ? fmtTime(records.time) : "--";
-      const killsText = records.kills > 0 ? records.kills : "--";
-      const dpsText = records.dps > 0 ? records.dps : "--";
-      recordsListEl.innerHTML = `
-        <div class="item"><div class="k">Макс. уровень</div><div class="v">${levelText}</div></div>
-        <div class="item"><div class="k">Макс. время</div><div class="v">${timeText}</div></div>
-        <div class="item"><div class="k">Макс. убийств</div><div class="v">${killsText}</div></div>
-        <div class="item"><div class="k">Макс. DPS (2s)</div><div class="v">${dpsText}</div></div>
-      `;
-    }
-    function showRecords(){
-      recordsReturnToPause = pauseMenu.style.display === "grid";
-      recordsReturnToMenu = mainMenuOverlay.style.display === "grid";
-      if (recordsReturnToPause) pauseMenu.style.display = "none";
-      if (recordsReturnToMenu) mainMenuOverlay.style.display = "none";
-      renderRecords();
-      recordsOverlay.style.display = "grid";
-      updatePauseBtnVisibility();
-    }
-    function hideRecords(){
-      recordsOverlay.style.display = "none";
-      if (recordsReturnToPause){
-        pauseMenu.style.display = "grid";
-      } else if (recordsReturnToMenu){
-        mainMenuOverlay.style.display = "grid";
-      }
-      recordsReturnToPause = false;
-      recordsReturnToMenu = false;
-      updatePauseBtnVisibility();
-    }
-    function showSettings(){
-      settingsReturnToPause = pauseMenu.style.display === "grid";
-      settingsReturnToMenu = mainMenuOverlay.style.display === "grid";
-      if (settingsReturnToPause) pauseMenu.style.display = "none";
-      if (settingsReturnToMenu) mainMenuOverlay.style.display = "none";
-      applyOptionsToUI();
-      settingsOverlay.style.display = "grid";
-      updatePauseBtnVisibility();
-    }
-    function hideSettings(){
-      settingsOverlay.style.display = "none";
-      if (settingsReturnToPause){
-        pauseMenu.style.display = "grid";
-      } else if (settingsReturnToMenu){
-        mainMenuOverlay.style.display = "grid";
-      }
-      settingsReturnToPause = false;
-      settingsReturnToMenu = false;
-      updatePauseBtnVisibility();
-    }
-
-    function showRestartConfirm(){
-      if (restartConfirmOverlay.style.display === "grid") return;
-      restartReturnToPause = pauseMenu.style.display === "grid";
-      restartReturnToPlay = !state.paused;
-      if (restartReturnToPause) pauseMenu.style.display = "none";
-      state.paused = true;
-      restartConfirmOverlay.style.display = "grid";
-      updatePauseBtnVisibility();
-    }
-
-    function hideRestartConfirm(){
-      restartConfirmOverlay.style.display = "none";
-      if (restartReturnToPause){
-        pauseMenu.style.display = "grid";
-      } else if (restartReturnToPlay){
-        state.paused = false;
-      }
-      restartReturnToPause = false;
-      restartReturnToPlay = false;
-      updatePauseBtnVisibility();
-    }
-
-    function gameOver(){
-      state.dead = true;
-      state.paused = true;
-      pickerOverlay.style.display = "none";
-      pauseMenu.style.display = "none";
-      gameoverOverlay.style.display = "grid";
-      updateRecordsOnDeath({ state, player });
-      summaryEl.textContent = `Time: ${fmtTime(state.t)} · Hero: ${player.heroName} · Level: ${player.lvl} · Kills: ${state.kills} · Damage: ${Math.round(state.dmgDone)}${state.deathReason ? ` · Cause: ${state.deathReason}` : ""}`;
-      updatePauseBtnVisibility();
-    }
-
     function copyStats(){
       const text =
 `Survivor stats
@@ -2121,18 +1993,10 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       navigator.clipboard?.writeText(text).catch(()=>{});
     }
 
-    restartBtn.addEventListener("click", ()=>resetGame());
+    restartBtn.addEventListener("click", ()=>menus.resetGame());
     copyBtn.addEventListener("click", ()=>copyStats());
-    btnRecordsOver.addEventListener("click", ()=>showRecords());
-    btnRecordsClose.addEventListener("click", ()=>hideRecords());
-
-    function resetGame(){
-      if (!state.dead){
-        showRestartConfirm();
-        return;
-      }
-      location.reload();
-    }
+    btnRecordsOver.addEventListener("click", ()=>menus.showRecords());
+    btnRecordsClose.addEventListener("click", ()=>menus.hideRecords());
 
     // Loop
     const step = createStep({
@@ -3267,7 +3131,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
     }
 
     // start
-    openMainMenu();
+    menus.openMainMenu();
     startLoop(step);
 
   } catch (err) {
