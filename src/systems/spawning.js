@@ -2,6 +2,7 @@ import { TAU } from "../core/constants.js";
 import { UNIQUE_CHEST_EVERY } from "../content/config.js";
 import {
   TOTEM_GRACE,
+  TOTEM_DAMAGE_TICK,
   TOTEM_SPAWN_MIN,
   TOTEM_SPAWN_MAX,
   TOTEM_RADIUS_MIN,
@@ -419,6 +420,8 @@ export function createSpawnTotem({ player, totem, pF }) {
     totem.life = pF.getTotemLife();
     totem.lifeMax = totem.life;
     totem.grace = TOTEM_GRACE;
+    totem.dmgTickT = TOTEM_DAMAGE_TICK;
+    totem.dmgAcc = 0;
     totem.active = true;
     totem.inZone = false;
   };

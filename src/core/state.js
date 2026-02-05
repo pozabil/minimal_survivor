@@ -1,4 +1,4 @@
-import { TOTEM_SPAWN_FIRST } from "../content/totem.js";
+import { TOTEM_DAMAGE_TICK, TOTEM_SPAWN_FIRST } from "../content/totem.js";
 
 export function createState() {
   return {
@@ -64,6 +64,8 @@ export function createEntities() {
       lifeMax: 0,
       grace: 0,
       effect: 0,
+      dmgTickT: TOTEM_DAMAGE_TICK,
+      dmgAcc: 0,
       inZone: false,
     },
   };

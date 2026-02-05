@@ -18,6 +18,7 @@ export const TOTEM_EFFECT_GAIN_LV_STEP = 10;
 export const TOTEM_EFFECT_GAIN_CAP = 10;
 export const TOTEM_EFFECT_DECAY = 0.8;
 export const TOTEM_DPS_BASE = 1;
+export const TOTEM_DAMAGE_TICK = 0.5;
 export const TOTEM_DPS_RAMP_BASE = 2;
 export const TOTEM_DPS_RAMP_GROWTH = 1.08;
 export const TOTEM_DPS_RAMP_LV_STEP = 4;
