@@ -19,3 +19,5 @@ export const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkill
 
 export const HUD_UPDATE_TIME_MS = 1000 / 15;
 export const HUD_UPDATE_TIME = HUD_UPDATE_TIME_MS / 1000;
+
+export const DPS_WINDOW_SEC = 2;

@@ -41,6 +41,7 @@ import {
   TAU,
   JOY_HALF,
   JOY_MARGIN,
+  DPS_WINDOW_SEC,
 } from "./core/constants.js";
 import { initCanvas } from "./core/canvas.js";
 import { clamp, lerp, len2, len2Sq } from "./utils/math.js";
@@ -70,7 +71,12 @@ import { createStep } from "./flow/step.js";
 import { updateMovement } from "./systems/movement.js";
 import { createSpatialGrid } from "./systems/spatial_grid.js";
 import { createTargeting } from "./systems/targeting.js";
-import { createRicochetHelpers, createShootingSystem } from "./systems/combat.js";
+import {
+  createRicochetHelpers,
+  createShootingSystem,
+  createDamageTracker,
+  createPlayerDamageApplier,
+} from "./systems/combat.js";
 import { createUpdateBullets, createUpdateEnemyBullets } from "./systems/projectiles.js";
 import { updateTotem } from "./systems/totem.js";
 import {
@@ -127,11 +133,11 @@ import { createProfilerUI } from "./ui/profiler.js";
     // Overlays
     const {
       mainMenuOverlay, btnFreePlay, btnMenuRecords, btnMenuSettings, startOverlay, pickerOverlay,
-      pickerTitle, pickerHint, choicesWrap, btnReroll, btnSkip, btnShowBuild, pauseMenu, buildListEl, invListEl,
-      tabUpgrades, tabInventory, buildStatsEl, btnResume, btnRestart2, btnCopy, btnRecords, btnSettings, btnHang,
-      restartConfirmOverlay, btnRestartYes, btnRestartNo, gameoverOverlay, restartBtn, copyBtn,
-      btnRecordsOver, recordsOverlay, btnRecordsClose, settingsOverlay, btnSettingsClose,
-      optShowDamageNumbers, optShowProfiler, btnPause,
+      pickerTitle, pickerHint, choicesWrap, btnReroll, btnSkip, btnShowBuild, pauseMenu, buildListEl,
+      invListEl, tabUpgrades, tabInventory, buildStatsEl, btnResume, btnRestart2, btnCopy, btnRecords,
+      btnSettings, btnHang, restartConfirmOverlay, btnRestartYes, btnRestartNo, gameoverOverlay,
+      restartBtn, copyBtn, btnRecordsOver, recordsOverlay, btnRecordsClose, settingsOverlay,
+      btnSettingsClose, optShowDamageNumbers, optShowProfiler, btnPause,
     } = overlays.elements;
 
     // Profiler
@@ -578,51 +584,14 @@ canvas.addEventListener("pointercancel", (e)=>{
       }
     }
 
-    function recordDamage(amount, x, y, showNumber=false, color=null, size=null){
-      state.dmgDone += amount;
-      if (options.showDamageNumbers && showNumber && Number.isFinite(x) && Number.isFinite(y)){
-        spawnDamageFloat(amount, x, y, color, size);
-      }
-      // lifesteal
-      if (player.lifeSteal > 0 && amount > 0){
-        const minLsDamage = player.hpMax * 0.08;
-        if (amount > minLsDamage){
-          const chance = 0.01 * player.lifeSteal;
-          if (Math.random() < chance){
-            const before = player.hp;
-            player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.01);
-            const healed = player.hp - before;
-            if (healed > 0) spawnHealFloat(healed);
-          }
-        }
-      }
-      state.lastDmgWindow.push([state.t, amount]);
-      const cutoff = state.t - 2;
-      while(state.lastDmgWindow.length && state.lastDmgWindow[0][0] < cutoff) state.lastDmgWindow.shift();
-    }
-    function getDps(){
-      const cutoff = state.t - 2;
-      let sum = 0;
-      for(const [t,a] of state.lastDmgWindow) if (t >= cutoff) sum += a;
-      return Math.round(sum / 2);
-    }
-    function applyDamageToPlayer(raw, avoidDodge = false, avoidArmor = false){
-      if (raw <= 0) return 0;
-      if (state.dead) return 0;
-
-      // dodge
-      if (!avoidDodge && player.dodge > 0 && Math.random() < player.dodge) return 0;
-
-      // armor cap 60%
-      const arm = avoidArmor ? 0 : clamp(player.armor, 0, 0.60);
-      const dmg = raw * (1 - arm) * player.damageTakenMult;
-
-      player.hp -= dmg;
-      if (player.hp < 0) player.hp = 0;
-      if (options.showDamageNumbers) spawnDamageFloat(dmg, player.x, player.y);
-
-      return dmg;
-    }
+    const { recordDamage, getDps } = createDamageTracker({
+      state,
+      player,
+      options,
+      spawnDamageFloat,
+      spawnHealFloat,
+    });
+    const applyDamageToPlayer = createPlayerDamageApplier({ state, player, options, spawnDamageFloat });
 
     function tryConsumeSpareTire(){
       if (!pF.hasUnique("spare_tire")) return false;
@@ -1952,7 +1921,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
         <div class="item"><div class="k">Time</div><div class="v">${fmtTime(state.t)}</div></div>
         <div class="item"><div class="k">Level</div><div class="v">${player.lvl}</div></div>
         <div class="item"><div class="k">Kills</div><div class="v">${state.kills}</div></div>
-        <div class="item"><div class="k">DPS (2s)</div><div class="v">${getDps()}</div></div>
+        <div class="item"><div class="k">DPS (${DPS_WINDOW_SEC}s)</div><div class="v">${getDps()}</div></div>
         <div class="item"><div class="k">HP</div><div class="v">${Math.ceil(player.hp)} / ${player.hpMax}</div></div>
         <div class="item"><div class="k">Speed</div><div class="v">${Math.round(pF.getMoveSpeed())}</div></div>
         <div class="item"><div class="k">Rerolls</div><div class="v">${player.rerolls}</div></div>

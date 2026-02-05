@@ -1,10 +1,10 @@
-import { TAU } from "../core/constants.js";
+import { TAU, DPS_WINDOW_SEC } from "../core/constants.js";
 import {
   TURRET_BULLET_SIZE,
   TURRET_BULLET_SPEED,
   TURRET_RANGE,
 } from "../content/upgrades.js";
-import { len2 } from "../utils/math.js";
+import { clamp, len2 } from "../utils/math.js";
 import { randf } from "../utils/rand.js";
 
 export function createRicochetHelpers({ bullets, targeting }) {
@@ -74,6 +74,72 @@ export function createRicochetHelpers({ bullets, targeting }) {
     applyRicochetRedirect,
     spawnCheapRicochetSplits,
   };
+}
+
+// Damage tracking (outgoing damage + DPS)
+export function createDamageTracker({
+  state,
+  player,
+  options,
+  spawnDamageFloat,
+  spawnHealFloat,
+}) {
+  function recordDamage(amount, x, y, showNumber = false, color = null, size = null) {
+    state.dmgDone += amount;
+    if (options.showDamageNumbers && showNumber && Number.isFinite(x) && Number.isFinite(y)) {
+      spawnDamageFloat(amount, x, y, color, size);
+    }
+    // lifesteal
+    if (player.lifeSteal > 0 && amount > 0) {
+      const minLsDamage = player.hpMax * 0.08;
+      if (amount > minLsDamage) {
+        const chance = 0.01 * player.lifeSteal;
+        if (Math.random() < chance) {
+          const before = player.hp;
+          player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.01);
+          const healed = player.hp - before;
+          if (healed > 0) spawnHealFloat(healed);
+        }
+      }
+    }
+    state.lastDmgWindow.push([state.t, amount]);
+    const cutoff = state.t - DPS_WINDOW_SEC;
+    while (state.lastDmgWindow.length && state.lastDmgWindow[0][0] < cutoff) {
+      state.lastDmgWindow.shift();
+    }
+  }
+
+  function getDps() {
+    const cutoff = state.t - DPS_WINDOW_SEC;
+    let sum = 0;
+    for (const [t, a] of state.lastDmgWindow) if (t >= cutoff) sum += a;
+    return Math.round(sum / DPS_WINDOW_SEC);
+  }
+
+  return { recordDamage, getDps };
+}
+
+// Player damage (incoming damage)
+export function createPlayerDamageApplier({ state, player, options, spawnDamageFloat }) {
+  function applyDamageToPlayer(raw, avoidDodge = false, avoidArmor = false) {
+    if (raw <= 0) return 0;
+    if (state.dead) return 0;
+
+    // dodge
+    if (!avoidDodge && player.dodge > 0 && Math.random() < player.dodge) return 0;
+
+    // armor cap 60%
+    const arm = avoidArmor ? 0 : clamp(player.armor, 0, 0.60);
+    const dmg = raw * (1 - arm) * player.damageTakenMult;
+
+    player.hp -= dmg;
+    if (player.hp < 0) player.hp = 0;
+    if (options.showDamageNumbers) spawnDamageFloat(dmg, player.x, player.y);
+
+    return dmg;
+  }
+
+  return applyDamageToPlayer;
 }
 
 export function createShootingSystem({ player, bullets, pF, targeting, spawnTurret }) {
