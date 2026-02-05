@@ -9,7 +9,7 @@ export function createMenus({
   elements,
   updateBuildUI,
   applyOptionsToUI,
-  onSelectHero,
+  handleSelectHero,
 }) {
   const {
     mainMenuOverlay,
@@ -57,7 +57,7 @@ export function createMenus({
       div.className = "choice";
       div.innerHTML = `<div class="t">${c.name}</div><div class="d">${c.desc}</div><div class="d" style="margin-top:8px; opacity:.75">${c.perk}</div>`;
       div.addEventListener("click", () => {
-        onSelectHero(c);
+        handleSelectHero(c);
         startOverlay.style.display = "none";
         state.paused = false;
         updatePauseBtnVisibility();
