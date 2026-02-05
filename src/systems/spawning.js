@@ -20,6 +20,12 @@ import {
   TURRET_MIN_DIST,
   TURRET_SPAWN_RADIUS,
 } from "../content/upgrades.js";
+import {
+  DOG_RADIUS,
+  DOG_BROWN_COLORS,
+  DOG_GRAY_COLOR,
+  DOG_GRAY_CHANCE,
+} from "../content/dog.js";
 import { clamp, len2Sq } from "../utils/math.js";
 import { randf, randi } from "../utils/rand.js";
 
@@ -445,6 +451,29 @@ export function createSpawnTurret({ player, turrets, pF }) {
       hp: hpMax,
       shotTimer: randf(0, 0.4),
       hitCd: 0,
+    });
+  };
+}
+
+export function createSpawnDog({ player, dogs }) {
+  function pickDogColor() {
+    if (Math.random() < DOG_GRAY_CHANCE) return DOG_GRAY_COLOR;
+    return DOG_BROWN_COLORS[Math.floor(Math.random() * DOG_BROWN_COLORS.length)];
+  }
+
+  return function spawnDog() {
+    if (dogs.length) return;
+    const a = randf(0, TAU);
+    const d = player.r + 12;
+    dogs.push({
+      x: player.x + Math.cos(a) * d,
+      y: player.y + Math.sin(a) * d,
+      r: DOG_RADIUS,
+      ang: a,
+      orbit: a,
+      hitCd: 0,
+      target: null,
+      color: pickDogColor(),
     });
   };
 }
