@@ -64,6 +64,7 @@ import { createUniques, SAME_CIRCLE_INTERVAL } from "./content/uniques.js";
 import { getPlayerClass } from "./content/players.js";
 import { initState } from "./core/init.js";
 import { createPlayerFunctions } from "./core/player.js";
+import { createDeathHelpers } from "./core/death_helpers.js";
 import { startLoop } from "./core/loop.js";
 import { createStep } from "./flow/step.js";
 import { updateMovement } from "./systems/movement.js";
@@ -93,7 +94,6 @@ import {
   createSpawnTurret,
   updateSpawning,
 } from "./systems/spawning.js";
-import { updateRecordsOnDeath } from "./systems/storage.js";
 import { initHud } from "./ui/hud.js";
 import { initOverlays } from "./ui/overlays.js";
 import { bindOptionsUI } from "./ui/options.js";
@@ -600,13 +600,6 @@ canvas.addEventListener("pointercancel", (e)=>{
       const cutoff = state.t - 2;
       while(state.lastDmgWindow.length && state.lastDmgWindow[0][0] < cutoff) state.lastDmgWindow.shift();
     }
-    function enemyLabel(type, bossKind){
-      if (type === "boss" && bossKind) return `boss:${bossKind}`;
-      return type || "enemy";
-    }
-    function setDeathReason(reason){
-      if (!state.deathReason) state.deathReason = reason;
-    }
     function getDps(){
       const cutoff = state.t - 2;
       let sum = 0;
@@ -630,6 +623,7 @@ canvas.addEventListener("pointercancel", (e)=>{
 
       return dmg;
     }
+
     function tryConsumeSpareTire(){
       if (!pF.hasUnique("spare_tire")) return false;
       player.uniques.delete("spare_tire");
@@ -640,16 +634,13 @@ canvas.addEventListener("pointercancel", (e)=>{
       if (pauseMenu.style.display === "grid") updateBuildUI();
       return true;
     }
-    function handlePlayerDeath(reason){
-      if (tryConsumeSpareTire()) return false;
-      forceUpdatePlayerHpBar({ player, state });
-      player.hp = 0;
-      state.dead = true;
-      updateRecordsOnDeath({ state, player });
-      if (reason) setDeathReason(reason);
-      menus.gameOver();
-      return true;
-    }
+    const { formatDeathReason, handlePlayerDeath } = createDeathHelpers({
+      state,
+      player,
+      menus,
+      forceUpdatePlayerHpBar,
+      tryConsumeSpareTire,
+    });
 
 
     function gainXp(v){
@@ -2020,7 +2011,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       spawnBurst,
       applyDamageToPlayer,
       handlePlayerDeath,
-      enemyLabel,
+      formatDeathReason,
     });
 
     const novaBulletsThisFrame = [];
@@ -2282,7 +2273,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
             player.invuln = pF.getInvulnAfterHit(baseInvuln);
             spawnBurst(player.x,player.y, randi(12,20), 260, 0.35);
             if (player.hp<=0){
-              if (handlePlayerDeath(`contact ${enemyLabel(e.type, e.bossKind)}`)) return;
+              if (handlePlayerDeath(formatDeathReason("contact", e.type, e.bossKind))) return;
             }
           }
         }

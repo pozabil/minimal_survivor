@@ -102,7 +102,7 @@ export function createUpdateEnemyBullets({
   spawnBurst,
   applyDamageToPlayer,
   handlePlayerDeath,
-  enemyLabel,
+  formatDeathReason,
 }) {
   function updateEnemyBullets(dt) {
     for (let i=enemyBullets.length-1;i>=0;i--){
@@ -147,8 +147,8 @@ export function createUpdateEnemyBullets({
           }
           enemyBullets.splice(i,1);
           if (player.hp<=0){
-            const label = enemyLabel(b.srcType, b.srcBossKind);
-            if (handlePlayerDeath(`bullet ${label}`)) return true;
+            const reason = formatDeathReason("bullet", b.srcType, b.srcBossKind);
+            if (handlePlayerDeath(reason)) return true;
           }
         } else enemyBullets.splice(i,1);
       }
