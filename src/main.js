@@ -78,7 +78,7 @@ import {
   createPlayerDamageApplier,
 } from "./systems/combat.js";
 import { createUpdateBullets, createUpdateEnemyBullets } from "./systems/projectiles.js";
-import { updateTotem } from "./systems/totem.js";
+import { createUpdateTotem } from "./systems/totem.js";
 import {
   createRenderBatch,
   batchCirclePush,
@@ -1983,6 +1983,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       formatDeathReason,
     });
 
+    const updateTotem = createUpdateTotem({ totem, player, pF, applyDamageToPlayer, handlePlayerDeath });
+
     const novaBulletsThisFrame = [];
 
     function update(dt){
@@ -2046,15 +2048,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       }
 
       // totem zone effect
-      const totemKilledPlayer = updateTotem({
-        dt,
-        totem,
-        player,
-        pF,
-        applyDamageToPlayer,
-        handlePlayerDeath,
-      });
-      if (totemKilledPlayer) return;
+      updateTotem(dt);
+      if (state.dead) return;
 
       // chest pickup
       if (chests.length){
@@ -2086,8 +2081,8 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       updateBullets(dt);
 
       // enemy bullets
-      const enemyBulletsKilledPlayer = updateEnemyBullets(dt);
-      if (enemyBulletsKilledPlayer) return;
+      updateEnemyBullets(dt);
+      if (state.dead) return;
 
       pruneDeadEnemies();
 

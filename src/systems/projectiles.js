@@ -148,13 +148,11 @@ export function createUpdateEnemyBullets({
           enemyBullets.splice(i,1);
           if (player.hp<=0){
             const reason = formatDeathReason("bullet", b.srcType, b.srcBossKind);
-            if (handlePlayerDeath(reason)) return true;
+            if (handlePlayerDeath(reason)) return;
           }
         } else enemyBullets.splice(i,1);
       }
     }
-
-    return false;
   }
 
   return updateEnemyBullets;
