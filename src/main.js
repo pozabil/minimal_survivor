@@ -40,11 +40,6 @@ import {
   DOG_GRAY_CHANCE,
 } from "./content/dog.js";
 import {
-  TOTEM_EFFECT_DECAY,
-  TOTEM_DPS_BASE,
-  TOTEM_EFFECT_MAX,
-} from "./content/totem.js";
-import {
   TAU,
   JOY_HALF,
   JOY_MARGIN,
@@ -79,6 +74,7 @@ import { updateMovement } from "./systems/movement.js";
 import { createSpatialGrid } from "./systems/spatial_grid.js";
 import { createTargeting } from "./systems/targeting.js";
 import { createRicochetHelpers, createShootingSystem } from "./systems/combat.js";
+import { updateTotem } from "./systems/totem.js";
 import {
   createRenderBatch,
   batchCirclePush,
@@ -620,18 +616,15 @@ canvas.addEventListener("pointercancel", (e)=>{
       for(const [t,a] of state.lastDmgWindow) if (t >= cutoff) sum += a;
       return Math.round(sum / 2);
     }
-    function applyDamageToPlayer(raw){
+    function applyDamageToPlayer(raw, avoidDodge = false, avoidArmor = false){
       if (raw <= 0) return 0;
       if (state.dead) return 0;
 
-      // на всякий случай (у тебя обычно проверка invuln снаружи)
-      if (player.invuln > 0) return 0;
-
       // dodge
-      if (player.dodge > 0 && Math.random() < player.dodge) return 0;
+      if (!avoidDodge && player.dodge > 0 && Math.random() < player.dodge) return 0;
 
       // armor cap 60%
-      const arm = clamp(player.armor, 0, 0.60);
+      const arm = avoidArmor ? 0 : clamp(player.armor, 0, 0.60);
       const dmg = raw * (1 - arm) * player.damageTakenMult;
 
       player.hp -= dmg;
@@ -1312,8 +1305,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       const dp = len2(dxp, dyp);
       if (dp < e.explodeR && player.invuln <= 0){
         const mult = 1 - (dp / e.explodeR); // 0..1
-        const dmg = e.explodeDmg * (0.55 + 0.45 * mult) * player.damageTakenMult;
-        player.hp -= dmg;
+        const dmg = e.explodeDmg * (0.55 + 0.45 * mult);
+        applyDamageToPlayer(dmg, true, true);
         const baseInvuln = pF.getInvulnDuration(INVULN_CONTACT_BASE, INVULN_CONTACT_MIN);
         player.invuln = pF.getInvulnAfterHit(baseInvuln);
 
@@ -2072,41 +2065,15 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       }
 
       // totem zone effect
-      if (totem.active){
-        totem.t += dt;
-        totem.life = Math.max(0, totem.life - dt);
-        totem.grace = Math.max(0, totem.grace - dt);
-
-        const dxT = player.x - totem.x;
-        const dyT = player.y - totem.y;
-        const inZone = (dxT*dxT + dyT*dyT) <= totem.r*totem.r;
-        totem.inZone = inZone;
-
-        if (totem.grace <= 0 && !inZone){
-          totem.effect = Math.min(TOTEM_EFFECT_MAX, totem.effect + dt * pF.getTotemEffectGain());
-          const dps = TOTEM_DPS_BASE + pF.getTotemDpsRamp() * totem.effect;
-          const dmg = applyDamageToPlayer(dps * dt);
-          if (dmg > 0 && player.hp <= 0){
-            if (handlePlayerDeath("totem")) return;
-          }
-        } else if (inZone){
-          totem.effect = Math.max(0, totem.effect - dt * TOTEM_EFFECT_DECAY);
-          if (pF.hasUnique("peace_pipe") && player.hp > 0){
-            const regenLv = pF.getLevel("regen");
-            const bonus = 1 + Math.round(0.5 * regenLv);
-            player.hp = Math.min(player.hpMax, player.hp + bonus * dt);
-          }
-        }
-
-        if (totem.life <= 0){
-          totem.active = false;
-          totem.life = 0;
-          totem.grace = 0;
-          totem.inZone = false;
-        }
-      } else if (totem.effect > 0){
-        totem.effect = Math.max(0, totem.effect - dt * TOTEM_EFFECT_DECAY * 0.7);
-      }
+      const totemKilledPlayer = updateTotem({
+        dt,
+        totem,
+        player,
+        pF,
+        applyDamageToPlayer,
+        handlePlayerDeath,
+      });
+      if (totemKilledPlayer) return;
 
       // chest pickup
       if (chests.length){
