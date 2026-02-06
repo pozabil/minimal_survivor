@@ -1,15 +1,15 @@
-import { ENEMY_MAX_R } from "../content/config.js";
+import { ENEMY_MAX_R } from "../../content/config.js";
 import {
   DOG_SPEED,
   DOG_TURN_RATE,
   DOG_HIT_COOLDOWN,
   DOG_CRIT_CHANCE,
   DOG_BALTIKA_AVOID_R,
-} from "../content/dog.js";
-import { TAU } from "../core/constants.js";
-import { clamp, len2 } from "../utils/math.js";
-import { circleHit } from "../utils/collision.js";
-import { COLORS } from "../render/colors.js";
+} from "../../content/dog.js";
+import { TAU } from "../../core/constants.js";
+import { clamp, len2 } from "../../utils/math.js";
+import { circleHit } from "../../utils/collision.js";
+import { COLORS } from "../../render/colors.js";
 
 export function createUpdateDogs({
   player,

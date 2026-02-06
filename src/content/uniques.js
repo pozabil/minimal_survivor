@@ -1,6 +1,9 @@
 import { clamp } from "../utils/math.js";
 
 export const SAME_CIRCLE_INTERVAL = 6;
+export const SAME_CIRCLE_LIFE = 2;
+export const SAME_CIRCLE_RADIUS = 120;
+export const SAME_CIRCLE_DAMAGE_MULT = 2.5;
 
 export const DASH_TRAIL_LIFE = 0.24;
 export const DASH_TRAIL_MAX = 36;
