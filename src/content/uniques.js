@@ -13,6 +13,10 @@ export const LIGHTNING_STRIKE_SEGMENTS_MAX = 6;
 export const LIGHTNING_STRIKE_JITTER = 18;
 export const LIGHTNING_STRIKE_HEIGHT_MIN = 180;
 export const LIGHTNING_STRIKE_HEIGHT_MAX = 320;
+export const PATRIARCH_DOLL_COOLDOWN = 3;
+export const PATRIARCH_DOLL_DAMAGE_MULT = 3;
+export const PATRIARCH_DOLL_TARGETS_MIN = 8;
+export const PATRIARCH_DOLL_TARGETS_MAX = 16;
 
 export function createUniques({ player, state, totem, spawnDog }) {
   return {

@@ -13,10 +13,6 @@ import {
   MAX_SHIRT_SLOW_DURATION,
   MAX_SHIRT_COOLDOWN,
   MAX_SHIRT_KILL_CD_REDUCE,
-  PATRIARCH_DOLL_COOLDOWN,
-  PATRIARCH_DOLL_DAMAGE_MULT,
-  PATRIARCH_DOLL_TARGETS_MIN,
-  PATRIARCH_DOLL_TARGETS_MAX,
   XP_BONUS_NORMAL,
   XP_BONUS_ELITE,
   XP_BONUS_BOSS,
@@ -49,7 +45,13 @@ import {
   ORBITAL_KNOCKBACK_FORCE,
   createUpgrades,
 } from "./content/upgrades.js";
-import { createUniques } from "./content/uniques.js";
+import {
+  PATRIARCH_DOLL_COOLDOWN,
+  PATRIARCH_DOLL_DAMAGE_MULT,
+  PATRIARCH_DOLL_TARGETS_MIN,
+  PATRIARCH_DOLL_TARGETS_MAX,
+  createUniques,
+} from "./content/uniques.js";
 import { getPlayerClass } from "./content/players.js";
 import { initState } from "./core/init.js";
 import { createPlayerFunctions } from "./core/player.js";
@@ -332,8 +334,16 @@ import { createProfilerUI } from "./ui/profiler.js";
         spawnBurst(e.x, e.y, randi(8, 12), 260, 0.25);
         if (e.hp <= 0) killEnemy(e);
       }
-      state.patriarchDollCd = PATRIARCH_DOLL_COOLDOWN;
       return true;
+    }
+    function updatePatriarchDoll(dt){
+      if (!pF.hasUnique("patriarch_doll")) return;
+      if (state.patriarchDollCd > 0){
+        state.patriarchDollCd = Math.max(0, state.patriarchDollCd - dt);
+        return;
+      }
+      tryActivatePatriarchDoll();
+      state.patriarchDollCd = PATRIARCH_DOLL_COOLDOWN;
     }
 
     const UNIQUES = createUniques({ player, state, totem, spawnDog });
@@ -1649,9 +1659,6 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       player.invuln = Math.max(0, player.invuln - dt);
 
       // unique cooldown
-      if (pF.hasUnique("patriarch_doll") && state.patriarchDollCd > 0){
-        state.patriarchDollCd = Math.max(0, state.patriarchDollCd - dt);
-      }
       if (pF.hasUnique("max_shirt")){
         if (state.maxShirtSlowT > 0){
           state.maxShirtSlowT = Math.max(0, state.maxShirtSlowT - dt);
@@ -1682,14 +1689,10 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       applyAura(dt);
       updateDogs(dt);
       updateSameCircle(dt);
+      updatePatriarchDoll(dt);
+
       updateDashTrail(dt, spawnDashTrail);
       updateLightning(dt);
-      if (pF.hasUnique("patriarch_doll") && state.patriarchDollCd <= 0){
-        const didHit = tryActivatePatriarchDoll();
-        if (!didHit){
-          state.patriarchDollCd = PATRIARCH_DOLL_COOLDOWN;
-        }
-      }
 
       // bullets
       updateBullets(dt);
