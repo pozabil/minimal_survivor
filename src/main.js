@@ -1,9 +1,4 @@
 import {
-  ENEMY_MAX_R,
-  COLOSSUS_HP_STEP,
-  COLOSSUS_SHRINK_STEP,
-  COLOSSUS_SPAWN_STAGES,
-  BURST_TELEGRAPH,
   HEAL_OVER_TIME,
   CAMERA_ZOOM_OUT,
   DASH_DISTANCE,
@@ -19,6 +14,13 @@ import {
   INVULN_CONTACT_BASE,
   INVULN_CONTACT_MIN,
 } from "./content/config.js";
+import {
+  ENEMY_MAX_R,
+  COLOSSUS_HP_STEP,
+  COLOSSUS_SHRINK_STEP,
+  COLOSSUS_SPAWN_STAGES,
+  BURST_TELEGRAPH,
+} from "./content/enemies.js";
 import {
   DOG_BROWN_COLORS,
 } from "./content/dog.js";
@@ -66,6 +68,7 @@ import { createUpdateSameCircle } from "./systems/uniques/same_circle.js";
 import { createUpdatePatriarchDoll } from "./systems/patriarch_doll.js";
 import { createUpdateBullets, createUpdateEnemyBullets } from "./systems/projectiles.js";
 import { createUpdateTotem } from "./systems/totem.js";
+import { createUpdateDrops } from "./systems/drops.js";
 import {
   createRenderBatch,
   batchCirclePush,
@@ -342,9 +345,7 @@ import { createProfilerUI } from "./ui/profiler.js";
       handleSelectHero,
     });
 
-    btnFreePlay.addEventListener("click", ()=>{
-      menus.openStart();
-    });
+    btnFreePlay.addEventListener("click", ()=>menus.openStart());
     btnMenuRecords.addEventListener("click", ()=>menus.showRecords());
     btnMenuSettings.addEventListener("click", ()=>menus.showSettings());
     btnSettings.addEventListener("click", ()=>menus.showSettings());
@@ -1571,8 +1572,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
     });
 
     const updateTotem = createUpdateTotem({ totem, player, pF, applyDamageToPlayer, handlePlayerDeath });
-
-    const novaBulletsThisFrame = [];
+    const updateDrops = createUpdateDrops({ drops, player, bullets, turrets, pF, queueHeal, gainXp });
 
     function update(dt){
       state.t += dt;
@@ -1854,75 +1854,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
         + xpNearBoss * XP_BONUS_BOSS;
 
       // XP drops update + pickup
-      const novaMagnetR = pF.getNovaMagnetRadius();
-      novaBulletsThisFrame.length = 0;
-      if (novaMagnetR > 0){
-        for (const b of bullets){
-          if (b.isNova) novaBulletsThisFrame.push(b);
-        }
-      }
-      const turretPull = pF.hasTurretHeal() && turrets.length > 0;
-      const turretAggro = turretPull ? pF.getTurretAggroRadius() : 0;
-      for (let i = drops.length - 1; i >= 0; i--) {
-        const g = drops[i];
-        g.t += dt;
-
-        // initial drift fades
-        g.vx *= dampFast;
-        g.vy *= dampFast;
-        g.x += g.vx * dt;
-        g.y += g.vy * dt;
-
-        let dx = player.x - g.x;
-        let dy = player.y - g.y;
-        let dist = len2(dx, dy) || 1;
-
-        let targetMagnet = player.magnet;
-        let useNova = false;
-        let useTurret = false;
-        if (novaBulletsThisFrame.length){
-          for (const b of novaBulletsThisFrame){
-            const ndx = b.x - g.x;
-            const ndy = b.y - g.y;
-            if ((ndx*ndx + ndy*ndy) <= novaMagnetR * novaMagnetR){
-              g.novaPull = true;
-              break;
-            }
-          }
-        }
-        if (g.novaPull) useNova = true;
-        if (turretPull && g.kind === "xp"){
-          if (!g.turretPull){
-            for (const t of turrets){
-              const tdx = t.x - g.x;
-              const tdy = t.y - g.y;
-              if ((tdx*tdx + tdy*tdy) <= turretAggro * turretAggro){
-                g.turretPull = true;
-                break;
-              }
-            }
-          }
-          if (g.turretPull) useTurret = true;
-        }
-        if (useNova) targetMagnet = Math.max(targetMagnet, dist + 1);
-        if (useTurret) targetMagnet = Math.max(targetMagnet, turretAggro * 4);
-
-        if (dist < targetMagnet) {
-          const pull = (1 - dist / targetMagnet);
-          const boost = (useNova || useTurret);
-          const speed = (boost ? 340 : 240) + (boost ? 680 : 520) * pull;
-          g.x += (dx / dist) * speed * dt;
-          g.y += (dy / dist) * speed * dt;
-        }
-
-        if (dist < player.r + g.r + 6) {
-          if (g.kind === "heal") queueHeal(g.v);
-          else gainXp(g.v);
-          drops.splice(i, 1);
-        } else if (g.t > (g.life || 36)) {
-          drops.splice(i, 1);
-        }
-      }
+      updateDrops(dt, dampFast);
 
       updateParticles(dt, dampSlow);
       updateShockwaves(dt);

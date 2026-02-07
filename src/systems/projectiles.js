@@ -1,8 +1,8 @@
 import {
-  ENEMY_MAX_R,
   INVULN_BULLET_BASE,
   INVULN_BULLET_MIN,
 } from "../content/config.js";
+import { ENEMY_MAX_R } from "../content/enemies.js";
 import {
   PIERCE_DAMAGE_FALLOFF,
   PIERCE_DAMAGE_MIN_RATIO,

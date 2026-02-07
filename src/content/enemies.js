@@ -1,5 +1,8 @@
 import { COLORS } from "../render/colors.js";
 
+export const ENEMY_MAX_R = 60;
+export const BURST_TELEGRAPH = 0.25;
+
 export const ENEMY_BASE = {
   grunt:    { r:14, hp:45,  spd:120, dmg:10, xp:10 },
   runner:   { r:12, hp:32,  spd:195, dmg:12, xp:11 },
@@ -42,3 +45,7 @@ export const BOSS_KINDS = [
   { id:"colossus", name:"Colossus",   unlock:8 },
 ];
 export const BOSS_NAME = Object.fromEntries(BOSS_KINDS.map((b)=>[b.id, b.name]));
+
+export const COLOSSUS_HP_STEP = 0.20;
+export const COLOSSUS_SHRINK_STEP = 0.10;
+export const COLOSSUS_SPAWN_STAGES = 4;

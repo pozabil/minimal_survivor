@@ -1,4 +1,4 @@
-import { ENEMY_MAX_R } from "../../content/config.js";
+import { ENEMY_MAX_R } from "../../content/enemies.js";
 import {
   DOG_SPEED,
   DOG_TURN_RATE,

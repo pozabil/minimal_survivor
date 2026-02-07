@@ -1,8 +1,3 @@
-export const ENEMY_MAX_R = 60;
-export const COLOSSUS_HP_STEP = 0.20;
-export const COLOSSUS_SHRINK_STEP = 0.10;
-export const COLOSSUS_SPAWN_STAGES = 4;
-export const BURST_TELEGRAPH = 0.25;
 export const HEAL_OVER_TIME = 0.25;
 export const CAMERA_ZOOM_OUT = 0.05;
 export const UNIQUE_CHEST_EVERY = 4;
