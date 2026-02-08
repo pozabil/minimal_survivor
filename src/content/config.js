@@ -1,10 +1,6 @@
 export const HEAL_OVER_TIME = 0.25;
 export const CAMERA_ZOOM_OUT = 0.05;
 export const UNIQUE_CHEST_EVERY = 4;
-export const MAX_SHIRT_SLOW_DURATION = 2.4;
-export const MAX_SHIRT_COOLDOWN = 30;
-export const MAX_SHIRT_SLOW_SCALE = 0.5;
-export const MAX_SHIRT_KILL_CD_REDUCE = 0.2;
 export const XP_BONUS_NORMAL = 0.0005;
 export const XP_BONUS_ELITE = 0.002;
 export const XP_BONUS_BOSS = 0.01;

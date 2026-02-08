@@ -5,8 +5,8 @@ import {
   LOW_HP_SLOW_COOLDOWN,
   LOW_HP_SLOW_RESET,
   LOW_HP_SLOW_SCALE,
-  MAX_SHIRT_SLOW_SCALE,
 } from "../content/config.js";
+import { MAX_SHIRT_SLOW_SCALE } from "../content/uniques.js";
 
 export function createStep({
   state,

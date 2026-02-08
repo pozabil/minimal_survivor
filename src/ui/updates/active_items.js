@@ -1,5 +1,5 @@
 import { clamp } from "../../utils/math.js";
-import { MAX_SHIRT_COOLDOWN } from "../../content/config.js";
+import { MAX_SHIRT_COOLDOWN } from "../../content/uniques.js";
 
 export function createActiveItemsUI({ hudElements, overlayElements }) {
   const { elActionHint, elActiveItems, elActiveItemsList } = hudElements;

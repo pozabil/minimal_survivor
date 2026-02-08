@@ -1,9 +1,6 @@
 import {
   HEAL_OVER_TIME,
   CAMERA_ZOOM_OUT,
-  MAX_SHIRT_SLOW_DURATION,
-  MAX_SHIRT_COOLDOWN,
-  MAX_SHIRT_KILL_CD_REDUCE,
   XP_BONUS_NORMAL,
   XP_BONUS_ELITE,
   XP_BONUS_BOSS,
@@ -61,6 +58,7 @@ import {
 } from "./systems/combat.js";
 import { createUpdateDogs } from "./systems/uniques/dog.js";
 import { createDashSystem } from "./systems/uniques/dash.js";
+import { createMaxShirtSystem } from "./systems/uniques/max_shirt.js";
 import { createUpdateSameCircle } from "./systems/uniques/same_circle.js";
 import { createUpdatePatriarchDoll } from "./systems/patriarch_doll.js";
 import { createUpdateBullets, createUpdateEnemyBullets } from "./systems/projectiles.js";
@@ -255,13 +253,6 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     const spawnDog = createSpawnDog({ player, dogs });
 
-    function tryActivateMaxShirt(){
-      if (!pF.hasUnique("max_shirt")) return false;
-      if (state.maxShirtCd > 0 || state.maxShirtSlowT > 0) return false;
-      state.maxShirtSlowT = MAX_SHIRT_SLOW_DURATION;
-      state.maxShirtCd = MAX_SHIRT_COOLDOWN;
-      return true;
-    }
     const UNIQUES = createUniques({ player, state, totem, spawnDog });
     const uniquesList = Object.keys(UNIQUES);
 
@@ -293,7 +284,6 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     function handleSelectHero(hero){
       hero.apply(player);
-      pF.addUniqueItem('british_citizenship')
       maybeAddStartingDog(hero.id);
     }
 
@@ -324,11 +314,12 @@ import { createProfilerUI } from "./ui/profiler.js";
     const joyRadius = 70;
 
     const triggerDash = createDashSystem({ player, state, pF, keys, isTouch, joyVec, spawnDashTrail });
+    const maxShirt = createMaxShirtSystem({ state, pF });
 
     function triggerAction(){
       if (state.paused || state.dead) return;
-      if (pF.hasUnique("max_shirt")) tryActivateMaxShirt();
-      if (pF.hasUnique("british_citizenship")) triggerDash();
+      maxShirt.tryActivateMaxShirt();
+      triggerDash();
     }
 
     addEventListener("keydown",(e)=>{
@@ -1101,9 +1092,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
       e.dead = true;
       state.kills += 1;
-      if (pF.hasUnique("max_shirt") && state.maxShirtCd > 0){
-        state.maxShirtCd = Math.max(0, state.maxShirtCd - MAX_SHIRT_KILL_CD_REDUCE);
-      }
+      maxShirt.onEnemyKill();
       spawnBurst(e.x,e.y, randi(10,16), 220, 0.35);
       dropXp(e.x,e.y, e.xp);
 
@@ -1584,15 +1573,7 @@ Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).jo
       updateHeal(dt);
       player.invuln = Math.max(0, player.invuln - dt);
 
-      // unique cooldown
-      if (pF.hasUnique("max_shirt")){
-        if (state.maxShirtSlowT > 0){
-          state.maxShirtSlowT = Math.max(0, state.maxShirtSlowT - dt);
-        }
-        if (state.maxShirtCd > 0){
-          state.maxShirtCd = Math.max(0, state.maxShirtCd - dt);
-        }
-      }
+      maxShirt.updateMaxShirt(dt);
 
       // totem zone effect
       updateTotem(dt);
