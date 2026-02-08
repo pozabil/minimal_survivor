@@ -5,6 +5,11 @@ export const SAME_CIRCLE_LIFE = 2;
 export const SAME_CIRCLE_RADIUS = 120;
 export const SAME_CIRCLE_DAMAGE_MULT = 2.5;
 
+export const DASH_DISTANCE = 140;
+export const DASH_DURATION = 0.2;
+export const DASH_COOLDOWN = 2;
+export const DASH_INVULN = 0.35;
+export const DASH_TRAIL_INTERVAL = 0.01;
 export const DASH_TRAIL_LIFE = 0.24;
 export const DASH_TRAIL_MAX = 36;
 export const LIGHTNING_STRIKE_LIFE = 0.22;

@@ -1,10 +1,6 @@
 import {
   HEAL_OVER_TIME,
   CAMERA_ZOOM_OUT,
-  DASH_DISTANCE,
-  DASH_DURATION,
-  DASH_COOLDOWN,
-  DASH_INVULN,
   MAX_SHIRT_SLOW_DURATION,
   MAX_SHIRT_COOLDOWN,
   MAX_SHIRT_KILL_CD_REDUCE,
@@ -64,6 +60,7 @@ import {
   createPlayerDamageApplier,
 } from "./systems/combat.js";
 import { createUpdateDogs } from "./systems/uniques/dog.js";
+import { createDashSystem } from "./systems/uniques/dash.js";
 import { createUpdateSameCircle } from "./systems/uniques/same_circle.js";
 import { createUpdatePatriarchDoll } from "./systems/patriarch_doll.js";
 import { createUpdateBullets, createUpdateEnemyBullets } from "./systems/projectiles.js";
@@ -258,42 +255,6 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     const spawnDog = createSpawnDog({ player, dogs });
 
-    function getDashDir(dirX, dirY){
-      if (Number.isFinite(dirX) && Number.isFinite(dirY) && (dirX !== 0 || dirY !== 0)){
-        const d = len2(dirX, dirY) || 1;
-        return { x: dirX / d, y: dirY / d };
-      }
-      let ix = 0, iy = 0;
-      if (keys.has("KeyW") || keys.has("ArrowUp")) iy -= 1;
-      if (keys.has("KeyS") || keys.has("ArrowDown")) iy += 1;
-      if (keys.has("KeyA") || keys.has("ArrowLeft")) ix -= 1;
-      if (keys.has("KeyD") || keys.has("ArrowRight")) ix += 1;
-      if (isTouch){ ix += joyVec.x; iy += joyVec.y; }
-      const ilen = len2(ix, iy);
-      if (ilen > 0.2) return { x: ix / ilen, y: iy / ilen };
-      const spd = len2(player.vx, player.vy);
-      if (spd > 1) return { x: player.vx / spd, y: player.vy / spd };
-      const ld = len2(player.lastDirX || 0, player.lastDirY || 0) || 1;
-      return { x: (player.lastDirX || 1) / ld, y: (player.lastDirY || 0) / ld };
-    }
-    function triggerDash(dirX, dirY){
-      if (!pF.hasUnique("british_citizenship")) return false;
-      if (player.dashCd > 0 || state.dashT > 0) return false;
-      const dir = getDashDir(dirX, dirY);
-      const ux = dir.x;
-      const uy = dir.y;
-      const dashSpeed = DASH_DISTANCE / DASH_DURATION;
-      state.dashT = DASH_DURATION;
-      state.dashVx = ux * dashSpeed;
-      state.dashVy = uy * dashSpeed;
-      player.vx = state.dashVx;
-      player.vy = state.dashVy;
-      player.invuln = Math.max(player.invuln, DASH_INVULN);
-      player.dashCd = DASH_COOLDOWN;
-      state.dashTrailT = 0;
-      spawnDashTrail();
-      return true;
-    }
     function tryActivateMaxShirt(){
       if (!pF.hasUnique("max_shirt")) return false;
       if (state.maxShirtCd > 0 || state.maxShirtSlowT > 0) return false;
@@ -332,6 +293,7 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     function handleSelectHero(hero){
       hero.apply(player);
+      pF.addUniqueItem('british_citizenship')
       maybeAddStartingDog(hero.id);
     }
 
@@ -356,12 +318,19 @@ import { createProfilerUI } from "./ui/profiler.js";
     let lastTapTime = 0;
     let lastTapX = 0;
     let lastTapY = 0;
+    let joyActive = false;
+    let joyVec = { x: 0, y: 0 };
+    let joyCenter = { x: 0, y: 0 };
+    const joyRadius = 70;
+
+    const triggerDash = createDashSystem({ player, state, pF, keys, isTouch, joyVec, spawnDashTrail });
 
     function triggerAction(){
       if (state.paused || state.dead) return;
       if (pF.hasUnique("max_shirt")) tryActivateMaxShirt();
       if (pF.hasUnique("british_citizenship")) triggerDash();
     }
+
     addEventListener("keydown",(e)=>{
       if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
 
@@ -398,12 +367,6 @@ import { createProfilerUI } from "./ui/profiler.js";
       keys.add(e.code);
     }, { passive:false });
     addEventListener("keyup",(e)=>keys.delete(e.code), { passive:true });
-
-    // Mobile joystick
-    let joyActive = false;
-    let joyVec = { x: 0, y: 0 };
-    let joyCenter = { x: 0, y: 0 };
-    const joyRadius = 70;
 
     if (isTouch){
 

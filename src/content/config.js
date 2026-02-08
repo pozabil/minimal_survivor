@@ -1,11 +1,6 @@
 export const HEAL_OVER_TIME = 0.25;
 export const CAMERA_ZOOM_OUT = 0.05;
 export const UNIQUE_CHEST_EVERY = 4;
-export const DASH_DISTANCE = 140;
-export const DASH_DURATION = 0.2;
-export const DASH_COOLDOWN = 2;
-export const DASH_INVULN = 0.35;
-export const DASH_TRAIL_INTERVAL = 0.01;
 export const MAX_SHIRT_SLOW_DURATION = 2.4;
 export const MAX_SHIRT_COOLDOWN = 30;
 export const MAX_SHIRT_SLOW_SCALE = 0.5;

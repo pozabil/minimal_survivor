@@ -1,4 +1,4 @@
-import { DASH_TRAIL_INTERVAL } from "../../content/config.js";
+import { DASH_TRAIL_INTERVAL } from "../../content/uniques.js";
 
 export function createEffectUpdates({
   state,
