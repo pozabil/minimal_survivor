@@ -121,8 +121,9 @@ export function createPlayerFunctions({
   player,
   totem,
   uniques,
-  uniquesList,
 }) {
+  const uniquesList = Object.keys(uniques);
+
   function getLevel(id){
     return player.upgrades[id] || 0;
   }
@@ -130,7 +131,6 @@ export function createPlayerFunctions({
     return player.uniques.has(id);
   }
   function hasAnyActionSkill(){
-    if (!uniques) return false;
     for (const id of player.uniques){
       const u = uniques[id];
       if (u && u.action) return true;
@@ -138,12 +138,11 @@ export function createPlayerFunctions({
     return false;
   }
   function hasRemainingUnique(){
-    if (!uniquesList) return false;
     const remaining = uniquesList.filter((id)=>!player.uniquesSeen.has(id) && !player.uniques.has(id));
     return remaining.length >= 3;
   }
   function addUniqueItem(id){
-    const item = uniques ? uniques[id] : null;
+    const item = uniques[id];
     if (!item || player.uniques.has(id)) return;
     player.uniques.add(id);
     player.uniquesOrder.push(id);
