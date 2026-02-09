@@ -84,6 +84,9 @@ export function createDamageTracker({
   spawnDamageFloat,
   spawnHealFloat,
 }) {
+  let dmgHead = 0;
+  const COMPACT_HEAD_THRESHOLD = 256; // numbers in flat [t, dmg, t, dmg, ...] buffer
+
   function recordDamage(amount, x, y, showNumber = false, color = null, size = null) {
     state.dmgDone += amount;
     if (options.showDamageNumbers && showNumber && Number.isFinite(x) && Number.isFinite(y)) {
@@ -102,17 +105,29 @@ export function createDamageTracker({
         }
       }
     }
-    state.lastDmgWindow.push([state.t, amount]);
+
+    state.lastDmgWindow.push(state.t, amount);
     const cutoff = state.t - DPS_WINDOW_SEC;
-    while (state.lastDmgWindow.length && state.lastDmgWindow[0][0] < cutoff) {
-      state.lastDmgWindow.shift();
+    while (dmgHead + 1 < state.lastDmgWindow.length && state.lastDmgWindow[dmgHead] < cutoff) {
+      dmgHead += 2;
+    }
+
+    // Compact rarely to avoid unbounded growth.
+    if (dmgHead >= COMPACT_HEAD_THRESHOLD && dmgHead * 2 >= state.lastDmgWindow.length) {
+      state.lastDmgWindow.copyWithin(0, dmgHead);
+      state.lastDmgWindow.length -= dmgHead;
+      dmgHead = 0;
     }
   }
 
   function getDps() {
     const cutoff = state.t - DPS_WINDOW_SEC;
     let sum = 0;
-    for (const [t, a] of state.lastDmgWindow) if (t >= cutoff) sum += a;
+    for (let i = dmgHead; i + 1 < state.lastDmgWindow.length; i += 2) {
+      const t = state.lastDmgWindow[i];
+      if (t < cutoff) continue;
+      sum += state.lastDmgWindow[i + 1] || 0;
+    }
     return Math.round(sum / DPS_WINDOW_SEC);
   }
 

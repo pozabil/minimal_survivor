@@ -43,7 +43,7 @@ function applyElite(e, mod, reward, scale) {
   e.xp = Math.round(e.xp * (reward ? ELITE_XP_REWARD_MULT : ELITE_XP_BASE_MULT));
 }
 
-function pickEnemyType({ player, state, enemies, forcedType }) {
+function pickEnemyType({ player, state, enemies, forcedType, enemyTypePicks }) {
   if (forcedType) return forcedType;
 
   let type = "grunt";
@@ -77,24 +77,22 @@ function pickEnemyType({ player, state, enemies, forcedType }) {
   const pSplitter = (diff > 3.5) ? (0.02 + Math.min(0.07, (diff - 3.5) * 0.012)) : 0.0;
   const pBrute = (diff > 4.0) ? (0.02 + Math.min(0.06, (diff - 4) * 0.010)) : 0.0;
 
-  const picks = [
-    { t: "runner",  w: pRunner },
-    { t: "tank",    w: pTank },
-    { t: "shooter", w: pShooter },
-    { t: "bomber",  w: pBomber },
-    { t: "dasher",  w: pDasher },
-    { t: "spitter", w: pSpitter },
-    { t: "shield",  w: pShield },
-    { t: "triad",   w: pTriad },
-    { t: "blaster", w: pBlaster },
-    { t: "burst",   w: pBurst },
-    { t: "splitter",w: pSplitter },
-    { t: "brute",   w: pBrute },
-  ];
-  const total = picks.reduce((sum, p) => sum + p.w, 0);
+  enemyTypePicks[0].w = pRunner;
+  enemyTypePicks[1].w = pTank;
+  enemyTypePicks[2].w = pShooter;
+  enemyTypePicks[3].w = pBomber;
+  enemyTypePicks[4].w = pDasher;
+  enemyTypePicks[5].w = pSpitter;
+  enemyTypePicks[6].w = pShield;
+  enemyTypePicks[7].w = pTriad;
+  enemyTypePicks[8].w = pBlaster;
+  enemyTypePicks[9].w = pBurst;
+  enemyTypePicks[10].w = pSplitter;
+  enemyTypePicks[11].w = pBrute;
+  const total = enemyTypePicks.reduce((sum, p) => sum + p.w, 0);
   const scale = total > 1 ? (1 / total) : 1;
   let acc = 0;
-  for (const p of picks) {
+  for (const p of enemyTypePicks) {
     acc += p.w * scale;
     if (roll < acc) {
       type = p.t;
@@ -247,6 +245,20 @@ function spawnPack({
 export function createSpawnEnemy({ player, state, enemies, spawnScale }) {
   let enemyId = 1;
   const nextEnemyId = () => enemyId++;
+  const enemyTypePicks = [
+    { t: "runner", w: 0 },
+    { t: "tank", w: 0 },
+    { t: "shooter", w: 0 },
+    { t: "bomber", w: 0 },
+    { t: "dasher", w: 0 },
+    { t: "spitter", w: 0 },
+    { t: "shield", w: 0 },
+    { t: "triad", w: 0 },
+    { t: "blaster", w: 0 },
+    { t: "burst", w: 0 },
+    { t: "splitter", w: 0 },
+    { t: "brute", w: 0 },
+  ];
   return function spawnEnemy(pack = false, forcedType = null, extra = null) {
     const w = innerWidth;
     const h = innerHeight;
@@ -258,7 +270,7 @@ export function createSpawnEnemy({ player, state, enemies, spawnScale }) {
     const ey = useSpawnPos ? extra.spawnY : (player.y + Math.sin(a) * ring);
     const isMinion = extra?.minion === true;
 
-    const type = pickEnemyType({ player, state, enemies, forcedType });
+    const type = pickEnemyType({ player, state, enemies, forcedType, enemyTypePicks });
 
     const b = ENEMY_BASE[type];
     const tier = extra?.bossTier || 0;
@@ -334,10 +346,16 @@ export function createSpawnEnemy({ player, state, enemies, spawnScale }) {
 }
 
 export function createSpawnBoss({ spawn, spawnEnemy, elBossWrap }) {
+  const bossPickBuffer = [];
+
   function pickBossKind() {
     const maxUnlock = Math.min(BOSS_KINDS.length - 1, spawn.bossTier);
-    const available = BOSS_KINDS.filter((b) => b.unlock <= maxUnlock);
-    return available[randi(0, available.length - 1)];
+    bossPickBuffer.length = 0;
+    for (const b of BOSS_KINDS){
+      if (b.unlock <= maxUnlock) bossPickBuffer.push(b);
+    }
+    if (!bossPickBuffer.length) return null;
+    return bossPickBuffer[randi(0, bossPickBuffer.length - 1)];
   }
 
   return function spawnBoss(kindId = null) {
@@ -353,11 +371,16 @@ export function createSpawnBoss({ spawn, spawnEnemy, elBossWrap }) {
 }
 
 export function createSpawnColossusElite({ player, state, spawnEnemy }) {
+  const colossusPickBuffer = ["grunt", "runner", "tank", "shooter", "brute", "", "", ""];
+
   function pickColossusEliteType() {
-    const picks = ["grunt", "runner", "tank", "shooter", "brute"];
-    if (state.difficulty > 3.0) picks.push("spitter", "dasher");
-    if (player.lvl >= 18) picks.push("shield");
-    return picks[randi(0, picks.length - 1)];
+    let count = 5;
+    if (state.difficulty > 3.0) {
+      colossusPickBuffer[count++] = "spitter";
+      colossusPickBuffer[count++] = "dasher";
+    }
+    if (player.lvl >= 18) colossusPickBuffer[count++] = "shield";
+    return colossusPickBuffer[randi(0, count - 1)];
   }
 
   return function spawnColossusElite(boss) {

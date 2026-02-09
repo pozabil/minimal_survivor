@@ -19,17 +19,18 @@ export function createUpdateDogs({
   recordDamage,
   killEnemy,
 }) {
+  const dogCandidates = [];
+
   function getDogAttackRange() {
     return player.magnet * 1.25;
   }
 
   function pickDogTarget(excludeId) {
-    const candidates = [];
     const range = getDogAttackRange();
-    gridQueryCircle(player.x, player.y, range + ENEMY_MAX_R, candidates);
+    gridQueryCircle(player.x, player.y, range + ENEMY_MAX_R, dogCandidates);
     let valid = 0;
     let choice = null;
-    for (const e of candidates) {
+    for (const e of dogCandidates) {
       if (!e || e.dead || e.dying) continue;
       if (excludeId && e.id === excludeId) continue;
       const dx = e.x - player.x;

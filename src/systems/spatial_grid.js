@@ -2,12 +2,17 @@ import { GRID_SIZE } from "../core/constants.js";
 
 export function createSpatialGrid(enemies){
   const enemyGrid = new Map();
+  const cellPool = [];
 
   function gridKey(cx, cy){
     return cx + "," + cy;
   }
 
   function gridBuild(){
+    for (const cell of enemyGrid.values()){
+      cell.length = 0;
+      cellPool.push(cell);
+    }
     enemyGrid.clear();
     for (const e of enemies){
       if (e.dead || e.dying) continue;
@@ -16,7 +21,7 @@ export function createSpatialGrid(enemies){
       const key = gridKey(cx, cy);
       let cell = enemyGrid.get(key);
       if (!cell){
-        cell = [];
+        cell = cellPool.pop() || [];
         enemyGrid.set(key, cell);
       }
       cell.push(e);

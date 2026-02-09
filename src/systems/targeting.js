@@ -1,6 +1,10 @@
 import { TAU } from "../core/constants.js";
 
 export function createTargeting({ enemies, gridQueryCircle }) {
+  const nearestCandidates = [];
+  const ricochetCandidates = [];
+  const ricochetAngleCandidates = [];
+
   function findNearestEnemyFrom(x, y) {
     let best = null;
     let bestD = Infinity;
@@ -21,11 +25,10 @@ export function createTargeting({ enemies, gridQueryCircle }) {
   }
 
   function findNearestEnemyTo(x, y, range) {
-    const candidates = [];
-    gridQueryCircle(x, y, range, candidates);
+    gridQueryCircle(x, y, range, nearestCandidates);
     let best = null;
     let bestD = Infinity;
-    for (const e of candidates) {
+    for (const e of nearestCandidates) {
       if (e.dead || e.dying) continue;
       const d = (e.x - x) ** 2 + (e.y - y) ** 2;
       if (d < bestD) { bestD = d; best = e; }
@@ -34,11 +37,10 @@ export function createTargeting({ enemies, gridQueryCircle }) {
   }
 
   function findRicochetTarget(x, y, excludeId, excludeId2) {
-    const candidates = [];
-    gridQueryCircle(x, y, 260, candidates);
+    gridQueryCircle(x, y, 260, ricochetCandidates);
     let best = null;
     let bestD = Infinity;
-    for (const e of candidates) {
+    for (const e of ricochetCandidates) {
       if (e.dead || e.dying) continue;
       if (e.id === excludeId || e.id === excludeId2) continue;
       const d = (e.x - x) ** 2 + (e.y - y) ** 2;
@@ -48,11 +50,10 @@ export function createTargeting({ enemies, gridQueryCircle }) {
   }
 
   function findRicochetTargetWithinAngle(x, y, excludeId, excludeId2, excludeId3, baseAng, maxDelta) {
-    const candidates = [];
-    gridQueryCircle(x, y, 260, candidates);
+    gridQueryCircle(x, y, 260, ricochetAngleCandidates);
     let best = null;
     let bestD = Infinity;
-    for (const e of candidates) {
+    for (const e of ricochetAngleCandidates) {
       if (e.dead || e.dying) continue;
       if (e.id === excludeId || e.id === excludeId2 || e.id === excludeId3) continue;
       const ang = Math.atan2(e.y - y, e.x - x);

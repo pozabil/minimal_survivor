@@ -55,6 +55,7 @@ export function createProfilerUI({ root = document } = {}) {
   let lastProfilerTime = 0;
   let maxProfiler = 0;
   const frameTimes = [];
+  const sortedFrameTimes = [];
   const FRAME_PACE_SAMPLES = 480;
   const JANK_THRESHOLD_MS = (1000 / 60) * 1.05;
 
@@ -90,11 +91,17 @@ export function createProfilerUI({ root = document } = {}) {
     if (now - lastTime > HUD_UPDATE_TIME_MS) {
       const denom = Math.max(1, frames);
       const sampleCount = frameTimes.length;
-      const samples = sampleCount > 0 ? frameTimes.slice() : [0];
-      samples.sort((a, b) => a - b);
-      const p50 = samples[Math.floor((samples.length - 1) * 0.5)];
-      const p95 = samples[Math.floor((samples.length - 1) * 0.95)];
-      const p99 = samples[Math.floor((samples.length - 1) * 0.99)];
+      if (sampleCount > 0) {
+        sortedFrameTimes.length = sampleCount;
+        for (let i = 0; i < sampleCount; i++) sortedFrameTimes[i] = frameTimes[i];
+      } else {
+        sortedFrameTimes.length = 1;
+        sortedFrameTimes[0] = 0;
+      }
+      sortedFrameTimes.sort((a, b) => a - b);
+      const p50 = sortedFrameTimes[Math.floor((sortedFrameTimes.length - 1) * 0.5)];
+      const p95 = sortedFrameTimes[Math.floor((sortedFrameTimes.length - 1) * 0.95)];
+      const p99 = sortedFrameTimes[Math.floor((sortedFrameTimes.length - 1) * 0.99)];
       const low1 = p99 > 0 ? (1000 / p99) : 0;
       let jank = 0;
       for (const t of frameTimes) if (t > JANK_THRESHOLD_MS) jank += 1;

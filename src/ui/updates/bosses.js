@@ -4,6 +4,7 @@ import { clamp } from "../../utils/math.js";
 export function createBossUI({ elements }) {
   const { elBossWrap, elBossList } = elements;
   const bossRows = [];
+  const bossBuffer = [];
   const wrapState = { visible: null };
 
   function setIfChanged(obj, key, value, apply){
@@ -58,30 +59,31 @@ export function createBossUI({ elements }) {
   }
 
   function updateBossUI(enemies){
-    const bosses = [];
+    bossBuffer.length = 0;
     for (const e of enemies){
-      if (e.type === "boss" && !e.dead) bosses.push(e);
+      if (e.type === "boss" && !e.dead) bossBuffer.push(e);
     }
-    const wrapVisible = bosses.length > 0;
+    const bossCount = bossBuffer.length;
+    const wrapVisible = bossCount > 0;
     setWrapVisible(wrapVisible);
     if (!wrapVisible){
       hideUnusedRows(0);
       return;
     }
-    ensureBossRows(bosses.length);
-    for (let i=0; i<bosses.length; i++){
-      const b = bosses[i];
+    ensureBossRows(bossCount);
+    for (let rowIdx = 0; rowIdx < bossCount; rowIdx++){
+      const b = bossBuffer[rowIdx];
       const name = BOSS_NAME[b.bossKind] || "Boss";
       const tier = (b.bossTier || 0) + 1;
       const hpPct = clamp(b.hp / b.hpMax, 0, 1);
-      const row = bossRows[i];
+      const row = bossRows[rowIdx];
       setRowVisible(row, true);
       const text = `BOSS: ${name} (T${tier})`;
       setIfChanged(row, "lastText", text, (v)=>{ row.name.textContent = v; });
       const width = `${(hpPct*100).toFixed(2)}%`;
       setIfChanged(row, "lastWidth", width, (v)=>{ row.fill.style.width = v; });
     }
-    hideUnusedRows(bosses.length);
+    hideUnusedRows(bossCount);
   }
 
   return updateBossUI;

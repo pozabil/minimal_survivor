@@ -14,10 +14,11 @@ export function createOrbitalsSystem({
   recordDamage,
   killEnemy,
 }) {
+  const orbitalCandidates = [];
+
   function updateOrbitalsFor(source, orbitalsState, dt, hitKey) {
     if (player.orbitals <= 0) return;
     orbitalsState.orbitalAngle = (orbitalsState.orbitalAngle || 0) + player.orbitalSpeed * dt;
-    const candidates = [];
     const orbSize = pF.getOrbitalSize();
 
     for (let k = 0; k < player.orbitals; k++) {
@@ -25,9 +26,9 @@ export function createOrbitalsSystem({
       const ox = source.x + Math.cos(a) * player.orbitalRadius;
       const oy = source.y + Math.sin(a) * player.orbitalRadius;
 
-      gridQueryCircle(ox, oy, orbSize + ENEMY_MAX_R, candidates);
-      for (let i = candidates.length - 1; i >= 0; i--) {
-        const e = candidates[i];
+      gridQueryCircle(ox, oy, orbSize + ENEMY_MAX_R, orbitalCandidates);
+      for (let i = orbitalCandidates.length - 1; i >= 0; i--) {
+        const e = orbitalCandidates[i];
         if (e.dead || e.dying) continue;
         if (!e[hitKey]) e[hitKey] = new Float32Array(24);
         e[hitKey][k] = Math.max(0, (e[hitKey][k] || 0) - dt);
