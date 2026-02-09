@@ -9,9 +9,9 @@ import {
 } from "./content/config.js";
 import { COLOSSUS_HP_STEP, COLOSSUS_SHRINK_STEP, COLOSSUS_SPAWN_STAGES, BURST_TELEGRAPH } from "./content/enemies.js";
 import { DOG_BROWN_COLORS } from "./content/dog.js";
-import { TAU, JOY_HALF, JOY_MARGIN } from "./core/constants.js";
+import { TAU } from "./core/constants.js";
 import { initCanvas } from "./core/canvas.js";
-import { clamp, lerp, len2, len2Sq } from "./utils/math.js";
+import { clamp, lerp, len2 } from "./utils/math.js";
 import { randf, randi } from "./utils/rand.js";
 import { circleHit, circleRectHit, pushAway } from "./utils/collision.js";
 import { AURA_WAVE_THICKNESS, createUpgrades } from "./content/upgrades.js";
@@ -25,6 +25,7 @@ import { createStep } from "./flow/step.js";
 import { updateMovement } from "./systems/movement.js";
 import { createSpatialGrid } from "./systems/spatial_grid.js";
 import { createTargeting } from "./systems/targeting.js";
+import { createInputSystem } from "./systems/input.js";
 import {
   createRicochetHelpers,
   createShootingSystem,
@@ -99,11 +100,10 @@ import { createProfilerUI } from "./ui/profiler.js";
     const { elBossWrap } = hud.elements;
     // Overlays
     const {
-      mainMenuOverlay, btnFreePlay, btnMenuRecords, btnMenuSettings, startOverlay, pickerOverlay,
-      btnReroll, btnSkip, btnShowBuild, pauseMenu, tabUpgrades, tabInventory, btnResume, btnRestart2,
-      btnCopy, btnRecords, btnSettings, btnHang, restartConfirmOverlay, btnRestartYes, btnRestartNo,
-      gameoverOverlay, restartBtn, copyBtn, btnRecordsOver, recordsOverlay, btnRecordsClose,
-      settingsOverlay, btnSettingsClose, optShowDamageNumbers, optShowProfiler, btnPause,
+      btnFreePlay, btnMenuRecords, btnMenuSettings, pickerOverlay, btnReroll, btnSkip, btnShowBuild,
+      pauseMenu, tabUpgrades, tabInventory, btnResume, btnRestart2, btnCopy, btnRecords, btnSettings,
+      btnHang, btnRestartYes, btnRestartNo, restartBtn, copyBtn, btnRecordsOver, btnRecordsClose,
+      btnSettingsClose, optShowDamageNumbers, optShowProfiler, btnPause,
     } = overlays.elements;
 
     // Profiler
@@ -285,157 +285,26 @@ import { createProfilerUI } from "./ui/profiler.js";
     btnSettingsClose.addEventListener("click", menus.hideSettings);
 
     // Input
-    const keys = new Set();
-    let lastTapTime = 0;
-    let lastTapX = 0;
-    let lastTapY = 0;
-    let joyActive = false;
-    let joyVec = { x: 0, y: 0 };
-    let joyCenter = { x: 0, y: 0 };
-    const joyRadius = 70;
+    const input = createInputSystem({
+      canvas,
+      joy,
+      knob,
+      isTouch,
+      menus,
+      pF,
+      pickChoice,
+      doReroll,
+      overlays: overlays.elements,
+    });
+    const { keys, joyVec } = input;
 
     const triggerDash = createDashSystem({ player, state, pF, keys, isTouch, joyVec, spawnDashTrail });
     const maxShirt = createMaxShirtSystem({ state, pF });
-
-    function triggerAction(){
+    input.setActionHandler(()=>{
       if (state.paused || state.dead) return;
       maxShirt.tryActivateMaxShirt();
       triggerDash();
-    }
-
-    addEventListener("keydown",(e)=>{
-      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
-
-      if (e.code==="Escape"){
-        if (restartConfirmOverlay.style.display === "grid"){
-          menus.hideRestartConfirm();
-          return;
-        }
-        if (settingsOverlay.style.display === "grid"){
-          menus.hideSettings();
-          return;
-        }
-        if (recordsOverlay.style.display === "grid"){
-          menus.hideRecords();
-          return;
-        }
-        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
-        menus.togglePauseMenu();
-        return;
-      }
-
-      if (pickerOverlay.style.display==="grid"){
-        if (e.key==="1") pickChoice(0);
-        if (e.key==="2") pickChoice(1);
-        if (e.key==="3") pickChoice(2);
-        if (e.key.toLowerCase()==="r") doReroll();
-      }
-
-      if (e.code === "Space"){
-        if (pickerOverlay.style.display==="grid" || startOverlay.style.display==="grid" || mainMenuOverlay.style.display==="grid" || gameoverOverlay.style.display==="grid" || pauseMenu.style.display==="grid" || restartConfirmOverlay.style.display==="grid") return;
-        triggerAction();
-      }
-
-      keys.add(e.code);
-    }, { passive:false });
-    addEventListener("keyup",(e)=>keys.delete(e.code), { passive:true });
-
-    if (isTouch){
-
-// virtual joystick appears where you touch (left side)
-let joyPointerId = null;
-
-const overlaysBlockInput = () =>
-  (pickerOverlay.style.display === "grid") ||
-  (startOverlay.style.display === "grid") ||
-  (mainMenuOverlay.style.display === "grid") ||
-  (gameoverOverlay.style.display === "grid") ||
-  (pauseMenu.style.display === "grid") ||
-  (recordsOverlay.style.display === "grid") ||
-  (settingsOverlay.style.display === "grid") ||
-  (restartConfirmOverlay.style.display === "grid");
-
-function placeJoystick(cx, cy){
-  // keep fully on-screen
-  const x = clamp(cx, JOY_HALF + JOY_MARGIN, innerWidth - JOY_HALF - JOY_MARGIN);
-  const y = clamp(cy, JOY_HALF + JOY_MARGIN, innerHeight - JOY_HALF - JOY_MARGIN);
-  joy.style.left = `${x}px`;
-  joy.style.top  = `${y}px`;
-}
-
-function joyMove(px, py){
-  const dx = px - joyCenter.x;
-  const dy = py - joyCenter.y;
-  const d = len2(dx, dy) || 1;
-  const m = Math.min(1, d / joyRadius);
-  joyVec.x = (dx / d) * m;
-  joyVec.y = (dy / d) * m;
-
-  const ox = joyVec.x * (joyRadius*0.70);
-  const oy = joyVec.y * (joyRadius*0.70);
-  knob.style.transform = `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px))`;
-}
-
-function joyReset(){
-  joyActive = false;
-  joyPointerId = null;
-  joyVec.x = 0; joyVec.y = 0;
-  knob.style.transform = `translate(-50%, -50%)`;
-  joy.style.display = "none";
-}
-
-canvas.addEventListener("pointerdown", (e)=>{
-  // only for touch/pen
-  if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
-  if (overlaysBlockInput()) return;
-
-  // не давать стартовать джойстик при тапе по кнопке паузы (и другим UI при желании)
-  if (e.target.closest("#btnPause")) return;
-  if (pF.hasAnyActionSkill()){
-    const now = performance.now();
-    const dtTap = now - lastTapTime;
-    const dx = e.clientX - lastTapX;
-    const dy = e.clientY - lastTapY;
-    const distSq = len2Sq(dx, dy);
-    if (dtTap < 280 && distSq < 40 * 40){
-      triggerAction();
-      lastTapTime = 0;
-    } else {
-      lastTapTime = now;
-      lastTapX = e.clientX;
-      lastTapY = e.clientY;
-    }
-  }
-
-  joyPointerId = e.pointerId;
-  canvas.setPointerCapture(e.pointerId);
-
-  // joystick center = initial touch point
-  joyCenter.x = e.clientX;
-  joyCenter.y = e.clientY;
-
-  placeJoystick(e.clientX, e.clientY);
-  joy.style.display = "block";
-  joyActive = true;
-  joyMove(e.clientX, e.clientY);
-}, { passive:true });
-
-canvas.addEventListener("pointermove", (e)=>{
-  if (!joyActive || joyPointerId !== e.pointerId) return;
-  joyMove(e.clientX, e.clientY);
-}, { passive:true });
-
-canvas.addEventListener("pointerup", (e)=>{
-  if (joyPointerId !== e.pointerId) return;
-  joyReset();
-}, { passive:true });
-
-canvas.addEventListener("pointercancel", (e)=>{
-  if (joyPointerId !== e.pointerId) return;
-  joyReset();
-}, { passive:true });
-
-    }
+    });
 
     // Pause button
     btnPause.addEventListener("click", (e)=>{
@@ -1117,17 +986,8 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       });
 
       const moveSpeed = pF.getMoveSpeed();
-      updateMovement({
-        dt,
-        keys,
-        isTouch,
-        joyVec,
-        player,
-        state,
-        turrets,
-        lerpFast,
-        moveSpeed,
-      });
+      updateMovement({ dt, keys, isTouch, joyVec, player, state, turrets, lerpFast, moveSpeed });
+
       const spd = len2(player.vx, player.vy) || 0;
       const ratio = clamp(spd / Math.max(1, moveSpeed), 0, 1);
       const baseSpd = pF.getBaseMoveSpeed();
