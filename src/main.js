@@ -14,7 +14,6 @@ import { initCanvas } from "./core/canvas.js";
 import { clamp, lerp, len2, len2Sq } from "./utils/math.js";
 import { randf, randi } from "./utils/rand.js";
 import { circleHit, circleRectHit, pushAway } from "./utils/collision.js";
-import { fmtTime } from "./utils/format.js";
 import { AURA_WAVE_THICKNESS, createUpgrades } from "./content/upgrades.js";
 import { createUniques } from "./content/uniques.js";
 import { getPlayerClass } from "./content/players.js";
@@ -35,6 +34,7 @@ import {
 import { createUpdateDogs } from "./systems/uniques/dog.js";
 import { createDashSystem } from "./systems/uniques/dash.js";
 import { createMaxShirtSystem } from "./systems/uniques/max_shirt.js";
+import { createTryConsumeSpareTire } from "./systems/uniques/spare_tire.js";
 import { createAuraSystem } from "./systems/upgrades/aura.js";
 import { createUpdateSameCircle } from "./systems/uniques/same_circle.js";
 import { createUpdatePatriarchDoll } from "./systems/patriarch_doll.js";
@@ -70,6 +70,7 @@ import { createUpdateUi } from "./ui/update.js";
 import { createBuildUI } from "./ui/updates/build.js";
 import { createUpgradePicker } from "./ui/upgrade_picker.js";
 import { createMenus } from "./ui/menus.js";
+import { copyStatsToClipboard } from "./ui/misc.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
 
@@ -99,11 +100,10 @@ import { createProfilerUI } from "./ui/profiler.js";
     // Overlays
     const {
       mainMenuOverlay, btnFreePlay, btnMenuRecords, btnMenuSettings, startOverlay, pickerOverlay,
-      btnReroll, btnSkip, btnShowBuild, pauseMenu,
-      tabUpgrades, tabInventory, btnResume, btnRestart2, btnCopy, btnRecords,
-      btnSettings, btnHang, restartConfirmOverlay, btnRestartYes, btnRestartNo, gameoverOverlay,
-      restartBtn, copyBtn, btnRecordsOver, recordsOverlay, btnRecordsClose, settingsOverlay,
-      btnSettingsClose, optShowDamageNumbers, optShowProfiler, btnPause,
+      btnReroll, btnSkip, btnShowBuild, pauseMenu, tabUpgrades, tabInventory, btnResume, btnRestart2,
+      btnCopy, btnRecords, btnSettings, btnHang, restartConfirmOverlay, btnRestartYes, btnRestartNo,
+      gameoverOverlay, restartBtn, copyBtn, btnRecordsOver, recordsOverlay, btnRecordsClose,
+      settingsOverlay, btnSettingsClose, optShowDamageNumbers, optShowProfiler, btnPause,
     } = overlays.elements;
 
     // Profiler
@@ -501,16 +501,7 @@ canvas.addEventListener("pointercancel", (e)=>{
       }
     }
 
-    function tryConsumeSpareTire(){
-      if (!pF.hasUnique("spare_tire")) return false;
-      player.uniques.delete("spare_tire");
-      const reviveHp = Math.max(1, Math.ceil(player.hpMax * 0.25));
-      player.hp = reviveHp;
-      player.invuln = Math.max(player.invuln, 1.2);
-      spawnBurst(player.x, player.y, randi(14,18), 240, 0.45);
-      if (pauseMenu.style.display === "grid") updateBuildUI();
-      return true;
-    }
+    const tryConsumeSpareTire = createTryConsumeSpareTire({ pF, player, spawnBurst, pauseMenu, updateBuildUI });
     const { formatDeathReason, handlePlayerDeath } = createDeathHelpers({
       state,
       player,
@@ -518,7 +509,6 @@ canvas.addEventListener("pointercancel", (e)=>{
       forceUpdatePlayerHpBar,
       tryConsumeSpareTire,
     });
-
 
     function gainXp(v){
       const mult = player.xpGainMult * (1 + (state.xpEnemyBonus || 0));
@@ -1042,29 +1032,15 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     btnRestart2.addEventListener("click", ()=>menus.resetGame());
     btnRestartYes.addEventListener("click", ()=>location.reload());
     btnRestartNo.addEventListener("click", menus.hideRestartConfirm);
-    btnCopy.addEventListener("click", ()=>copyStats());
+    btnCopy.addEventListener("click", ()=>copyStatsToClipboard(player, state));
     btnRecords.addEventListener("click", ()=>menus.showRecords());
     btnHang.addEventListener("click", ()=>{
       if (!pF.hasUnique("rope")) return;
       handlePlayerDeath("(он все таки смог)");
     });
 
-    function copyStats(){
-      const text =
-`Survivor stats
-Hero: ${player.heroName}
-Time: ${fmtTime(state.t)}
-Level: ${player.lvl}
-Kills: ${state.kills}
-Damage: ${Math.round(state.dmgDone)}
-Rerolls: ${player.rerolls}
-Upgrades: ${Object.keys(player.upgrades).map(k=>`${k}:${player.upgrades[k]}`).join(", ")}
-`;
-      navigator.clipboard?.writeText(text).catch(()=>{});
-    }
-
     restartBtn.addEventListener("click", ()=>menus.resetGame());
-    copyBtn.addEventListener("click", ()=>copyStats());
+    copyBtn.addEventListener("click", ()=>copyStatsToClipboard(player, state));
     btnRecordsOver.addEventListener("click", ()=>menus.showRecords());
     btnRecordsClose.addEventListener("click", ()=>menus.hideRecords());
 
