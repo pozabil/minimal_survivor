@@ -17,6 +17,8 @@ import { pushAway } from "../../utils/collision.js";
 import { randf, randi } from "../../utils/rand.js";
 import { COLORS } from "../../render/colors.js";
 
+const ORBITAL_HIT_KEY_CLONE = "_ohClone";
+
 export function createUpdateSameCircle({
   pF,
   state,
@@ -32,7 +34,7 @@ export function createUpdateSameCircle({
   spawnShockwave,
 }) {
   function updateCloneOrbitals(c, dt){
-    updateOrbitalsFor(c, c, dt, "_ohClone");
+    updateOrbitalsFor(c, c, dt, ORBITAL_HIT_KEY_CLONE);
   }
 
   function applyCloneAura(c, dt){
