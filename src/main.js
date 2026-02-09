@@ -22,7 +22,7 @@ import { createPlayerFunctions } from "./core/player.js";
 import { createDeathHelpers } from "./core/death_helpers.js";
 import { startLoop } from "./core/loop.js";
 import { createStep } from "./flow/step.js";
-import { updateMovement } from "./systems/movement.js";
+import { createUpdateMovement } from "./systems/movement.js";
 import { createSpatialGrid } from "./systems/spatial_grid.js";
 import { createTargeting } from "./systems/targeting.js";
 import { createInputSystem } from "./systems/input.js";
@@ -297,6 +297,8 @@ import { createProfilerUI } from "./ui/profiler.js";
       overlays: overlays.elements,
     });
     const { keys, joyVec } = input;
+
+    const updateMovement = createUpdateMovement({ keys, isTouch, joyVec, player, state, turrets });
 
     const triggerDash = createDashSystem({ player, state, pF, keys, isTouch, joyVec, spawnDashTrail });
     const maxShirt = createMaxShirtSystem({ state, pF });
@@ -986,7 +988,7 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       });
 
       const moveSpeed = pF.getMoveSpeed();
-      updateMovement({ dt, keys, isTouch, joyVec, player, state, turrets, lerpFast, moveSpeed });
+      updateMovement({ dt, lerpFast, moveSpeed });
 
       const spd = len2(player.vx, player.vy) || 0;
       const ratio = clamp(spd / Math.max(1, moveSpeed), 0, 1);
