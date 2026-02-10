@@ -1,6 +1,7 @@
 import { loadOptions, saveOptions } from "../systems/storage.js";
 
-export function bindOptionsUI({ optShowDamageNumbers, optShowProfiler, onOptionsChange }){
+export function bindOptionsUI({ overlays, onOptionsChange }){
+  const { optShowDamageNumbers, optShowProfiler } = overlays;
   const options = loadOptions();
 
   function emitChange(){

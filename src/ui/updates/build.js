@@ -28,6 +28,9 @@ export function createBuildUI({
     invListEl.style.display = tab === "inventory" ? "flex" : "none";
   }
 
+  tabUpgrades.addEventListener("click", ()=>setBuildTab("upgrades"));
+  tabInventory.addEventListener("click", ()=>setBuildTab("inventory"));
+
   function getBuildEffectText(id){
     switch (id){
       case "fireRate":
@@ -248,8 +251,5 @@ export function createBuildUI({
     `;
   }
 
-  return {
-    updateBuildUI,
-    setBuildTab,
-  };
+  return updateBuildUI;
 }

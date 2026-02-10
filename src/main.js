@@ -99,12 +99,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     // HUD
     const { elBossWrap } = hud;
     // Overlays
-    const {
-      btnFreePlay, btnMenuRecords, btnMenuSettings, pickerOverlay, btnShowBuild,
-      pauseMenu, tabUpgrades, tabInventory, btnResume, btnRestart2, btnRecords, btnSettings,
-      btnHang, btnRestartYes, btnRestartNo, restartBtn, btnRecordsOver, btnRecordsClose,
-      btnSettingsClose, optShowDamageNumbers, optShowProfiler, btnPause,
-    } = overlays;
+    const { pauseMenu, btnHang } = overlays;
 
     // Profiler
     const profiler = createProfilerUI();
@@ -208,8 +203,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     } = createRicochetHelpers({ bullets, targeting });
 
     const { options, applyOptionsToUI } = bindOptionsUI({
-      optShowDamageNumbers,
-      optShowProfiler,
+      overlays,
       onOptionsChange: (nextOptions) => {
         const profileIsEnabled = !!nextOptions.showProfiler;
         profiler.isEnabled = profileIsEnabled;
@@ -224,7 +218,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     const pF = createPlayerFunctions({ player, totem, uniques: UNIQUES });
     const UPGRADES = createUpgrades({ player, state, pF });
 
-    const { updateBuildUI, setBuildTab } = createBuildUI({
+    const updateBuildUI = createBuildUI({
       overlays,
       player,
       state,
@@ -275,12 +269,6 @@ import { createProfilerUI } from "./ui/profiler.js";
     });
     bindMiscUI({ overlays, player, state });
 
-    btnFreePlay.addEventListener("click", ()=>menus.openStart());
-    btnMenuRecords.addEventListener("click", ()=>menus.showRecords());
-    btnMenuSettings.addEventListener("click", ()=>menus.showSettings());
-    btnSettings.addEventListener("click", ()=>menus.showSettings());
-    btnSettingsClose.addEventListener("click", menus.hideSettings);
-
     // Input
     const input = createInputSystem({
       canvas,
@@ -303,13 +291,6 @@ import { createProfilerUI } from "./ui/profiler.js";
       if (state.paused || state.dead) return;
       maxShirt.tryActivateMaxShirt();
       triggerDash();
-    });
-
-    // Pause button
-    btnPause.addEventListener("click", (e)=>{
-      e.preventDefault();
-      if (menus.isPauseToggleBlocked()) return;
-      menus.togglePauseMenu();
     });
 
     // Drops/particles
@@ -875,37 +856,10 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
     }
 
-    btnShowBuild.addEventListener("click", ()=>{
-      ui.buildFromPicker = (pickerOverlay.style.display === "grid");
-      btnResume.textContent = ui.buildFromPicker ? "Back to picker" : "Resume";
-      updateBuildUI();
-      pauseMenu.style.display = "grid";
-    });
-
-    tabUpgrades.addEventListener("click", ()=>setBuildTab("upgrades"));
-    tabInventory.addEventListener("click", ()=>setBuildTab("inventory"));
-
-    btnResume.addEventListener("click", ()=>{
-      if (ui.buildFromPicker && pickerOverlay.style.display === "grid"){
-        pauseMenu.style.display = "none";
-        return; // keep paused, picker remains
-      }
-      pauseMenu.style.display = "none";
-      state.paused = false;
-    });
-
-    btnRestart2.addEventListener("click", ()=>menus.resetGame());
-    btnRestartYes.addEventListener("click", ()=>location.reload());
-    btnRestartNo.addEventListener("click", menus.hideRestartConfirm);
-    btnRecords.addEventListener("click", ()=>menus.showRecords());
     btnHang.addEventListener("click", ()=>{
       if (!pF.hasUnique("rope")) return;
       handlePlayerDeath("(он все таки смог)");
     });
-
-    restartBtn.addEventListener("click", ()=>menus.resetGame());
-    btnRecordsOver.addEventListener("click", ()=>menus.showRecords());
-    btnRecordsClose.addEventListener("click", ()=>menus.hideRecords());
 
     // Loop
     const step = createStep({

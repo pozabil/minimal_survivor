@@ -13,12 +13,25 @@ export function createMenus({
 }) {
   const {
     mainMenuOverlay,
+    btnFreePlay,
+    btnMenuRecords,
+    btnMenuSettings,
     startOverlay,
     pickerOverlay,
     gameoverOverlay,
     recordsOverlay,
+    btnRecords,
+    btnRecordsOver,
+    btnRecordsClose,
     settingsOverlay,
+    btnSettings,
+    btnSettingsClose,
     restartConfirmOverlay,
+    btnRestart2,
+    btnRestartYes,
+    btnRestartNo,
+    restartBtn,
+    btnShowBuild,
     pauseMenu,
     btnPause,
     charsWrap,
@@ -182,19 +195,49 @@ export function createMenus({
     location.reload();
   }
 
+  btnFreePlay.addEventListener("click", ()=>openStart());
+  btnMenuRecords.addEventListener("click", ()=>showRecords());
+  btnMenuSettings.addEventListener("click", ()=>showSettings());
+  btnSettings.addEventListener("click", ()=>showSettings());
+  btnSettingsClose.addEventListener("click", hideSettings);
+
+  btnPause.addEventListener("click", (e)=>{
+    e.preventDefault();
+    if (isPauseToggleBlocked()) return;
+    togglePauseMenu();
+  });
+
+  btnResume.addEventListener("click", ()=>{
+    if (ui.buildFromPicker && pickerOverlay.style.display === "grid"){
+      pauseMenu.style.display = "none";
+      return; // keep paused, picker remains
+    }
+    pauseMenu.style.display = "none";
+    state.paused = false;
+  });
+
+  btnShowBuild.addEventListener("click", ()=>{
+    ui.buildFromPicker = (pickerOverlay.style.display === "grid");
+    btnResume.textContent = ui.buildFromPicker ? "Back to picker" : "Resume";
+    updateBuildUI();
+    pauseMenu.style.display = "grid";
+  });
+
+  btnRestart2.addEventListener("click", ()=>resetGame());
+  btnRestartYes.addEventListener("click", ()=>location.reload());
+  btnRestartNo.addEventListener("click", hideRestartConfirm);
+  restartBtn.addEventListener("click", ()=>resetGame());
+
+  btnRecords.addEventListener("click", ()=>showRecords());
+  btnRecordsOver.addEventListener("click", ()=>showRecords());
+  btnRecordsClose.addEventListener("click", ()=>hideRecords());
+
   return {
-    isPauseToggleBlocked,
-    updatePauseBtnVisibility,
     openMainMenu,
-    openStart,
-    showRecords,
     hideRecords,
-    showSettings,
     hideSettings,
-    showRestartConfirm,
     hideRestartConfirm,
     togglePauseMenu,
     gameOver,
-    resetGame,
   };
 }
