@@ -1,6 +1,6 @@
 import { clamp } from "../../utils/math.js";
 
-export function createTimersUI({ elements }) {
+export function createTimersUI({ hud }) {
   const {
     elTotemBar,
     elTotemText,
@@ -8,7 +8,7 @@ export function createTimersUI({ elements }) {
     elBossText,
     elChestBar,
     elChestText,
-  } = elements;
+  } = hud;
 
   function updateTimers({ totem, state, spawn, chests, pF }) {
     const totemLeft = totem.active ? totem.life : state.totemTimer;

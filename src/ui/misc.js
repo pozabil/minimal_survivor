@@ -1,6 +1,6 @@
 import { fmtTime } from "../utils/format.js";
 
-export function copyStatsToClipboard(player, state) {
+function copyStatsToClipboard(player, state) {
   const text =
 `Survivor stats
 Hero: ${player.heroName}
@@ -12,4 +12,11 @@ Rerolls: ${player.rerolls}
 Upgrades: ${Object.keys(player.upgrades).map((k) => `${k}:${player.upgrades[k]}`).join(", ")}
 `;
   navigator.clipboard?.writeText(text).catch(()=>{});
+}
+
+export function bindMiscUI({ overlays, player, state }) {
+  const { btnCopy, copyBtn } = overlays;
+  const onCopy = () => copyStatsToClipboard(player, state);
+  btnCopy.addEventListener("click", onCopy);
+  copyBtn.addEventListener("click", onCopy);
 }

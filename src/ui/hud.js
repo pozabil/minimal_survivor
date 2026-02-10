@@ -26,7 +26,5 @@ export function initHud() {
     elBossWrap: document.getElementById("bossWrap"),
     elBossList: document.getElementById("bossList"),
   };
-  return {
-    elements,
-  };
+  return elements;
 }

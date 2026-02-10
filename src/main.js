@@ -71,7 +71,7 @@ import { createUpdateUi } from "./ui/update.js";
 import { createBuildUI } from "./ui/updates/build.js";
 import { createUpgradePicker } from "./ui/upgrade_picker.js";
 import { createMenus } from "./ui/menus.js";
-import { copyStatsToClipboard } from "./ui/misc.js";
+import { bindMiscUI } from "./ui/misc.js";
 import { createEffectSpawns } from "./render/effects/spawn.js";
 import { createEffectUpdates } from "./render/effects/update.js";
 
@@ -97,22 +97,19 @@ import { createProfilerUI } from "./ui/profiler.js";
     const overlays = initOverlays();
 
     // HUD
-    const { elBossWrap } = hud.elements;
+    const { elBossWrap } = hud;
     // Overlays
     const {
-      btnFreePlay, btnMenuRecords, btnMenuSettings, pickerOverlay, btnReroll, btnSkip, btnShowBuild,
-      pauseMenu, tabUpgrades, tabInventory, btnResume, btnRestart2, btnCopy, btnRecords, btnSettings,
-      btnHang, btnRestartYes, btnRestartNo, restartBtn, copyBtn, btnRecordsOver, btnRecordsClose,
+      btnFreePlay, btnMenuRecords, btnMenuSettings, pickerOverlay, btnShowBuild,
+      pauseMenu, tabUpgrades, tabInventory, btnResume, btnRestart2, btnRecords, btnSettings,
+      btnHang, btnRestartYes, btnRestartNo, restartBtn, btnRecordsOver, btnRecordsClose,
       btnSettingsClose, optShowDamageNumbers, optShowProfiler, btnPause,
-    } = overlays.elements;
+    } = overlays;
 
     // Profiler
     const profiler = createProfilerUI();
 
-    const { updateUI, forceUpdateRerollsUI, forceUpdatePlayerHpBar } = createUpdateUi({
-      hudElements: hud.elements,
-      overlayElements: overlays.elements,
-    });
+    const { updateUI, forceUpdateRerollsUI, forceUpdatePlayerHpBar } = createUpdateUi({ hud, overlays });
 
     // Mobile joystick
     const joy = document.getElementById("joy");
@@ -228,7 +225,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     const UPGRADES = createUpgrades({ player, state, pF });
 
     const { updateBuildUI, setBuildTab } = createBuildUI({
-      elements: overlays.elements,
+      overlays,
       player,
       state,
       ui,
@@ -243,7 +240,6 @@ import { createProfilerUI } from "./ui/profiler.js";
       maybeOpenLevelPicker,
       pickChoice,
       doReroll,
-      doSkip,
     } = createUpgradePicker({
       state,
       ui,
@@ -251,7 +247,7 @@ import { createProfilerUI } from "./ui/profiler.js";
       pF,
       UPGRADES,
       UNIQUES,
-      elements: overlays.elements,
+      overlays,
       updateBuildUI,
       forceUpdateRerollsUI,
     });
@@ -272,11 +268,12 @@ import { createProfilerUI } from "./ui/profiler.js";
       state,
       player,
       ui,
-      elements: overlays.elements,
+      overlays,
       updateBuildUI,
       applyOptionsToUI,
       handleSelectHero,
     });
+    bindMiscUI({ overlays, player, state });
 
     btnFreePlay.addEventListener("click", ()=>menus.openStart());
     btnMenuRecords.addEventListener("click", ()=>menus.showRecords());
@@ -294,7 +291,7 @@ import { createProfilerUI } from "./ui/profiler.js";
       pF,
       pickChoice,
       doReroll,
-      overlays: overlays.elements,
+      overlays,
     });
     const { keys, joyVec } = input;
 
@@ -878,9 +875,6 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
       }
     }
 
-    btnReroll.addEventListener("click", doReroll);
-    btnSkip.addEventListener("click", doSkip);
-
     btnShowBuild.addEventListener("click", ()=>{
       ui.buildFromPicker = (pickerOverlay.style.display === "grid");
       btnResume.textContent = ui.buildFromPicker ? "Back to picker" : "Resume";
@@ -903,7 +897,6 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     btnRestart2.addEventListener("click", ()=>menus.resetGame());
     btnRestartYes.addEventListener("click", ()=>location.reload());
     btnRestartNo.addEventListener("click", menus.hideRestartConfirm);
-    btnCopy.addEventListener("click", ()=>copyStatsToClipboard(player, state));
     btnRecords.addEventListener("click", ()=>menus.showRecords());
     btnHang.addEventListener("click", ()=>{
       if (!pF.hasUnique("rope")) return;
@@ -911,7 +904,6 @@ shootBullet(e.x, e.y, aim, e.shotSpeed, e.shotDmg, 4, 3.2);
     });
 
     restartBtn.addEventListener("click", ()=>menus.resetGame());
-    copyBtn.addEventListener("click", ()=>copyStatsToClipboard(player, state));
     btnRecordsOver.addEventListener("click", ()=>menus.showRecords());
     btnRecordsClose.addEventListener("click", ()=>menus.hideRecords());
 

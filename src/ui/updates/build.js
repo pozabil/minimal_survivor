@@ -2,7 +2,7 @@ import { fmtTime, fmtPct, fmtNum, fmtSignedPct } from "../../utils/format.js";
 import { DPS_WINDOW_SEC } from "../../core/constants.js";
 
 export function createBuildUI({
-  elements,
+  overlays,
   player,
   state,
   ui,
@@ -18,7 +18,7 @@ export function createBuildUI({
     btnHang,
     tabUpgrades,
     tabInventory,
-  } = elements;
+  } = overlays;
 
   function setBuildTab(tab){
     ui.buildTab = tab;

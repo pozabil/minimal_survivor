@@ -6,7 +6,7 @@ export function createMenus({
   state,
   player,
   ui,
-  elements,
+  overlays,
   updateBuildUI,
   applyOptionsToUI,
   handleSelectHero,
@@ -25,7 +25,7 @@ export function createMenus({
     summaryEl,
     recordsListEl,
     btnResume,
-  } = elements;
+  } = overlays;
 
   const isPauseToggleBlocked = () =>
     (pickerOverlay.style.display === "grid") ||

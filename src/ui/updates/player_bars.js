@@ -1,13 +1,13 @@
 import { clamp } from "../../utils/math.js";
 
-export function createPlayerBarsUI({ elements }) {
+export function createPlayerBarsUI({ hud }) {
   const {
     elHpbar,
     elHpbarPulse,
     elHptext,
     elXpbar,
     elXptext,
-  } = elements;
+  } = hud;
 
   function updateHpBar({ player, state }) {
     const hpPct = clamp(player.hp / player.hpMax, 0, 1);

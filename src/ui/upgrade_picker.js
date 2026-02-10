@@ -38,7 +38,7 @@ export function createUpgradePicker({
   pF,
   UPGRADES,
   UNIQUES,
-  elements,
+  overlays,
   updateBuildUI,
   forceUpdateRerollsUI,
 }) {
@@ -49,8 +49,9 @@ export function createUpgradePicker({
     pickerHint,
     choicesWrap,
     btnReroll,
+    btnSkip,
     btnResume,
-  } = elements;
+  } = overlays;
 
   let currentChoices = [];
   let pickerSource = "level";
@@ -303,11 +304,13 @@ export function createUpgradePicker({
     maybeOpenLevelPicker();
   }
 
+  btnReroll.addEventListener("click", doReroll);
+  btnSkip.addEventListener("click", doSkip);
+
   return {
     openUpgradePicker,
     maybeOpenLevelPicker,
     pickChoice,
     doReroll,
-    doSkip,
   };
 }

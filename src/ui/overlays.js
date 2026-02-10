@@ -44,8 +44,5 @@ export function initOverlays() {
     actionBar: document.getElementById("actionBar"),
     actionBarFill: document.getElementById("actionBarFill"),
   };
-  return {
-    elements,
-    handlers: {},
-  };
+  return elements;
 }

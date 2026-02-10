@@ -6,14 +6,14 @@ import { createPlayerBarsUI } from "./updates/player_bars.js";
 import { createActiveItemsUI } from "./updates/active_items.js";
 import { HUD_UPDATE_TIME } from "../core/constants.js";
 
-export function createUpdateUi({ hudElements, overlayElements }) {
-  const updateBossUI = createBossUI({ elements: hudElements });
-  const updateTotemTimer = createTotemTimerUI({ elements: hudElements });
-  const updateTotemWarning = createTotemWarningUI({ elements: hudElements });
-  const { updateInfo, forceUpdateRerollsUI } = createInfoUI({ elements: hudElements });
-  const updateTimers = createTimersUI({ elements: hudElements });
-  const { updatePlayerBars, forceUpdatePlayerHpBar } = createPlayerBarsUI({ elements: hudElements });
-  const updateActiveItems = createActiveItemsUI({ hudElements, overlayElements });
+export function createUpdateUi({ hud, overlays }) {
+  const updateBossUI = createBossUI({ hud });
+  const updateTotemTimer = createTotemTimerUI({ hud });
+  const updateTotemWarning = createTotemWarningUI({ hud });
+  const { updateInfo, forceUpdateRerollsUI } = createInfoUI({ hud });
+  const updateTimers = createTimersUI({ hud });
+  const { updatePlayerBars, forceUpdatePlayerHpBar } = createPlayerBarsUI({ hud });
+  const updateActiveItems = createActiveItemsUI({ hud, overlays });
 
   let hudUpdateAcc = HUD_UPDATE_TIME;
 

@@ -1,7 +1,7 @@
 import { fmtTime } from "../../utils/format.js";
 
 export function createInfoUI({
-  elements,
+  hud,
 }) {
   const {
     elTime,
@@ -11,7 +11,7 @@ export function createInfoUI({
     elWep,
     elRerolls,
     elThreat,
-  } = elements;
+  } = hud;
 
   function updateInfo({ player, state, pF, getDps }) {
     const dpsNow = getDps();

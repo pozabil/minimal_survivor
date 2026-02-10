@@ -1,9 +1,9 @@
 import { clamp } from "../../utils/math.js";
 import { MAX_SHIRT_COOLDOWN } from "../../content/uniques.js";
 
-export function createActiveItemsUI({ hudElements, overlayElements }) {
-  const { elActionHint, elActiveItems, elActiveItemsList } = hudElements;
-  const { actionBar, actionBarFill } = overlayElements;
+export function createActiveItemsUI({ hud, overlays }) {
+  const { elActionHint, elActiveItems, elActiveItemsList } = hud;
+  const { actionBar, actionBarFill } = overlays;
   let lastUniquesOrderLen = -1;
   let lastUniquesOrderTail = null;
 
