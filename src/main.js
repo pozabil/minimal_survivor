@@ -74,8 +74,6 @@ import { createProfilerUI } from "./ui/profiler.js";
     // Profiler
     const profiler = createProfilerUI();
 
-    const { updateUI, forceUpdateRerollsUI, forceUpdatePlayerHpBar } = createUpdateUi({ hud, overlays });
-
     // Mobile joystick
     const joy = document.getElementById("joy");
     const knob = document.getElementById("knob");
@@ -136,6 +134,10 @@ import { createProfilerUI } from "./ui/profiler.js";
     const UNIQUES = createUniques({ player, state, totem, spawnDog });
     const pF = createPlayerFunctions({ player, totem, uniques: UNIQUES });
     const UPGRADES = createUpgrades({ player, state, pF });
+
+    const { updateUI, forceUpdateRerollsUI, forceUpdatePlayerHpBar } = createUpdateUi({
+      hud, overlays, player, state, entities, spawn, pF, getDps, isTouch, uniques: UNIQUES,
+    });
 
     const updateBuildUI = createBuildUI({ overlays, player, state, ui, pF, UNIQUES, UPGRADES, getDps });
 
@@ -694,7 +696,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     }
 
     function realtimeUpdate(dtRaw){
-      updateUI({ dtRaw, player, state, entities, spawn, pF, getDps, isTouch, uniques: UNIQUES });
+      updateUI(dtRaw);
     }
 
     function render(){

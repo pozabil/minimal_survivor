@@ -6,7 +6,7 @@ import { createPlayerBarsUI } from "./updates/player_bars.js";
 import { createActiveItemsUI } from "./updates/active_items.js";
 import { HUD_UPDATE_TIME } from "../core/constants.js";
 
-export function createUpdateUi({ hud, overlays }) {
+export function createUpdateUi({ hud, overlays, player, state, entities, spawn, pF, getDps, isTouch, uniques }) {
   const updateBossUI = createBossUI({ hud });
   const updateTotemTimer = createTotemTimerUI({ hud });
   const updateTotemWarning = createTotemWarningUI({ hud });
@@ -17,17 +17,7 @@ export function createUpdateUi({ hud, overlays }) {
 
   let hudUpdateAcc = HUD_UPDATE_TIME;
 
-  function updateUI({
-    dtRaw,
-    player,
-    state,
-    entities,
-    spawn,
-    pF,
-    getDps,
-    isTouch,
-    uniques,
-  }) {
+  function updateUI(dtRaw) {
     hudUpdateAcc += dtRaw;
     if (hudUpdateAcc < HUD_UPDATE_TIME) return;
     hudUpdateAcc = 0;
