@@ -17,13 +17,17 @@ export function createUpdateBullets({
   player,
   pF,
   gridQueryCircle,
-  canRicochet,
-  tryFindRicochetTarget,
-  applyRicochetRedirect,
-  spawnCheapRicochetSplits,
+  ricochetHelpers,
   killEnemy,
   recordDamage,
 }) {
+  const {
+    canRicochet,
+    tryFindRicochetTarget,
+    applyRicochetRedirect,
+    spawnCheapRicochetSplits,
+  } = ricochetHelpers;
+
   const candidates = [];
 
   function updateBullets(dt) {

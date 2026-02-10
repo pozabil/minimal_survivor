@@ -3,7 +3,7 @@ import { COLOSSUS_HP_STEP, COLOSSUS_SHRINK_STEP, COLOSSUS_SPAWN_STAGES, BURST_TE
 import { DOG_BROWN_COLORS } from "./content/dog.js";
 import { TAU } from "./core/constants.js";
 import { initCanvas } from "./core/canvas.js";
-import { clamp, lerp, len2 } from "./utils/math.js";
+import { clamp, len2 } from "./utils/math.js";
 import { randf, randi } from "./utils/rand.js";
 import { circleHit, circleRectHit, pushAway } from "./utils/collision.js";
 import { AURA_WAVE_THICKNESS, createUpgrades } from "./content/upgrades.js";
@@ -18,6 +18,7 @@ import { createUpdateMovement } from "./systems/movement.js";
 import { createSpatialGrid } from "./systems/spatial_grid.js";
 import { createTargeting } from "./systems/targeting.js";
 import { createInputSystem } from "./systems/input.js";
+import { createUpdateCamera } from "./systems/camera.js";
 import { createRicochetHelpers, createShootingSystem, createDamageTracker, createPlayerDamageApplier } from "./systems/combat.js";
 import { createUpdateDogs } from "./systems/uniques/dog.js";
 import { createDashSystem } from "./systems/uniques/dash.js";
@@ -105,56 +106,20 @@ import { createProfilerUI } from "./ui/profiler.js";
     const { player, state, ui, entities, spawn, effects } = initState();
     const { bullets, enemyBullets, enemies, turrets, drops, clones, dogs, chests, totem } = entities;
     const { particles, shockwaves, lightningStrikes, floaters, dashTrail } = effects;
-    const {
-      spawnBurst,
-      spawnShockwave,
-      spawnDashTrail,
-      spawnLightningStrike,
-      spawnHealFloat,
-      spawnDamageFloat,
-    } = createEffectSpawns({
-      player,
-      particles,
-      shockwaves,
-      lightningStrikes,
-      floaters,
-      dashTrail,
+
+    const { spawnBurst, spawnShockwave, spawnDashTrail, spawnLightningStrike, spawnHealFloat, spawnDamageFloat } = createEffectSpawns({
+      player, particles, shockwaves, lightningStrikes, floaters, dashTrail,
     });
-    const {
-      updateDashTrail,
-      updateLightning,
-      updateParticles,
-      updateShockwaves,
-      updateFloaters,
-    } = createEffectUpdates({
-      state,
-      dashTrail,
-      lightningStrikes,
-      particles,
-      shockwaves,
-      floaters,
+    const { updateDashTrail, updateLightning, updateParticles, updateShockwaves, updateFloaters } = createEffectUpdates({
+      state, dashTrail, lightningStrikes, particles, shockwaves, floaters,
     });
-    const {
-      renderLightning,
-      renderShockwaves,
-      renderParticles,
-      renderDashTrail,
-      renderFloaters,
-    } = createEffectRenderer({
-      particles,
-      shockwaves,
-      lightningStrikes,
-      floaters,
-      dashTrail,
+    const { renderLightning, renderShockwaves, renderParticles, renderDashTrail, renderFloaters } = createEffectRenderer({
+      particles, shockwaves, lightningStrikes, floaters, dashTrail,
     });
+
     const { gridBuild, gridQueryCircle, getGridCells } = createSpatialGrid(enemies);
     const targeting = createTargeting({ enemies, gridQueryCircle });
-    const {
-      canRicochet,
-      tryFindRicochetTarget,
-      applyRicochetRedirect,
-      spawnCheapRicochetSplits,
-    } = createRicochetHelpers({ bullets, targeting });
+    const ricochetHelpers = createRicochetHelpers({ bullets, targeting });
 
     const { options, applyOptionsToUI } = bindOptionsUI({
       overlays,
@@ -172,32 +137,10 @@ import { createProfilerUI } from "./ui/profiler.js";
     const pF = createPlayerFunctions({ player, totem, uniques: UNIQUES });
     const UPGRADES = createUpgrades({ player, state, pF });
 
-    const updateBuildUI = createBuildUI({
-      overlays,
-      player,
-      state,
-      ui,
-      pF,
-      UNIQUES,
-      UPGRADES,
-      getDps,
-    });
+    const updateBuildUI = createBuildUI({ overlays, player, state, ui, pF, UNIQUES, UPGRADES, getDps });
 
-    const {
-      openUpgradePicker,
-      maybeOpenLevelPicker,
-      pickChoice,
-      doReroll,
-    } = createUpgradePicker({
-      state,
-      ui,
-      player,
-      pF,
-      UPGRADES,
-      UNIQUES,
-      overlays,
-      updateBuildUI,
-      forceUpdateRerollsUI,
+    const { openUpgradePicker, maybeOpenLevelPicker, pickChoice, doReroll } = createUpgradePicker({
+      state, ui, player, pF, UPGRADES, UNIQUES, overlays, updateBuildUI, forceUpdateRerollsUI,
     });
 
     // Characters
@@ -212,35 +155,18 @@ import { createProfilerUI } from "./ui/profiler.js";
       maybeAddStartingDog(hero.id);
     }
 
-    const menus = createMenus({
-      state,
-      player,
-      ui,
-      overlays,
-      updateBuildUI,
-      applyOptionsToUI,
-      handleSelectHero,
-    });
+    const menus = createMenus({ state, player, ui, overlays, updateBuildUI, applyOptionsToUI, handleSelectHero });
     bindMiscUI({ overlays, player, state });
 
     // Input
-    const input = createInputSystem({
-      canvas,
-      joy,
-      knob,
-      isTouch,
-      menus,
-      pF,
-      pickChoice,
-      doReroll,
-      overlays,
-    });
+    const input = createInputSystem({ canvas, joy, knob, isTouch, menus, pF, pickChoice, doReroll, overlays });
     const { keys, joyVec } = input;
 
     const updateMovement = createUpdateMovement({ keys, isTouch, joyVec, player, state, turrets });
 
     const triggerDash = createDashSystem({ player, state, pF, keys, isTouch, joyVec, spawnDashTrail });
     const maxShirt = createMaxShirtSystem({ state, pF });
+
     input.setActionHandler(()=>{
       if (state.paused || state.dead) return;
       maxShirt.tryActivateMaxShirt();
@@ -306,11 +232,7 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     const tryConsumeSpareTire = createTryConsumeSpareTire({ pF, player, spawnBurst, pauseMenu, updateBuildUI });
     const { formatDeathReason, handlePlayerDeath } = createDeathHelpers({
-      state,
-      player,
-      menus,
-      forceUpdatePlayerHpBar,
-      tryConsumeSpareTire,
+      state, player, menus, forceUpdatePlayerHpBar, tryConsumeSpareTire,
     });
 
     function gainXp(v){
@@ -333,6 +255,7 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     // Chest
     const spawnChest = createSpawnChest({ state, chests, totem, player, pF });
+
     function pickUpChest(){
       if (!chests.length) { state.chestAlive = false; return; }
       const c = chests[0];
@@ -392,36 +315,11 @@ import { createProfilerUI } from "./ui/profiler.js";
       }
     }
 
-    const { updateOrbitalsFor, updateOrbitals } = createOrbitalsSystem({
-      player,
-      state,
-      pF,
-      gridQueryCircle,
-      recordDamage,
-      killEnemy,
-    });
-    const { applyAuraFor, applyAura } = createAuraSystem({
-      state,
-      player,
-      pF,
-      gridQueryCircle,
-      recordDamage,
-      killEnemy,
-    });
+    const { updateOrbitalsFor, updateOrbitals } = createOrbitalsSystem({ player, state, pF, gridQueryCircle, recordDamage, killEnemy });
+    const { applyAuraFor, applyAura } = createAuraSystem({ state, player, pF, gridQueryCircle, recordDamage, killEnemy });
 
     const updateSameCircle = createUpdateSameCircle({
-      pF,
-      state,
-      clones,
-      player,
-      enemies,
-      shooting,
-      updateOrbitalsFor,
-      applyAuraFor,
-      recordDamage,
-      killEnemy,
-      spawnBurst,
-      spawnShockwave,
+      pF, state, clones, player, enemies, shooting, updateOrbitalsFor, applyAuraFor, recordDamage, killEnemy, spawnBurst, spawnShockwave,
     });
 
     function killEnemy(e, immediate=false){
@@ -513,15 +411,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     }
 
     const { enemyShoot, triadShoot, explodeBomber } = createEnemyCombatSystem({
-      enemyBullets,
-      enemies,
-      turrets,
-      player,
-      pF,
-      spawnBurst,
-      applyDamageToPlayer,
-      handlePlayerDeath,
-      killEnemy,
+      enemyBullets, enemies, turrets, player, pF, spawnBurst, applyDamageToPlayer, handlePlayerDeath, killEnemy,
     });
 
     function pruneDeadEnemies(){
@@ -536,55 +426,19 @@ import { createProfilerUI } from "./ui/profiler.js";
     });
 
     // Loop
-    const step = createStep({
-      state,
-      player,
-      entities,
-      profiler,
-      update,
-      realtimeUpdate,
-      render,
-    });
+    const step = createStep({ state, player, entities, profiler, update, realtimeUpdate, render });
 
     const updateDogs = createUpdateDogs({ player, dogs, pF, gridQueryCircle, recordDamage, killEnemy });
-
     const updatePatriarchDoll = createUpdatePatriarchDoll({
-      pF,
-      state,
-      player,
-      enemies,
-      spawnLightningStrike,
-      recordDamage,
-      spawnBurst,
-      killEnemy,
+      pF, state, player, enemies, spawnLightningStrike, recordDamage, spawnBurst, killEnemy,
     });
-
-    const updateBullets = createUpdateBullets({
-      bullets,
-      player,
-      pF,
-      gridQueryCircle,
-      canRicochet,
-      tryFindRicochetTarget,
-      applyRicochetRedirect,
-      spawnCheapRicochetSplits,
-      killEnemy,
-      recordDamage,
-    });
-
+    const updateBullets = createUpdateBullets({ bullets, player, pF, gridQueryCircle, ricochetHelpers, killEnemy, recordDamage });
     const updateEnemyBullets = createUpdateEnemyBullets({
-      enemyBullets,
-      turrets,
-      player,
-      pF,
-      spawnBurst,
-      applyDamageToPlayer,
-      handlePlayerDeath,
-      formatDeathReason,
+      enemyBullets, turrets, player, pF, spawnBurst, applyDamageToPlayer, handlePlayerDeath, formatDeathReason,
     });
-
     const updateTotem = createUpdateTotem({ totem, player, pF, applyDamageToPlayer, handlePlayerDeath });
     const updateDrops = createUpdateDrops({ drops, player, bullets, turrets, pF, queueHeal, gainXp });
+    const updateCamera = createUpdateCamera({ player, pF, gameScale: GAME_SCALE, cameraZoomOut: CAMERA_ZOOM_OUT });
 
     function update(dt){
       state.t += dt;
@@ -593,29 +447,12 @@ import { createProfilerUI } from "./ui/profiler.js";
       const dampSlow = Math.pow(0.02, dt);
       const lerpFast = 1 - dampFast;
 
-      updateSpawning({
-        dt,
-        state,
-        player,
-        spawn,
-        chests,
-        totem,
-        spawnBoss,
-        spawnChest,
-        spawnTotem,
-        spawnEnemy,
-        pF,
-      });
+      updateSpawning({ dt, state, player, spawn, chests, totem, spawnBoss, spawnChest, spawnTotem, spawnEnemy, pF });
 
       const moveSpeed = pF.getMoveSpeed();
       updateMovement({ dt, lerpFast, moveSpeed });
 
-      const spd = len2(player.vx, player.vy) || 0;
-      const ratio = clamp(spd / Math.max(1, moveSpeed), 0, 1);
-      const baseSpd = pF.getBaseMoveSpeed();
-      const speedBonus = moveSpeed / baseSpd;
-      const targetScale = GAME_SCALE * (1 - CAMERA_ZOOM_OUT * speedBonus * ratio);
-      cameraScale = lerp(cameraScale, targetScale, lerpFast);
+      cameraScale = updateCamera({ cameraScale, lerpFast, moveSpeed });
 
       // regen + invuln
       if (player.regen > 0 && player.hp > 0){
@@ -857,17 +694,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     }
 
     function realtimeUpdate(dtRaw){
-      updateUI({
-        dtRaw,
-        player,
-        state,
-        entities,
-        spawn,
-        pF,
-        getDps,
-        isTouch,
-        uniques: UNIQUES,
-      });
+      updateUI({ dtRaw, player, state, entities, spawn, pF, getDps, isTouch, uniques: UNIQUES });
     }
 
     function render(){
