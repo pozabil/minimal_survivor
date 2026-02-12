@@ -1,4 +1,4 @@
-import { HEAL_OVER_TIME, CAMERA_ZOOM_OUT, XP_BONUS_NORMAL, XP_BONUS_ELITE, XP_BONUS_BOSS, INVULN_CONTACT_BASE, INVULN_CONTACT_MIN } from "./content/config.js";
+import { CAMERA_ZOOM_OUT, XP_BONUS_NORMAL, XP_BONUS_ELITE, XP_BONUS_BOSS, INVULN_CONTACT_BASE, INVULN_CONTACT_MIN } from "./content/config.js";
 import { COLOSSUS_HP_STEP, COLOSSUS_SHRINK_STEP, COLOSSUS_SPAWN_STAGES, BURST_TELEGRAPH } from "./content/enemies.js";
 import { DOG_BROWN_COLORS } from "./content/dog.js";
 import { TAU } from "./core/constants.js";
@@ -31,6 +31,7 @@ import { createUpdatePatriarchDoll } from "./systems/patriarch_doll.js";
 import { createUpdateBullets, createUpdateEnemyBullets } from "./systems/projectiles.js";
 import { createUpdateTotem } from "./systems/totem.js";
 import { createSpawnDrops, createUpdateDrops } from "./systems/drops.js";
+import { createPickupChest, createProgressionSystem } from "./systems/progression.js";
 import { createOrbitalsSystem } from "./systems/upgrades/orbitals.js";
 import { createEnemyCombatSystem } from "./systems/enemies/combat.js";
 import { createEnemyDeathSystem } from "./systems/enemies/death.js";
@@ -73,10 +74,8 @@ import { createProfilerUI } from "./ui/profiler.js";
     const overlays = initOverlays();
     const { pauseMenu, btnHang } = overlays;
 
-    // Profiler
     const profiler = createProfilerUI();
 
-    // Mobile joystick
     const joy = document.getElementById("joy");
     const knob = document.getElementById("knob");
     const isTouch =
@@ -93,16 +92,11 @@ import { createProfilerUI } from "./ui/profiler.js";
     const MAX_DPR = 2
     let cameraScale = GAME_SCALE;
 
-    // Canvas
     const { ctx, getDpr } = initCanvas(canvas, GAME_SCALE, MAX_DPR);
 
-    // Simple circle batching to reduce per-entity beginPath/fill calls
     const batch = createRenderBatch();
-
-    // roundRect polyfill
     ensureRoundRectPolyfill();
 
-    // State
     const { player, state, ui, entities, spawn, effects } = initState();
     const { bullets, enemyBullets, enemies, turrets, drops, clones, dogs, chests, totem } = entities;
     const { particles, shockwaves, lightningStrikes, floaters, dashTrail } = effects;
@@ -147,7 +141,6 @@ import { createProfilerUI } from "./ui/profiler.js";
       state, ui, player, pF, UPGRADES, UNIQUES, overlays, updateBuildUI, forceUpdateRerollsUI,
     });
 
-    // Characters
     function maybeAddStartingDog(heroId){
       const hero = getPlayerClass(heroId);
       const chance = hero ? (hero.dogStartChance || 0) : 0;
@@ -162,7 +155,6 @@ import { createProfilerUI } from "./ui/profiler.js";
     const menus = createMenus({ state, player, ui, overlays, updateBuildUI, applyOptionsToUI, handleSelectHero });
     bindMiscUI({ overlays, player, state });
 
-    // Input
     const input = createInputSystem({ canvas, joy, knob, isTouch, menus, pF, pickChoice, doReroll, overlays });
     const { keys, joyVec } = input;
 
@@ -178,75 +170,20 @@ import { createProfilerUI } from "./ui/profiler.js";
     });
 
     const { dropXp, dropHeal } = createSpawnDrops({ drops });
-
-    function queueHeal(amount){
-      if (amount <= 0) return;
-      if (player.hp >= player.hpMax) return;
-      state.healQueue.push({ amount, t: 0 });
-    }
-
-    function updateHeal(dt){
-      if (player.hp >= player.hpMax){
-        state.healActive = null;
-        state.healQueue.length = 0;
-        return;
-      }
-      if (!state.healActive && state.healQueue.length){
-        state.healActive = state.healQueue.shift();
-      }
-      const h = state.healActive;
-      if (!h) return;
-      const step = Math.min(dt, HEAL_OVER_TIME - h.t);
-      if (step > 0){
-        player.hp = Math.min(player.hpMax, player.hp + h.amount * (step / HEAL_OVER_TIME));
-      }
-      h.t += step;
-      if (h.t >= HEAL_OVER_TIME || player.hp >= player.hpMax){
-        state.healActive = null;
-      }
-    }
+    const { gainXp, queueHeal, updateHeal } = createProgressionSystem({ player, state, pF, maybeOpenLevelPicker });
 
     const tryConsumeSpareTire = createTryConsumeSpareTire({ pF, player, spawnBurst, pauseMenu, updateBuildUI });
-    const { formatDeathReason, handlePlayerDeath } = createDeathHelpers({
-      state, player, menus, forceUpdatePlayerHpBar, tryConsumeSpareTire,
-    });
+    const { formatDeathReason, handlePlayerDeath } = createDeathHelpers({ state, player, menus, forceUpdatePlayerHpBar, tryConsumeSpareTire });
 
-    function gainXp(v){
-      const mult = player.xpGainMult * (1 + (state.xpEnemyBonus || 0));
-      player.xp += v * mult;
-      while(player.xp >= player.xpNeed && !state.dead){
-        player.xp -= player.xpNeed;
-        player.lvl += 1;
-        player.xpNeed = Math.floor(player.xpNeed * 1.12 * player.xpNeedMult + 8);
-        state.chestTimer = Math.min(state.chestTimer, pF.getChestInterval());
-        state.pendingLevelUps += 1;
-      }
-      maybeOpenLevelPicker();
-    }
-
-    // Enemies
     const spawnEnemy = createSpawnEnemy({ player, state, enemies, spawnScale: SPAWN_SCALE });
     const spawnBoss = createSpawnBoss({ spawn, spawnEnemy, elBossWrap });
     const spawnColossusElite = createSpawnColossusElite({ player, state, spawnEnemy, });
 
-    // Chest
     const spawnChest = createSpawnChest({ state, chests, totem, player, pF });
+    const pickUpChest = createPickupChest({ player, state, chests, openUpgradePicker });
 
-    function pickUpChest(){
-      if (!chests.length) { state.chestAlive = false; return; }
-      const c = chests[0];
-      chests.length = 0;
-      state.chestAlive = false;
-      if (player.chestBonusReroll > 0){
-        player.rerolls = Math.min(player.rerollCap, player.rerolls + player.chestBonusReroll);
-      }
-      openUpgradePicker(c && c.special ? "unique" : "chest");
-    }
-
-    // Totem
     const spawnTotem = createSpawnTotem({ player, totem, pF });
 
-    // Turret
     const spawnTurret = createSpawnTurret({ player, turrets, pF, });
 
     const shooting = createShootingSystem({ player, bullets, pF, targeting, spawnTurret });
@@ -282,7 +219,6 @@ import { createProfilerUI } from "./ui/profiler.js";
       handlePlayerDeath("(он все таки смог)");
     });
 
-    // Loop
     const step = createStep({ state, player, entities, profiler, update, realtimeUpdate, render });
 
     const updateDogs = createUpdateDogs({ player, dogs, pF, gridQueryCircle, recordDamage, killEnemy });
