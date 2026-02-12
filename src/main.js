@@ -233,6 +233,8 @@ import { createProfilerUI } from "./ui/profiler.js";
     const updateDrops = createUpdateDrops({ drops, player, bullets, turrets, pF, queueHeal, gainXp });
     const updateCamera = createUpdateCamera({ player, pF, gameScale: GAME_SCALE, cameraZoomOut: CAMERA_ZOOM_OUT });
 
+    const xpNear = { normal: 0, elite: 0, boss: 0 };
+
     function update(dt){
       state.t += dt;
 
@@ -284,9 +286,9 @@ import { createProfilerUI } from "./ui/profiler.js";
       pruneDeadEnemies();
 
       // enemies
-      let xpNearNormal = 0;
-      let xpNearElite = 0;
-      let xpNearBoss = 0;
+      xpNear.normal = 0;
+      xpNear.elite = 0;
+      xpNear.boss = 0;
       for (let i=enemies.length-1;i>=0;i--){
         const e=enemies[i];
         if (e.dead) continue;
@@ -459,16 +461,16 @@ import { createProfilerUI } from "./ui/profiler.js";
         const dxp = e.x - player.x;
         const dyp = e.y - player.y;
         if ((dxp*dxp + dyp*dyp) <= player.magnet * player.magnet){
-          if (e.type === "boss") xpNearBoss += 1;
-          else if (e.elite) xpNearElite += 1;
-          else xpNearNormal += 1;
+          if (e.type === "boss") xpNear.boss += 1;
+          else if (e.elite) xpNear.elite += 1;
+          else xpNear.normal += 1;
         }
       }
 
       pruneDeadEnemies();
-      state.xpEnemyBonus = xpNearNormal * XP_BONUS_NORMAL
-        + xpNearElite * XP_BONUS_ELITE
-        + xpNearBoss * XP_BONUS_BOSS;
+      state.xpEnemyBonus = xpNear.normal * XP_BONUS_NORMAL
+        + xpNear.elite * XP_BONUS_ELITE
+        + xpNear.boss * XP_BONUS_BOSS;
 
       // XP drops update + pickup
       updateDrops(dt, dampFast);
