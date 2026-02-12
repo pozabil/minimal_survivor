@@ -1,4 +1,44 @@
+import { TAU } from "../core/constants.js";
 import { len2 } from "../utils/math.js";
+import { randf } from "../utils/rand.js";
+
+export function createSpawnDrops({ drops }) {
+  function dropXp(x, y, amount) {
+    const n = Math.max(1, Math.round(amount / 10));
+    for (let i = 0; i < n; i++) {
+      drops.push({
+        x: x + randf(-10, 10),
+        y: y + randf(-10, 10),
+        r: 6,
+        v: amount / n,
+        vx: randf(-60, 60),
+        vy: randf(-60, 60),
+        t: 0,
+        kind: "xp",
+      });
+    }
+  }
+
+  function dropHeal(x, y, amount) {
+    drops.push({
+      x: x + randf(-8, 8),
+      y: y + randf(-8, 8),
+      r: 7,
+      v: amount,
+      vx: randf(-50, 50),
+      vy: randf(-50, 50),
+      t: 0,
+      kind: "heal",
+      life: 60,
+      pulse: randf(0, TAU),
+    });
+  }
+
+  return {
+    dropXp,
+    dropHeal,
+  };
+}
 
 export function createUpdateDrops({
   drops,

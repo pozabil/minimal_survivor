@@ -30,7 +30,7 @@ import { createUpdateSameCircle } from "./systems/uniques/same_circle.js";
 import { createUpdatePatriarchDoll } from "./systems/patriarch_doll.js";
 import { createUpdateBullets, createUpdateEnemyBullets } from "./systems/projectiles.js";
 import { createUpdateTotem } from "./systems/totem.js";
-import { createUpdateDrops } from "./systems/drops.js";
+import { createSpawnDrops, createUpdateDrops } from "./systems/drops.js";
 import { createOrbitalsSystem } from "./systems/upgrades/orbitals.js";
 import { createEnemyCombatSystem } from "./systems/enemies/combat.js";
 import { createEnemyDeathSystem } from "./systems/enemies/death.js";
@@ -177,36 +177,8 @@ import { createProfilerUI } from "./ui/profiler.js";
       triggerDash();
     });
 
-    // Drops/particles
-    function dropXp(x,y,amount){
-      const n = Math.max(1, Math.round(amount/10));
-      for(let i=0;i<n;i++){
-        drops.push({
-          x: x + randf(-10,10),
-          y: y + randf(-10,10),
-          r: 6,
-          v: (amount / n),
-          vx: randf(-60,60),
-          vy: randf(-60,60),
-          t: 0,
-          kind: "xp",
-        });
-      }
-    }
-    function dropHeal(x,y,amount){
-      drops.push({
-        x: x + randf(-8,8),
-        y: y + randf(-8,8),
-        r: 7,
-        v: amount,
-        vx: randf(-50,50),
-        vy: randf(-50,50),
-        t: 0,
-        kind: "heal",
-        life: 60,
-        pulse: randf(0, TAU),
-      });
-    }
+    const { dropXp, dropHeal } = createSpawnDrops({ drops });
+
     function queueHeal(amount){
       if (amount <= 0) return;
       if (player.hp >= player.hpMax) return;
