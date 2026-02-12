@@ -1,12 +1,13 @@
 import { HEAL_OVER_TIME } from "../content/config.js";
+import { circleHit } from "../utils/collision.js";
 
-export function createPickupChest({
+export function createTryPickupChest({
+  chests,
   player,
   state,
-  chests,
   openUpgradePicker,
 }) {
-  return function pickUpChest() {
+  function pickUpChest() {
     if (!chests.length) {
       state.chestAlive = false;
       return;
@@ -18,6 +19,15 @@ export function createPickupChest({
       player.rerolls = Math.min(player.rerollCap, player.rerolls + player.chestBonusReroll);
     }
     openUpgradePicker(c && c.special ? "unique" : "chest");
+  }
+
+  return function tryPickupChest(dt) {
+    if (!chests.length) return;
+    const c = chests[0];
+    c.t += dt;
+    if (circleHit(player.x, player.y, player.r, c.x, c.y, c.r)) {
+      pickUpChest();
+    }
   };
 }
 

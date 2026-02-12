@@ -31,7 +31,7 @@ import { createUpdatePatriarchDoll } from "./systems/patriarch_doll.js";
 import { createUpdateBullets, createUpdateEnemyBullets } from "./systems/projectiles.js";
 import { createUpdateTotem } from "./systems/totem.js";
 import { createSpawnDrops, createUpdateDrops } from "./systems/drops.js";
-import { createPickupChest, createProgressionSystem } from "./systems/progression.js";
+import { createProgressionSystem, createTryPickupChest } from "./systems/progression.js";
 import { createOrbitalsSystem } from "./systems/upgrades/orbitals.js";
 import { createEnemyCombatSystem } from "./systems/enemies/combat.js";
 import { createEnemyDeathSystem } from "./systems/enemies/death.js";
@@ -180,7 +180,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     const spawnColossusElite = createSpawnColossusElite({ player, state, spawnEnemy, });
 
     const spawnChest = createSpawnChest({ state, chests, totem, player, pF });
-    const pickUpChest = createPickupChest({ player, state, chests, openUpgradePicker });
+    const tryPickupChest = createTryPickupChest({ chests, player, state, openUpgradePicker });
 
     const spawnTotem = createSpawnTotem({ player, totem, pF });
 
@@ -260,16 +260,10 @@ import { createProfilerUI } from "./ui/profiler.js";
       updateTotem(dt);
       if (state.dead) return;
 
-      // chest pickup
-      if (chests.length){
-        const c = chests[0];
-        c.t += dt;
-        if (circleHit(player.x,player.y,player.r, c.x,c.y,c.r)){
-          pickUpChest();
-        }
-      }
+      tryPickupChest(dt);
 
       gridBuild();
+
       updateTurrets(dt);
       shooting.shoot(dt);
       shooting.shootNova(dt);
@@ -282,10 +276,8 @@ import { createProfilerUI } from "./ui/profiler.js";
       updateDashTrail(dt, spawnDashTrail);
       updateLightning(dt);
 
-      // bullets
       updateBullets(dt);
 
-      // enemy bullets
       updateEnemyBullets(dt);
       if (state.dead) return;
 
