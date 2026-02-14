@@ -21,12 +21,7 @@ export function createUpdateBullets({
   killEnemy,
   recordDamage,
 }) {
-  const {
-    canRicochet,
-    tryFindRicochetTarget,
-    applyRicochetRedirect,
-    spawnCheapRicochetSplits,
-  } = ricochetHelpers;
+  const { canRicochet, tryFindRicochetTarget, applyRicochetRedirect, spawnCheapRicochetSplits } = ricochetHelpers;
 
   const candidates = [];
 
