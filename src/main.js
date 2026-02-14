@@ -33,7 +33,7 @@ import { createEnemyCombatSystem } from "./systems/enemies/combat.js";
 import { createEnemyDeathSystem } from "./systems/enemies/death.js";
 import { createUpdateEnemies } from "./systems/enemies/updates.js";
 
-import { createRenderBatch, batchCirclePush, batchCircleDraw, ensureRoundRectPolyfill } from "./systems/render.js";
+import { createRenderBatch, ensureRoundRectPolyfill } from "./systems/render.js";
 import { setupCameraAndFrame } from "./render/base.js";
 import { drawWorldGrid } from "./render/world.js";
 import { drawTotem } from "./render/totem.js";
@@ -41,6 +41,7 @@ import { drawChests } from "./render/chests.js";
 import { drawDrops } from "./render/drops.js";
 import { drawBullets, drawEnemyBullets } from "./render/projectiles.js";
 import { drawAura } from "./render/upgrades/aura.js";
+import { drawOrbitals } from "./render/upgrades/orbitals.js";
 import { drawDogs } from "./render/uniques/dog.js";
 import { COLORS } from "./render/colors.js";
 import { createEffectRenderer } from "./render/effects/render.js";
@@ -536,32 +537,7 @@ import { createProfilerUI } from "./ui/profiler.js";
       renderShockwaves(ctx, camX, camY);
       renderParticles(ctx, camX, camY);
 
-      // orbitals
-      if (player.orbitals>0){
-        const orbSize = pF.getOrbitalSize();
-        for(let k=0;k<player.orbitals;k++){
-          const a = state.orbitalAngle + (k/Math.max(1,player.orbitals))*TAU;
-          const ox = player.x + Math.cos(a)*player.orbitalRadius;
-          const oy = player.y + Math.sin(a)*player.orbitalRadius;
-          const sx=ox-camX, sy=oy-camY;
-          batchCirclePush(batch.orbitals, sx, sy, orbSize);
-        }
-        batchCircleDraw(ctx, batch.orbitals, COLORS.bluePlayer95);
-      }
-      if (player.orbitals>0 && clones.length){
-        const orbSize = pF.getOrbitalSize();
-        for (const sc of clones){
-          const base = sc.orbitalAngle || 0;
-          for(let k=0;k<player.orbitals;k++){
-            const a = base + (k/Math.max(1,player.orbitals))*TAU;
-            const ox = sc.x + Math.cos(a)*player.orbitalRadius;
-            const oy = sc.y + Math.sin(a)*player.orbitalRadius;
-            const sx=ox-camX, sy=oy-camY;
-            batchCirclePush(batch.orbitalsClone, sx, sy, orbSize);
-          }
-        }
-        batchCircleDraw(ctx, batch.orbitalsClone, COLORS.blueOrbitalClone70);
-      }
+      drawOrbitals({ ctx, player, clones, state, camX, camY, pF, batch });
 
       // magnet radius
       {
