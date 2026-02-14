@@ -42,6 +42,8 @@ import { drawDrops } from "./render/drops.js";
 import { drawBullets, drawEnemyBullets } from "./render/projectiles.js";
 import { drawAura } from "./render/upgrades/aura.js";
 import { drawOrbitals } from "./render/upgrades/orbitals.js";
+import { drawSameCircle } from "./render/uniques/same_sircle.js";
+import { drawTurrets } from "./render/upgrades/turrets.js";
 import { drawDogs } from "./render/uniques/dog.js";
 import { COLORS } from "./render/colors.js";
 import { createEffectRenderer } from "./render/effects/render.js";
@@ -513,25 +515,7 @@ import { createProfilerUI } from "./ui/profiler.js";
         }
       }
 
-      // turrets
-      for (const t of turrets){
-        const sx=t.x-camX, sy=t.y-camY;
-        const hs = t.size * 0.5;
-        ctx.fillStyle=COLORS.blueBright90;
-        ctx.beginPath();
-        ctx.roundRect(sx-hs, sy-hs, t.size, t.size, 5);
-        ctx.fill();
-
-        ctx.fillStyle=COLORS.white70;
-        ctx.fillRect(sx-2, sy-hs-4, 4, 8);
-
-        const p = clamp(t.hp/t.hpMax, 0, 1);
-        ctx.strokeStyle=COLORS.white70;
-        ctx.lineWidth=2;
-        ctx.beginPath();
-        ctx.arc(sx,sy, hs + 4, -Math.PI/2, -Math.PI/2 + TAU*p);
-        ctx.stroke();
-      }
+      drawTurrets({ ctx, turrets, camX, camY });
 
       renderLightning(ctx, camX, camY);
       renderShockwaves(ctx, camX, camY);
@@ -553,27 +537,7 @@ import { createProfilerUI } from "./ui/profiler.js";
         ctx.globalAlpha = 1;
       }
 
-      // same circle clones
-      if (clones.length){
-        for (const sc of clones){
-          const sx = sc.x - camX;
-          const sy = sc.y - camY;
-          const t = clamp(sc.t / Math.max(0.001, sc.life), 0, 1);
-          const alpha = 0.45 + 0.25 * (1 - t);
-          ctx.save();
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = COLORS.blueSoft75;
-          ctx.beginPath();
-          ctx.arc(sx, sy, player.r * 0.95, 0, TAU);
-          ctx.fill();
-          ctx.globalAlpha = 0.8;
-          ctx.strokeStyle = COLORS.blueSoft60;
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.restore();
-        }
-        ctx.globalAlpha = 1;
-      }
+      drawSameCircle({ ctx, clones, player, camX, camY });
 
       renderDashTrail(ctx, camX, camY);
 
