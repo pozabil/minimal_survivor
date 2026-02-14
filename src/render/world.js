@@ -1,6 +1,6 @@
 import { COLORS } from "./colors.js";
 
-export function drawWorldGrid(ctx, camX, camY, w, h) {
+export function renderWorldGrid(ctx, camX, camY, w, h) {
   const g = 52;
   const gx0 = Math.floor(camX / g) * g;
   const gy0 = Math.floor(camY / g) * g;

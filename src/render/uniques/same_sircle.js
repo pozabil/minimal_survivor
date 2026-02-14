@@ -2,7 +2,7 @@ import { TAU } from "../../core/constants.js";
 import { clamp } from "../../utils/math.js";
 import { COLORS } from "../colors.js";
 
-export function drawSameCircle({ ctx, clones, player, camX, camY }) {
+export function renderSameCircle({ ctx, clones, player, camX, camY }) {
   for (const sc of clones) {
     const sx = sc.x - camX;
     const sy = sc.y - camY;

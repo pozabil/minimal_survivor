@@ -2,7 +2,7 @@ import { TAU } from "../../core/constants.js";
 import { clamp } from "../../utils/math.js";
 import { COLORS } from "../colors.js";
 
-export function drawTurrets({ ctx, turrets, camX, camY }) {
+export function renderTurrets({ ctx, turrets, camX, camY }) {
   for (const t of turrets) {
     const sx = t.x - camX;
     const sy = t.y - camY;

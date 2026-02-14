@@ -1,7 +1,7 @@
 import { clamp } from "../../utils/math.js";
 import { COLORS } from "../colors.js";
 
-export function drawVignette({ ctx, w, h, player, t }) {
+export function renderVignette({ ctx, w, h, player, t }) {
   const grd = ctx.createRadialGradient(
     w * 0.5,
     h * 0.5,

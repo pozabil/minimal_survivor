@@ -32,19 +32,19 @@ import { createUpdateEnemies } from "./systems/enemies/updates.js";
 
 import { createRenderBatch, ensureRoundRectPolyfill } from "./systems/render.js";
 import { setupCameraAndFrame } from "./render/base.js";
-import { drawWorldGrid } from "./render/world.js";
-import { drawTotem } from "./render/totem.js";
-import { drawChests } from "./render/chests.js";
-import { drawDrops } from "./render/drops.js";
-import { drawEnemies } from "./render/enemies.js";
-import { drawBullets, drawEnemyBullets } from "./render/projectiles.js";
-import { drawMagnetRadius, drawPlayer } from "./render/player.js";
-import { drawAura } from "./render/upgrades/aura.js";
-import { drawOrbitals } from "./render/upgrades/orbitals.js";
-import { drawSameCircle } from "./render/uniques/same_sircle.js";
-import { drawTurrets } from "./render/upgrades/turrets.js";
-import { drawDogs } from "./render/uniques/dog.js";
-import { drawVignette } from "./render/ui/vignette.js";
+import { renderWorldGrid } from "./render/world.js";
+import { renderTotem } from "./render/totem.js";
+import { renderChests } from "./render/chests.js";
+import { renderDrops } from "./render/drops.js";
+import { renderEnemies } from "./render/enemies.js";
+import { renderBullets, renderEnemyBullets } from "./render/projectiles.js";
+import { renderMagnetRadius, renderPlayer } from "./render/player.js";
+import { renderAura } from "./render/upgrades/aura.js";
+import { renderOrbitals } from "./render/upgrades/orbitals.js";
+import { renderSameCircle } from "./render/uniques/same_sircle.js";
+import { renderTurrets } from "./render/upgrades/turrets.js";
+import { renderDogs } from "./render/uniques/dog.js";
+import { renderVignette } from "./render/ui/vignette.js";
 import { createEffectRenderer } from "./render/effects/render.js";
 import { createSpawnBoss, createSpawnChest, createSpawnColossusElite, createSpawnEnemy, createSpawnTotem, createSpawnTurret, createSpawnDog, updateSpawning } from "./systems/spawning.js";
 import { initHud } from "./ui/hud.js";
@@ -331,32 +331,30 @@ import { createProfilerUI } from "./ui/profiler.js";
     function render(){
       const { w, h, camX, camY } = setupCameraAndFrame({ ctx, getDpr, cameraScale, player, batch });
 
-      drawWorldGrid(ctx, camX, camY, w, h);
+      renderWorldGrid(ctx, camX, camY, w, h);
 
       // debug
       // renderSpatialGrid(ctx, camX, camY, getGridCells());
 
-      drawTotem({ ctx, totem, player, camX, camY, w, h });
-      drawChests({ ctx, chests, player, camX, camY, w, h });
-      drawDrops({ ctx, drops, camX, camY, t: state.t });
-      drawEnemyBullets({ ctx, enemyBullets, camX, camY, batchEnemyBullets: batch.enemyBullets });
-      drawAura({ ctx, player, clones, state, camX, camY });
-      drawBullets({ ctx, bullets, camX, camY, batchBullets: batch.bullets });
-      drawDogs({ ctx, dogs, camX, camY });
-
-      drawEnemies({ ctx, enemies, state, camX, camY });
-
-      drawTurrets({ ctx, turrets, camX, camY });
+      renderTotem({ ctx, totem, player, camX, camY, w, h });
+      renderChests({ ctx, chests, player, camX, camY, w, h });
+      renderDrops({ ctx, drops, camX, camY, t: state.t });
+      renderEnemyBullets({ ctx, enemyBullets, camX, camY, batchEnemyBullets: batch.enemyBullets });
+      renderAura({ ctx, player, clones, state, camX, camY });
+      renderBullets({ ctx, bullets, camX, camY, batchBullets: batch.bullets });
+      renderDogs({ ctx, dogs, camX, camY });
+      renderEnemies({ ctx, enemies, state, camX, camY });
+      renderTurrets({ ctx, turrets, camX, camY });
       renderLightning(ctx, camX, camY);
       renderShockwaves(ctx, camX, camY);
       renderParticles(ctx, camX, camY);
-      drawOrbitals({ ctx, player, clones, state, camX, camY, pF, batch });
-      drawMagnetRadius({ ctx, player, camX, camY });
-      drawSameCircle({ ctx, clones, player, camX, camY });
+      renderOrbitals({ ctx, player, clones, state, camX, camY, pF, batch });
+      renderMagnetRadius({ ctx, player, camX, camY });
+      renderSameCircle({ ctx, clones, player, camX, camY });
       renderDashTrail(ctx, camX, camY);
-      drawPlayer({ ctx, player, camX, camY });
+      renderPlayer({ ctx, player, camX, camY });
       renderFloaters(ctx, camX, camY);
-      drawVignette({ ctx, w, h, player, t: state.t });
+      renderVignette({ ctx, w, h, player, t: state.t });
     }
     // RENDER
 

@@ -2,7 +2,7 @@ import { TAU } from "../../core/constants.js";
 import { batchCircleDraw, batchCirclePush } from "../../systems/render.js";
 import { COLORS } from "../colors.js";
 
-export function drawOrbitals({ ctx, player, clones, state, camX, camY, pF, batch }) {
+export function renderOrbitals({ ctx, player, clones, state, camX, camY, pF, batch }) {
   if (player.orbitals > 0) {
     const orbSize = pF.getOrbitalSize();
     for (let k = 0; k < player.orbitals; k++) {

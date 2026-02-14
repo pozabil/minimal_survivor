@@ -2,7 +2,7 @@ import { TAU } from "../core/constants.js";
 import { COLORS } from "./colors.js";
 import { renderOffscreenArrow } from "./ui/arrows.js";
 
-export function drawChests({ ctx, chests, player, camX, camY, w, h }) {
+export function renderChests({ ctx, chests, player, camX, camY, w, h }) {
   if (!chests.length) return;
 
   const c = chests[0];

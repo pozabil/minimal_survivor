@@ -3,7 +3,7 @@ import { len2 } from "../utils/math.js";
 import { batchCircleDraw, batchCirclePush, batchMapPush } from "../systems/render.js";
 import { COLORS } from "./colors.js";
 
-export function drawBullets({ ctx, bullets, camX, camY, batchBullets }) {
+export function renderBullets({ ctx, bullets, camX, camY, batchBullets }) {
   for (const b of bullets) {
     const sx = b.x - camX;
     const sy = b.y - camY;
@@ -41,7 +41,7 @@ export function drawBullets({ ctx, bullets, camX, camY, batchBullets }) {
   batchCircleDraw(ctx, batchBullets, COLORS.sandBullet95);
 }
 
-export function drawEnemyBullets({ ctx, enemyBullets, camX, camY, batchEnemyBullets }) {
+export function renderEnemyBullets({ ctx, enemyBullets, camX, camY, batchEnemyBullets }) {
   for (const b of enemyBullets) {
     const sx = b.x - camX;
     const sy = b.y - camY;

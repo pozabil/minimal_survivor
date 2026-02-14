@@ -3,7 +3,7 @@ import { TAU } from "../core/constants.js";
 import { clamp } from "../utils/math.js";
 import { COLORS } from "./colors.js";
 
-export function drawEnemies({ ctx, enemies, state, camX, camY }) {
+export function renderEnemies({ ctx, enemies, state, camX, camY }) {
   for (const e of enemies) {
     const sx = e.x - camX;
     const sy = e.y - camY;

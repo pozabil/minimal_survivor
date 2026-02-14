@@ -1,7 +1,7 @@
 import { TAU } from "../core/constants.js";
 import { COLORS } from "./colors.js";
 
-export function drawMagnetRadius({ ctx, player, camX, camY }) {
+export function renderMagnetRadius({ ctx, player, camX, camY }) {
   const sx = player.x - camX;
   const sy = player.y - camY;
 
@@ -14,7 +14,7 @@ export function drawMagnetRadius({ ctx, player, camX, camY }) {
   ctx.globalAlpha = 1;
 }
 
-export function drawPlayer({ ctx, player, camX, camY }) {
+export function renderPlayer({ ctx, player, camX, camY }) {
   const sx = player.x - camX;
   const sy = player.y - camY;
   ctx.beginPath();

@@ -2,7 +2,7 @@ import { TAU } from "../core/constants.js";
 import { COLORS } from "./colors.js";
 import { renderOffscreenArrow } from "./ui/arrows.js";
 
-export function drawTotem({ ctx, totem, player, camX, camY, w, h }) {
+export function renderTotem({ ctx, totem, player, camX, camY, w, h }) {
   if (!totem.active) return;
 
   const sx = totem.x - camX;

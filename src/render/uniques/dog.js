@@ -1,7 +1,7 @@
 import { TAU } from "../../core/constants.js";
 import { COLORS } from "../colors.js";
 
-export function drawDogs({ ctx, dogs, camX, camY }) {
+export function renderDogs({ ctx, dogs, camX, camY }) {
   for (const d of dogs) {
     const sx = d.x - camX;
     const sy = d.y - camY;

@@ -3,7 +3,7 @@ import { TAU } from "../../core/constants.js";
 import { clamp } from "../../utils/math.js";
 import { COLORS } from "../colors.js";
 
-export function drawAura({ ctx, player, clones, state, camX, camY }) {
+export function renderAura({ ctx, player, clones, state, camX, camY }) {
   if (player.aura) {
     const sx = player.x - camX;
     const sy = player.y - camY;

@@ -1,7 +1,7 @@
 import { TAU } from "../core/constants.js";
 import { COLORS } from "./colors.js";
 
-export function drawDrops({ ctx, drops, camX, camY, t }) {
+export function renderDrops({ ctx, drops, camX, camY, t }) {
   for (const d of drops) {
     const sx = d.x - camX;
     const sy = d.y - camY;
