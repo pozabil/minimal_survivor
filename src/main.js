@@ -201,18 +201,7 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     const { getEnemyTarget, updateTurrets } = createTurretSystem({ player, pF, turrets, shooting });
     const { killEnemy, pruneDeadEnemies } = createEnemyDeathSystem({
-      state,
-      player,
-      spawn,
-      enemies,
-      enemyBullets,
-      spawnEnemy,
-      maxShirt,
-      spawnBurst,
-      spawnHealFloat,
-      dropXp,
-      dropHeal,
-      elBossWrap,
+      state, player, spawn, enemies, enemyBullets, spawnEnemy, maxShirt, spawnBurst, spawnHealFloat, dropXp, dropHeal, elBossWrap,
     });
     const { updateOrbitalsFor, updateOrbitals } = createOrbitalsSystem({ player, state, pF, gridQueryCircle, recordDamage, killEnemy });
     const { applyAuraFor, applyAura } = createAuraSystem({ state, player, pF, gridQueryCircle, recordDamage, killEnemy });
@@ -225,20 +214,7 @@ import { createProfilerUI } from "./ui/profiler.js";
       enemyBullets, enemies, turrets, player, pF, spawnBurst, applyDamageToPlayer, handlePlayerDeath, killEnemy,
     });
     const updateEnemies = createUpdateEnemies({
-      enemies,
-      turrets,
-      player,
-      state,
-      pF,
-      enemyCombatSystem,
-      getEnemyTarget,
-      spawnColossusElite,
-      applyDamageToPlayer,
-      handlePlayerDeath,
-      formatDeathReason,
-      spawnBurst,
-      killEnemy,
-      pruneDeadEnemies,
+      enemies, turrets, player, state, pF, enemyCombatSystem, getEnemyTarget, spawnColossusElite, applyDamageToPlayer, handlePlayerDeath, formatDeathReason, spawnBurst, killEnemy, pruneDeadEnemies,
     });
 
     btnHang.addEventListener("click", ()=>{
@@ -275,16 +251,13 @@ import { createProfilerUI } from "./ui/profiler.js";
 
       cameraScale = updateCamera({ cameraScale, lerpFast, moveSpeed });
 
-      // regen + invuln
       if (player.regen > 0 && player.hp > 0){
         player.hp = Math.min(player.hpMax, player.hp + player.regen*dt);
       }
       updateHeal(dt);
       player.invuln = Math.max(0, player.invuln - dt);
-
       maxShirt.updateMaxShirt(dt);
 
-      // totem zone effect
       updateTotem(dt);
       if (state.dead) return;
 
