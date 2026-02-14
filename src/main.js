@@ -38,6 +38,7 @@ import { setupCameraAndFrame } from "./render/base.js";
 import { drawWorldGrid } from "./render/world.js";
 import { drawTotem } from "./render/totem.js";
 import { drawChests } from "./render/chests.js";
+import { drawDrops } from "./render/drops.js";
 import { COLORS } from "./render/colors.js";
 import { createEffectRenderer } from "./render/effects/render.js";
 import { createSpawnBoss, createSpawnChest, createSpawnColossusElite, createSpawnEnemy, createSpawnTotem, createSpawnTurret, createSpawnDog, updateSpawning } from "./systems/spawning.js";
@@ -332,31 +333,7 @@ import { createProfilerUI } from "./ui/profiler.js";
 
       drawTotem({ ctx, totem, player, camX, camY, w, h });
       drawChests({ ctx, chests, player, camX, camY, w, h });
-
-      // drops
-      for (const d of drops){
-        const sx=d.x-camX, sy=d.y-camY;
-        if (d.kind === "heal"){
-          const pulse = 0.6 + 0.4 * Math.sin((d.pulse || 0) + state.t * 6);
-          ctx.save();
-          ctx.shadowColor = COLORS.greenHealGlow;
-          ctx.shadowBlur = 14 * pulse;
-          ctx.beginPath();
-          ctx.fillStyle = COLORS.greenHealCore;
-          ctx.arc(sx,sy,d.r * (0.95 + 0.12 * pulse),0,TAU);
-          ctx.fill();
-          ctx.restore();
-        } else {
-          ctx.beginPath();
-          ctx.fillStyle = COLORS.blueBright90;
-          ctx.arc(sx,sy,d.r,0,TAU);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.fillStyle = COLORS.white55;
-          ctx.arc(sx-2,sy-2,2,0,TAU);
-          ctx.fill();
-        }
-      }
+      drawDrops({ ctx, drops, camX, camY, t: state.t });
 
       // enemy bullets
       for (const b of enemyBullets){
