@@ -1,5 +1,4 @@
 export const HEAL_OVER_TIME = 0.25;
-export const CAMERA_ZOOM_OUT = 0.05;
 export const UNIQUE_CHEST_EVERY = 4;
 export const XP_BONUS_NORMAL = 0.0005;
 export const XP_BONUS_ELITE = 0.002;
