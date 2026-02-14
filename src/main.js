@@ -35,6 +35,7 @@ import { createUpdateEnemies } from "./systems/enemies/updates.js";
 
 import { createRenderBatch, batchCirclePush, batchCircleDraw, batchMapPush, ensureRoundRectPolyfill } from "./systems/render.js";
 import { setupCameraAndFrame } from "./render/base.js";
+import { drawWorldGrid } from "./render/world.js";
 import { renderOffscreenArrow } from "./render/ui/arrows.js";
 import { COLORS } from "./render/colors.js";
 import { createEffectRenderer } from "./render/effects/render.js";
@@ -323,25 +324,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     function render(){
       const { w, h, camX, camY } = setupCameraAndFrame({ ctx, getDpr, cameraScale, player, batch });
 
-      // grid
-      const g = 52;
-      const gx0 = Math.floor(camX/g)*g;
-      const gy0 = Math.floor(camY/g)*g;
-
-      ctx.globalAlpha = 0.40;
-      ctx.strokeStyle = COLORS.white08;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let x=gx0; x<camX+w+g; x+=g){
-        const sx = x-camX;
-        ctx.moveTo(sx,0); ctx.lineTo(sx,h);
-      }
-      for (let y=gy0; y<camY+h+g; y+=g){
-        const sy = y-camY;
-        ctx.moveTo(0,sy); ctx.lineTo(w,sy);
-      }
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      drawWorldGrid(ctx, camX, camY, w, h);
 
       // debug
       // renderSpatialGrid(ctx, camX, camY, getGridCells());
