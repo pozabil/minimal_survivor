@@ -57,8 +57,8 @@ function pickEnemyType({ player, state, enemies, forcedType, enemyTypePicks }) {
   const pBomber = 0.04 + Math.min(0.12, diff * 0.018);
 
   const pDasher = (diff > 2.0) ? (0.03 + Math.min(0.08, (diff - 2) * 0.015)) : 0.0;
-  const pSpitter = (diff > 2.5) ? (0.03 + Math.min(0.09, (diff - 2.5) * 0.015)) : 0.0;
-  const pShield = (diff > 3.0) ? (0.03 + Math.min(0.08, (diff - 3) * 0.013)) : 0.0;
+  const pSpitter = (diff > 3.0) ? (0.03 + Math.min(0.09, (diff - 3) * 0.015)) : 0.0;
+  const pShield = (diff > 4.0) ? (0.03 + Math.min(0.08, (diff - 4) * 0.013)) : 0.0;
   const pTriad = (player.lvl >= 15) ? (0.02 + Math.min(0.07, (player.lvl - 15) * 0.006)) : 0.0;
   const unlockBlaster = (player.lvl >= 20 || state.t >= 10 * 60);
   let blasterCount = 0;
@@ -73,9 +73,9 @@ function pickEnemyType({ player, state, enemies, forcedType, enemyTypePicks }) {
     pBlaster *= t;
   }
   if (blasterCount >= 24) pBlaster = 0;
-  const pBurst = (diff > 3.0) ? (0.02 + Math.min(0.07, (diff - 3) * 0.012)) : 0.0;
-  const pSplitter = (diff > 3.5) ? (0.02 + Math.min(0.07, (diff - 3.5) * 0.012)) : 0.0;
-  const pBrute = (diff > 4.0) ? (0.02 + Math.min(0.06, (diff - 4) * 0.010)) : 0.0;
+  const pBurst = (diff > 4.0) ? (0.02 + Math.min(0.07, (diff - 4) * 0.012)) : 0.0;
+  const pSplitter = (diff > 5.0) ? (0.02 + Math.min(0.07, (diff - 5) * 0.012)) : 0.0;
+  const pBrute = (diff > 6.0) ? (0.02 + Math.min(0.06, (diff - 6) * 0.010)) : 0.0;
 
   enemyTypePicks[0].w = pRunner;
   enemyTypePicks[1].w = pTank;
@@ -376,7 +376,7 @@ export function createSpawnColossusElite({ player, state, spawnEnemy }) {
 
   function pickColossusEliteType() {
     let count = 5;
-    if (state.difficulty > 3.0) {
+    if (state.difficulty > 4.0) {
       colossusPickBuffer[count++] = "spitter";
       colossusPickBuffer[count++] = "dasher";
     }
