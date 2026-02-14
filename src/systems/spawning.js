@@ -106,10 +106,11 @@ function pickEnemyType({ player, state, enemies, forcedType, enemyTypePicks }) {
 }
 
 function createBaseEnemy({ type, player, state, extra, b, isMinion, tier }) {
-  const normalHpBoost = 0.09 + (player.lvl - 1) * 0.032 + (state.t / 60) * 0.0095;
+  const normalHpBoost = 0.09 + 0.1 * (state.difficulty - 1)
   const scale = (type === "boss")
     ? (1 + state.difficulty * 0.12 + tier * 0.44)
-    : (1 + Math.min(3.2, normalHpBoost));
+    : (1 + Math.min(6.4, normalHpBoost));
+  const damageScale = 0.9 + Math.min(2.9, state.difficulty * 0.04);
 
   let hpMult = 1;
   if (type === "boss") {
@@ -124,8 +125,8 @@ function createBaseEnemy({ type, player, state, extra, b, isMinion, tier }) {
     r: b.r,
     hpMax: b.hp * scale * hpMult,
     hp: b.hp * scale * hpMult,
-    spd: b.spd * (0.9 + Math.min(0.35, state.difficulty * 0.03)),
-    dmg: b.dmg * (0.9 + Math.min(0.6, state.difficulty * 0.03)),
+    spd: b.spd * (0.9 + Math.min(0.35, state.difficulty * 0.024)),
+    dmg: b.dmg * damageScale,
     xp: b.xp,
     vx: 0,
     vy: 0,
@@ -135,7 +136,7 @@ function createBaseEnemy({ type, player, state, extra, b, isMinion, tier }) {
     shotTimer: randf(0, 0.6),
     shotRate: b.shotRate || 0,
     shotSpeed: b.shotSpeed || 0,
-    shotDmg: b.shotDmg || 0,
+    shotDmg: (b.shotDmg || 0) * damageScale,
     shotSize: b.shotSize || 0,
     shotLife: b.shotLife || 0,
     explodeR: b.explodeR || 0,
@@ -145,7 +146,7 @@ function createBaseEnemy({ type, player, state, extra, b, isMinion, tier }) {
     bulletGlow: b.bulletGlow || null,
     burstN: b.burstN || 0,
     burstSpeed: b.burstSpeed || 0,
-    burstDmg: b.burstDmg || 0,
+    burstDmg: (b.burstDmg || 0) * damageScale,
     burstGap: b.burstGap || 0,
     burstCooldown: b.burstCooldown || 0,
     burstLeft: 0,
@@ -157,7 +158,7 @@ function createBaseEnemy({ type, player, state, extra, b, isMinion, tier }) {
     triSpin: b.triSpin || 0,
     triShotRate: b.triShotRate || 0,
     triShotSpeed: b.triShotSpeed || 0,
-    triShotDmg: b.triShotDmg || 0,
+    triShotDmg: (b.triShotDmg || 0) * damageScale,
     triAngle: 0,
     triDir: 1,
     triShotTimer: 0,
@@ -522,8 +523,18 @@ export function updateSpawning({
     spawn.nextBossAt = state.t + spawn.bossEvery;
   }
 
-  state.difficulty = 1 + (lvl - 1) * 0.35 + (state.t / 60) * 0.1;
-  spawn.interval = clamp(0.85 - (lvl - 1) * 0.02, 0.28, 0.85);
+  const minutes = state.t / 60;
+  state.difficulty = 1 + (lvl - 1) * 0.35 + 0.012 * minutes * minutes;
+  const baseInterval = clamp(0.85 - (lvl - 1) * 0.02, 0.28, 0.85);
+  let interval = baseInterval;
+  if (lvl >= 70) {
+    interval = 0.20;
+  } else if (lvl >= 50) {
+    interval = 0.23 - (lvl - 50) * (0.03 / 20);
+  } else if (lvl >= 30) {
+    interval = 0.28 - (lvl - 30) * (0.05 / 20);
+  }
+  spawn.interval = clamp(interval, 0.20, 0.85);
   spawn.packChance = clamp(0.10 + (lvl - 1) * 0.01, 0.10, 0.35);
 
   if (state.t >= spawn.nextBossAt && spawn.bossActive < spawn.maxBosses) {
@@ -559,11 +570,12 @@ export function updateSpawning({
   spawn.timer -= dt;
   const extraSpawns = Math.max(0, Math.min(5, Math.floor((lvl - 10) / 5)));
   const spawnCount = 1 + extraSpawns;
+  const bossSpawnSkipChance = clamp(0.55 - Math.max(0, lvl - 30) * 0.01, 0.30, 0.55);
   while (spawn.timer <= 0) {
     spawn.timer += spawn.interval;
     for (let s = 0; s < spawnCount; s++) {
       const pack = Math.random() < spawn.packChance;
-      if (spawn.bossActive > 0 && Math.random() < 0.55) continue;
+      if (spawn.bossActive > 0 && Math.random() < bossSpawnSkipChance) continue;
       spawnEnemy(pack);
     }
   }
