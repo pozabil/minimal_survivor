@@ -7,6 +7,17 @@ import {
 import { clamp, len2 } from "../utils/math.js";
 import { randf } from "../utils/rand.js";
 
+export function tryApplyLifeStealHeal(player, spawnHealFloat) {
+  const baseHeal = player.hpMax * 0.01;
+  const heal = (baseHeal < 1) ? (Math.random() < baseHeal ? 1 : 0) : baseHeal;
+  if (heal <= 0) return 0;
+  const before = player.hp;
+  player.hp = Math.min(player.hpMax, player.hp + heal);
+  const healed = player.hp - before;
+  if (healed > 0) spawnHealFloat(healed);
+  return healed;
+}
+
 export function createRicochetHelpers({ bullets, targeting }) {
   function canRicochet(b) {
     return (b.ricochetLeft || 0) > 0 && (b.ricochetChance || 0) > 0;
@@ -98,10 +109,7 @@ export function createDamageTracker({
       if (amount > minLsDamage) {
         const chance = 0.01 * player.lifeSteal;
         if (Math.random() < chance) {
-          const before = player.hp;
-          player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.01);
-          const healed = player.hp - before;
-          if (healed > 0) spawnHealFloat(healed);
+          tryApplyLifeStealHeal(player, spawnHealFloat);
         }
       }
     }

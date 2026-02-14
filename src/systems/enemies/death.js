@@ -1,5 +1,6 @@
 import { BURST_TELEGRAPH } from "../../content/enemies.js";
 import { TAU } from "../../core/constants.js";
+import { tryApplyLifeStealHeal } from "../combat.js";
 import { randf, randi } from "../../utils/rand.js";
 
 export function createEnemyDeathSystem({
@@ -40,10 +41,7 @@ export function createEnemyDeathSystem({
       if (e.type === "boss") mult = 5;
       else if (e.elite) mult = 2;
       if (Math.random() < 0.02 * mult) {
-        const before = player.hp;
-        player.hp = Math.min(player.hpMax, player.hp + player.hpMax * 0.01);
-        const healed = player.hp - before;
-        if (healed > 0) spawnHealFloat(healed);
+        tryApplyLifeStealHeal(player, spawnHealFloat);
       }
     }
 
