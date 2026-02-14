@@ -61,6 +61,11 @@ export function createUpgradePicker({
   function isEligible(id){
     const maxLevel = UPGRADES[id]?.max;
     if (typeof maxLevel === "number" && pF.getLevel(id) >= maxLevel) return false;
+    if (id === "multishot"){
+      const nextMultishotLevel = pF.getLevel("multishot") + 1;
+      const unlockAfterPlayerLevel = nextMultishotLevel * 10;
+      if (player.lvl <= unlockAfterPlayerLevel) return false;
+    }
     if (AURA_DEPENDENT.has(id) && !player.aura) return false;
     if (ORBITAL_DEPENDENT.has(id) && player.orbitals <= 0) return false;
     if (NOVA_DEPENDENT.has(id) && player.novaCount <= 0) return false;

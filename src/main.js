@@ -331,7 +331,6 @@ import { createProfilerUI } from "./ui/profiler.js";
       // renderSpatialGrid(ctx, camX, camY, getGridCells());
 
       drawTotem({ ctx, totem, player, camX, camY, w, h });
-
       drawChests({ ctx, chests, player, camX, camY, w, h });
 
       // drops

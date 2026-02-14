@@ -37,7 +37,7 @@ export function createUpgrades({ player, state, pF }) {
     fireRate: { title:"Скорость атаки", max: 12, desc:(lv)=>`+18% fire rate (ур. ${lv+1}/12)`, apply:()=>{ player.fireRate *= 1.18; } },
     damage:   { title:"Урон",           max: 12, desc:(lv)=>`+20% bullet damage (ур. ${lv+1}/12)`, apply:()=>{ player.damage *= 1.20; } },
     pierce:   { title:"Пробивание",     max: 6,  desc:(lv)=>`+1 pierce (ур. ${lv+1}/6)`,  apply:()=>{ player.pierce += 1; } },
-    multishot:{ title:"Мультивыстрел",  max: 7,  desc:(lv)=>`+1 projectile (ур. ${lv+1}/7)`,apply:()=>{ player.multishot += 1; player.spread = Math.max(player.spread, 0.12); } },
+    multishot:{ title:"Мультивыстрел",  max: 6,  desc:(lv)=>`+1 projectile (ур. ${lv+1}/6)`,apply:()=>{ player.multishot += 1; player.spread = Math.max(player.spread, 0.12); } },
     nova:     { title:"Нова",           max: 8,  desc:(lv)=>`+3 снаряда по кругу (ур. ${lv+1}/8)`, apply:()=>{ player.novaCount = Math.min(8, player.novaCount + 1); } },
     novaDamage:{title:"Нова: урон",     max: 10, desc:(lv)=>`+18% урон новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaDamage *= 1.18; } },
     novaRate: { title:"Нова: скор. атаки", max: 10, desc:(lv)=>`+15% скорость атаки новы (ур. ${lv+1}/10)`, apply:()=>{ player.novaRate *= 1.15; } },
