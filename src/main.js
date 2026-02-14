@@ -32,7 +32,9 @@ import { createOrbitalsSystem } from "./systems/upgrades/orbitals.js";
 import { createEnemyCombatSystem } from "./systems/enemies/combat.js";
 import { createEnemyDeathSystem } from "./systems/enemies/death.js";
 import { createUpdateEnemies } from "./systems/enemies/updates.js";
-import { createRenderBatch, batchCirclePush, batchCircleDraw, batchMapPush, batchMapClear, ensureRoundRectPolyfill } from "./systems/render.js";
+
+import { createRenderBatch, batchCirclePush, batchCircleDraw, batchMapPush, ensureRoundRectPolyfill } from "./systems/render.js";
+import { setupCameraAndFrame } from "./render/base.js";
 import { renderOffscreenArrow } from "./render/ui/arrows.js";
 import { COLORS } from "./render/colors.js";
 import { createEffectRenderer } from "./render/effects/render.js";
@@ -319,20 +321,7 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     // RENDER
     function render(){
-      ctx.setTransform(getDpr() * cameraScale, 0, 0, getDpr() * cameraScale, 0, 0);
-      const w = innerWidth  / cameraScale;
-      const h = innerHeight / cameraScale;
-
-      const camX = player.x - w*0.5;
-      const camY = player.y - h*0.5;
-
-      ctx.fillStyle = COLORS.bg;
-      ctx.fillRect(0,0,w,h);
-
-      batch.bullets.length = 0;
-      batch.orbitals.length = 0;
-      batch.orbitalsClone.length = 0;
-      batchMapClear(batch.enemyBullets);
+      const { w, h, camX, camY } = setupCameraAndFrame({ ctx, getDpr, cameraScale, player, batch });
 
       // grid
       const g = 52;
