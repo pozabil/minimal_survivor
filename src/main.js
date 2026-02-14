@@ -41,6 +41,7 @@ import { drawChests } from "./render/chests.js";
 import { drawDrops } from "./render/drops.js";
 import { drawBullets, drawEnemyBullets } from "./render/projectiles.js";
 import { drawAura } from "./render/upgrades/aura.js";
+import { drawDogs } from "./render/uniques/dog.js";
 import { COLORS } from "./render/colors.js";
 import { createEffectRenderer } from "./render/effects/render.js";
 import { createSpawnBoss, createSpawnChest, createSpawnColossusElite, createSpawnEnemy, createSpawnTotem, createSpawnTurret, createSpawnDog, updateSpawning } from "./systems/spawning.js";
@@ -336,30 +337,11 @@ import { createProfilerUI } from "./ui/profiler.js";
       drawTotem({ ctx, totem, player, camX, camY, w, h });
       drawChests({ ctx, chests, player, camX, camY, w, h });
       drawDrops({ ctx, drops, camX, camY, t: state.t });
-
       drawEnemyBullets({ ctx, enemyBullets, camX, camY, batchEnemyBullets: batch.enemyBullets });
-
       drawAura({ ctx, player, clones, state, camX, camY });
-
       drawBullets({ ctx, bullets, camX, camY, batchBullets: batch.bullets });
 
-      // dog
-      if (dogs.length){
-        for (const d of dogs){
-          const sx = d.x - camX;
-          const sy = d.y - camY;
-          ctx.save();
-          ctx.translate(sx, sy);
-          ctx.rotate(d.ang);
-          ctx.beginPath();
-          ctx.fillStyle = d.color
-          ctx.arc(0, 0, d.r, 0, TAU);
-          ctx.fill();
-          ctx.fillStyle = COLORS.white85;
-          ctx.fillRect(-d.r * 0.6, -d.r * 0.2, d.r * 1.2, d.r * 0.4);
-          ctx.restore();
-        }
-      }
+      drawDogs({ ctx, dogs, camX, camY });
 
       // enemies
       for (const e of enemies){
