@@ -40,11 +40,13 @@ import { drawTotem } from "./render/totem.js";
 import { drawChests } from "./render/chests.js";
 import { drawDrops } from "./render/drops.js";
 import { drawBullets, drawEnemyBullets } from "./render/projectiles.js";
+import { drawMagnetRadius, drawPlayer } from "./render/player.js";
 import { drawAura } from "./render/upgrades/aura.js";
 import { drawOrbitals } from "./render/upgrades/orbitals.js";
 import { drawSameCircle } from "./render/uniques/same_sircle.js";
 import { drawTurrets } from "./render/upgrades/turrets.js";
 import { drawDogs } from "./render/uniques/dog.js";
+import { drawVignette } from "./render/ui/vignette.js";
 import { COLORS } from "./render/colors.js";
 import { createEffectRenderer } from "./render/effects/render.js";
 import { createSpawnBoss, createSpawnChest, createSpawnColossusElite, createSpawnEnemy, createSpawnTotem, createSpawnTurret, createSpawnDog, updateSpawning } from "./systems/spawning.js";
@@ -343,7 +345,6 @@ import { createProfilerUI } from "./ui/profiler.js";
       drawEnemyBullets({ ctx, enemyBullets, camX, camY, batchEnemyBullets: batch.enemyBullets });
       drawAura({ ctx, player, clones, state, camX, camY });
       drawBullets({ ctx, bullets, camX, camY, batchBullets: batch.bullets });
-
       drawDogs({ ctx, dogs, camX, camY });
 
       // enemies
@@ -516,60 +517,16 @@ import { createProfilerUI } from "./ui/profiler.js";
       }
 
       drawTurrets({ ctx, turrets, camX, camY });
-
       renderLightning(ctx, camX, camY);
       renderShockwaves(ctx, camX, camY);
       renderParticles(ctx, camX, camY);
-
       drawOrbitals({ ctx, player, clones, state, camX, camY, pF, batch });
-
-      // magnet radius
-      {
-        const sx = player.x - camX;
-        const sy = player.y - camY;
-
-        ctx.globalAlpha = 0.08;
-        ctx.strokeStyle = COLORS.blueBright90;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(sx, sy, player.magnet, 0, TAU);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
-
+      drawMagnetRadius({ ctx, player, camX, camY });
       drawSameCircle({ ctx, clones, player, camX, camY });
-
       renderDashTrail(ctx, camX, camY);
-
-      // player
-      {
-        const sx=player.x-camX, sy=player.y-camY;
-        ctx.beginPath();
-        const blink = player.invuln>0 && (Math.floor(performance.now()/60)%2===0);
-        ctx.fillStyle = blink ? COLORS.white90 : COLORS.bluePlayer95;
-        ctx.arc(sx,sy, player.r, 0, TAU);
-        ctx.fill();
-      }
-
+      drawPlayer({ ctx, player, camX, camY });
       renderFloaters(ctx, camX, camY);
-
-      // vignette
-      const grd = ctx.createRadialGradient(w*0.5,h*0.5, Math.min(w,h)*0.15, w*0.5,h*0.5, Math.max(w,h)*0.75);
-      const hpRatio = player.hpMax > 0 ? player.hp / player.hpMax : 1;
-      const low = clamp((0.5 - hpRatio) / 0.5, 0, 1);
-      let edgeColor = COLORS.black55;
-      if (low > 0){
-        const pulse = 0.6 + 0.4 * Math.sin(state.t * 6);
-        const r = Math.round(255 + (200 - 255) * low);
-        const g = Math.round(140 + (20 - 140) * low);
-        const b = Math.round(60 + (20 - 60) * low);
-        const alpha = (0.45 + 0.25 * low) * pulse;
-        edgeColor = `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
-      }
-      grd.addColorStop(0,COLORS.black0);
-      grd.addColorStop(1, edgeColor);
-      ctx.fillStyle=grd;
-      ctx.fillRect(0,0,w,h);
+      drawVignette({ ctx, w, h, player, t: state.t });
     }
     // RENDER
 
