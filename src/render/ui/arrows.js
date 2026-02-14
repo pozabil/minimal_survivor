@@ -58,6 +58,11 @@ export function renderOffscreenArrow(
   targetY,
   type = "chest"
 ) {
+  const sx = targetX - camX;
+  const sy = targetY - camY;
+  const onScreen = (sx >= 0 && sx <= viewW && sy >= 0 && sy <= viewH);
+  if (onScreen) return;
+
   const preset = ARROW_PRESETS[type] || ARROW_PRESETS.chest;
   const margin = preset.margin;
   const reach = Math.max(preset.minReach, Math.min(viewW * 0.5, viewH * 0.5) - margin);
@@ -69,11 +74,6 @@ export function renderOffscreenArrow(
   const alpha = preset.alpha;
   const lineWidth = preset.lineWidth;
   const isSpecial = preset.isSpecial;
-
-  const sx = targetX - camX;
-  const sy = targetY - camY;
-  const onScreen = (sx >= 0 && sx <= viewW && sy >= 0 && sy <= viewH);
-  if (onScreen) return;
 
   const dx = targetX - playerX;
   const dy = targetY - playerY;

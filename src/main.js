@@ -37,7 +37,7 @@ import { createRenderBatch, batchCirclePush, batchCircleDraw, batchMapPush, ensu
 import { setupCameraAndFrame } from "./render/base.js";
 import { drawWorldGrid } from "./render/world.js";
 import { drawTotem } from "./render/totem.js";
-import { renderOffscreenArrow } from "./render/ui/arrows.js";
+import { drawChests } from "./render/chests.js";
 import { COLORS } from "./render/colors.js";
 import { createEffectRenderer } from "./render/effects/render.js";
 import { createSpawnBoss, createSpawnChest, createSpawnColossusElite, createSpawnEnemy, createSpawnTotem, createSpawnTurret, createSpawnDog, updateSpawning } from "./systems/spawning.js";
@@ -332,42 +332,7 @@ import { createProfilerUI } from "./ui/profiler.js";
 
       drawTotem({ ctx, totem, player, camX, camY, w, h });
 
-      // chest
-      if (chests.length){
-        const c = chests[0];
-        const sx=c.x-camX, sy=c.y-camY;
-        const bob = Math.sin(c.t*3 + c.bob)*3;
-        const isSpecial = !!c.special;
-        const glowCol = isSpecial ? COLORS.red100 : COLORS.gold100;
-        const fillCol = isSpecial ? COLORS.red95 : COLORS.gold95;
-        const strokeCol = isSpecial ? COLORS.redChestStroke55 : COLORS.white35;
-        const stripeCol = isSpecial ? COLORS.pinkStripe55 : COLORS.white55;
-        const chestW = c.r * 2.25;
-        const chestH = c.r * 1.625;
-        const chestR = Math.max(5, c.r * 0.45);
-        const glowR = c.r * 1.25;
-
-        ctx.globalAlpha = 0.15;
-        ctx.fillStyle = glowCol;
-        ctx.beginPath();
-        ctx.arc(sx, sy+10, glowR, 0, TAU);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-
-        ctx.fillStyle = fillCol;
-        ctx.beginPath();
-        ctx.roundRect(sx - chestW * 0.5, sy - chestH * 0.5 + bob, chestW, chestH, chestR);
-        ctx.fill();
-        ctx.strokeStyle = strokeCol;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        ctx.fillStyle = stripeCol;
-        ctx.fillRect(sx-2, sy - chestH * 0.5 + bob, 4, chestH);
-
-        // direction arrow to chest (when it's off-screen)
-        renderOffscreenArrow(ctx, camX, camY, w, h, player.x, player.y, c.x, c.y, isSpecial ? "specialChest" : "chest");
-      }
+      drawChests({ ctx, chests, player, camX, camY, w, h });
 
       // drops
       for (const d of drops){
