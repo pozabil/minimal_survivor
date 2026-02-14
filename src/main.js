@@ -138,6 +138,7 @@ import { createProfilerUI } from "./ui/profiler.js";
       state, ui, player, pF, UPGRADES, UNIQUES, overlays, updateBuildUI, forceUpdateRerollsUI,
     });
 
+    // SELECT HERO
     function maybeAddStartingDog(heroId){
       const hero = getPlayerClass(heroId);
       const chance = hero ? (hero.dogStartChance || 0) : 0;
@@ -148,6 +149,7 @@ import { createProfilerUI } from "./ui/profiler.js";
       hero.apply(player);
       maybeAddStartingDog(hero.id);
     }
+    // SELECT HERO
 
     const menus = createMenus({ state, player, ui, overlays, updateBuildUI, applyOptionsToUI, handleSelectHero });
     bindMiscUI({ overlays, player, state });
@@ -160,11 +162,13 @@ import { createProfilerUI } from "./ui/profiler.js";
     const triggerDash = createDashSystem({ player, state, pF, keys, isTouch, joyVec, spawnDashTrail });
     const maxShirt = createMaxShirtSystem({ state, pF });
 
+    // ACTIVE ITEMS
     input.setActionHandler(()=>{
       if (state.paused || state.dead) return;
       maxShirt.tryActivateMaxShirt();
       triggerDash();
     });
+    // ACTIVE ITEMS
 
     const { dropXp, dropHeal } = createSpawnDrops({ drops });
     const { gainXp, queueHeal, updateHeal } = createProgressionSystem({ player, state, pF, maybeOpenLevelPicker });
@@ -246,6 +250,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     const updateDrops = createUpdateDrops({ drops, player, bullets, turrets, pF, queueHeal, gainXp });
     const updateCamera = createUpdateCamera({ player, pF, gameScale: GAME_SCALE });
 
+    // UPDATE
     function update(dt){
       state.t += dt;
 
@@ -304,11 +309,15 @@ import { createProfilerUI } from "./ui/profiler.js";
       updateShockwaves(dt);
       updateFloaters(dt, dampSlow);
     }
+    // UPDATE
 
+    // REALTIME UPDATE
     function realtimeUpdate(dtRaw){
       updateUI(dtRaw);
     }
+    // REALTIME UPDATE
 
+    // RENDER
     function render(){
       ctx.setTransform(getDpr() * cameraScale, 0, 0, getDpr() * cameraScale, 0, 0);
       const w = innerWidth  / cameraScale;
@@ -910,8 +919,9 @@ import { createProfilerUI } from "./ui/profiler.js";
       ctx.fillStyle=grd;
       ctx.fillRect(0,0,w,h);
     }
+    // RENDER
 
-    // start
+    // START
     menus.openMainMenu();
     startLoop(step);
 
