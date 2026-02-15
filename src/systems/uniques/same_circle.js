@@ -84,6 +84,7 @@ export function createUpdateSameCircle({
           shotTimer: 0,
           novaTimer: 0,
           orbitalAngle: randf(0, TAU),
+          orbitalPositions: null,
           auraWaveT: 0,
           auraWaveActive: false,
           auraWaveR: 0,

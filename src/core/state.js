@@ -28,6 +28,7 @@ export function createState() {
     xpEnemyBonus: 0,
     sameCircleCd: 0,
     orbitalAngle: 0,
+    orbitalPositions: null,
     auraWaveT: 0,
     auraWaveActive: false,
     auraWaveR: 0,

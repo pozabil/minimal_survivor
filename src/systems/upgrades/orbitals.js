@@ -6,6 +6,15 @@ import { len2 } from "../../utils/math.js";
 
 const ORBITAL_HIT_KEY_PLAYER = "_oh";
 
+function ensureOrbitalPositions(orbitalsState, count) {
+  const expectedLen = count * 2;
+  const prev = orbitalsState.orbitalPositions;
+  if (!prev || prev.length !== expectedLen) {
+    orbitalsState.orbitalPositions = new Float32Array(expectedLen);
+  }
+  return orbitalsState.orbitalPositions;
+}
+
 export function createOrbitalsSystem({
   player,
   state,
@@ -17,14 +26,25 @@ export function createOrbitalsSystem({
   const orbitalCandidates = [];
 
   function updateOrbitalsFor(source, orbitalsState, dt, hitKey) {
-    if (player.orbitals <= 0) return;
-    orbitalsState.orbitalAngle = (orbitalsState.orbitalAngle || 0) + player.orbitalSpeed * dt;
+    if (player.orbitals <= 0) {
+      orbitalsState.orbitalPositions = null;
+      return;
+    }
+    const count = Math.max(1, player.orbitals);
+    orbitalsState.orbitalAngle = ((orbitalsState.orbitalAngle || 0) + player.orbitalSpeed * dt) % TAU;
     const orbSize = pF.getOrbitalSize();
+    const baseAngle = orbitalsState.orbitalAngle || 0;
+    const stepA = TAU / count;
+    const positions = ensureOrbitalPositions(orbitalsState, count);
 
-    for (let k = 0; k < player.orbitals; k++) {
-      const a = orbitalsState.orbitalAngle + (k / Math.max(1, player.orbitals)) * TAU;
-      const ox = source.x + Math.cos(a) * player.orbitalRadius;
-      const oy = source.y + Math.sin(a) * player.orbitalRadius;
+    for (let k = 0; k < count; k++) {
+      const a = baseAngle + k * stepA;
+      const radius = player.orbitalRadius;
+      const ox = source.x + Math.cos(a) * radius;
+      const oy = source.y + Math.sin(a) * radius;
+      const pi = k * 2;
+      positions[pi] = ox;
+      positions[pi + 1] = oy;
 
       gridQueryCircle(ox, oy, orbSize + ENEMY_MAX_R, orbitalCandidates);
       for (let i = orbitalCandidates.length - 1; i >= 0; i--) {
