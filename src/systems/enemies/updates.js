@@ -33,7 +33,7 @@ export function createUpdateEnemies({
   const { triadShoot, explodeBomber, enemyShoot } = enemyCombatSystem;
   const xpNear = { normal: 0, elite: 0, boss: 0 };
 
-  function updateEnemies(dt, dampFast) {
+  function updateEnemies(dt, dampFast, lerpFast) {
     pruneDeadEnemies();
 
     xpNear.normal = 0;
@@ -81,8 +81,38 @@ export function createUpdateEnemies({
       const dx = target.x - e.x;
       const dy = target.y - e.y;
       const d = len2(dx, dy) || 1;
-      e.moveDirX = dx / d;
-      e.moveDirY = dy / d;
+      let desiredDirX = dx / d;
+      let desiredDirY = dy / d;
+      let moveDirX = desiredDirX;
+      let moveDirY = desiredDirY;
+      switch (e.type) {
+        case "spitter_pale": {
+          const keepDist = e.kiteDist || 170;
+          const band = 18;
+          if (d < keepDist - band) {
+            desiredDirX = -dx / d;
+            desiredDirY = -dy / d;
+          } else if (d <= keepDist + band) {
+            const orbitDir = e.kiteOrbitDir || 1;
+            desiredDirX = -(dy / d) * orbitDir;
+            desiredDirY = (dx / d) * orbitDir;
+          }
+          if ((e.kiteDirX || 0) === 0 && (e.kiteDirY || 0) === 0) {
+            e.kiteDirX = desiredDirX;
+            e.kiteDirY = desiredDirY;
+          }
+          e.kiteDirX += (desiredDirX - e.kiteDirX) * lerpFast;
+          e.kiteDirY += (desiredDirY - e.kiteDirY) * lerpFast;
+          const kn = len2(e.kiteDirX, e.kiteDirY) || 1;
+          moveDirX = e.kiteDirX / kn;
+          moveDirY = e.kiteDirY / kn;
+          break;
+        }
+        default:
+          break;
+      }
+      e.moveDirX = moveDirX;
+      e.moveDirY = moveDirY;
 
       if (e.type === "bomber") {
         const dist = len2(dx, dy);
@@ -141,12 +171,12 @@ export function createUpdateEnemies({
           e.x += e.vx * dt;
           e.y += e.vy * dt;
         } else {
-          e.x += ((dx / d) * spdNow + e.vx) * dt;
-          e.y += ((dy / d) * spdNow + e.vy) * dt;
+          e.x += (moveDirX * spdNow + e.vx) * dt;
+          e.y += (moveDirY * spdNow + e.vy) * dt;
         }
       }
 
-      if (e.type === "shooter" || e.type === "spitter" || e.type === "blaster" || e.type === "boss") {
+      if (e.type === "shooter" || e.type === "spitter" || e.type === "spitter_pale" || e.type === "blaster" || e.type === "boss") {
         enemyShoot(e, dt, target.x, target.y);
       }
 

@@ -101,8 +101,8 @@ export function createEnemyCombatSystem({
     if (e.shotTimer > 0) return;
 
     if (e.type !== "boss") {
-      // spitter shoots a small fan
-      if (e.type === "spitter") {
+      // spitter variants shoot a small fan
+      if (e.type === "spitter" || e.type === "spitter_pale") {
         const fan = 3;
         const spread = 0.26;
         for (let i = 0; i < fan; i++) {

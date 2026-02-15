@@ -19,6 +19,7 @@ export const COLORS = {
   greenHealGlow: "rgba(120,255,140,0.9)",
   greenHeal: "rgba(120,255,140,0.95)",
   tealShooter92: "rgba(120,255,190,0.92)",
+  paleBloodSpitter92: "rgba(200,88,154,0.92)",
   tealElite90: "rgba(120,255,220,0.9)",
   blueTriad45: "rgba(140,180,255,0.45)",
   blueBlaster95: "rgba(140,190,255,0.95)",

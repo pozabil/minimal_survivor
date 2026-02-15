@@ -12,6 +12,7 @@ export function renderEnemies({ ctx, enemies, state, camX, camY }) {
     if (e.type === "runner") baseCol = COLORS.orangeRunner95;
     if (e.type === "shooter") baseCol = COLORS.tealShooter92;
     if (e.type === "bomber") baseCol = COLORS.goldBomber92;
+    if (e.type === "spitter_pale") baseCol = COLORS.paleBloodSpitter92;
     if (e.type === "triad") baseCol = COLORS.blueTriad95;
     if (e.type === "blaster") baseCol = COLORS.blueBlaster95;
     if (e.type === "burst") baseCol = COLORS.blueBurst95;

@@ -12,6 +12,7 @@ export const ENEMY_BASE = {
 
   brute:    { r:20, hp:180, spd:72,  dmg:22, xp:26 }, // медленный "мясной" удар
   spitter:  { r:13, hp:62,  spd:98,  dmg:8,  xp:16, shotRate:1.05, shotSpeed:250, shotDmg:9 }, // тройной залп
+  spitter_pale: { r:13, hp:68, spd:94, dmg:8, xp:18, shotRate:0.72, shotSpeed:245, shotDmg:10 }, // тройной залп, держит дистанцию
   dasher:   { r:13, hp:44,  spd:150, dmg:14, xp:14 }, // рывки к игроку
   shield:   { r:16, hp:95,  spd:110, dmg:13, xp:18 }, // снижает урон от пуль
   triad:    { r:15, hp:70,  spd:112, dmg:14, xp:20, triRad:24, triSpin:4.6, triShotRate:0.85, triShotSpeed:280, triShotDmg:9 }, // вращающийся треугольник + залп

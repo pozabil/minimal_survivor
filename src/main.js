@@ -282,7 +282,7 @@ import { createProfilerUI } from "./ui/profiler.js";
       updateEnemyBullets(dt);
       if (state.dead) return;
 
-      updateEnemies(dt, dampFast);
+      updateEnemies(dt, dampFast, lerpFast);
       if (state.dead) return;
 
       // XP drops update + pickup

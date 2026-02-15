@@ -58,6 +58,7 @@ function pickEnemyType({ player, state, enemies, forcedType, enemyTypePicks }) {
 
   const pDasher = (diff > 2.0) ? (0.03 + Math.min(0.08, (diff - 2) * 0.015)) : 0.0;
   const pSpitter = (diff > 3.0) ? (0.03 + Math.min(0.09, (diff - 3) * 0.015)) : 0.0;
+  const pSpitterPale = (diff > 4.5) ? (0.015 + Math.min(0.05, (diff - 4.5) * 0.012)) : 0.0;
   const pShield = (diff > 4.0) ? (0.03 + Math.min(0.08, (diff - 4) * 0.013)) : 0.0;
   const pTriad = (player.lvl >= 15) ? (0.02 + Math.min(0.07, (player.lvl - 15) * 0.006)) : 0.0;
   const unlockBlaster = (player.lvl >= 20 || state.t >= 10 * 60);
@@ -83,12 +84,13 @@ function pickEnemyType({ player, state, enemies, forcedType, enemyTypePicks }) {
   enemyTypePicks[3].w = pBomber;
   enemyTypePicks[4].w = pDasher;
   enemyTypePicks[5].w = pSpitter;
-  enemyTypePicks[6].w = pShield;
-  enemyTypePicks[7].w = pTriad;
-  enemyTypePicks[8].w = pBlaster;
-  enemyTypePicks[9].w = pBurst;
-  enemyTypePicks[10].w = pSplitter;
-  enemyTypePicks[11].w = pBrute;
+  enemyTypePicks[6].w = pSpitterPale;
+  enemyTypePicks[7].w = pShield;
+  enemyTypePicks[8].w = pTriad;
+  enemyTypePicks[9].w = pBlaster;
+  enemyTypePicks[10].w = pBurst;
+  enemyTypePicks[11].w = pSplitter;
+  enemyTypePicks[12].w = pBrute;
   const total = enemyTypePicks.reduce((sum, p) => sum + p.w, 0);
   const scale = total > 1 ? (1 / total) : 1;
   let acc = 0;
@@ -162,6 +164,10 @@ function createBaseEnemy({ type, player, state, extra, b, isMinion, tier }) {
     triAngle: 0,
     triDir: 1,
     triShotTimer: 0,
+    kiteDist: 0,
+    kiteOrbitDir: 1,
+    kiteDirX: 0,
+    kiteDirY: 0,
     _oh: null,
     elite: false,
     eliteReward: false,
@@ -238,6 +244,10 @@ function spawnPack({
       c.triDir = Math.random() < 0.5 ? -1 : 1;
       c.triShotTimer = randf(0, 0.8);
     }
+    if (c.type === "spitter_pale") {
+      c.kiteDist = randf(160, 280);
+      c.kiteOrbitDir = Math.random() < 0.5 ? -1 : 1;
+    }
     if (makePackElite && eliteMod) applyElite(c, eliteMod, false, 0.85);
     enemies.push(c);
   }
@@ -253,6 +263,7 @@ export function createSpawnEnemy({ player, state, enemies, spawnScale }) {
     { t: "bomber", w: 0 },
     { t: "dasher", w: 0 },
     { t: "spitter", w: 0 },
+    { t: "spitter_pale", w: 0 },
     { t: "shield", w: 0 },
     { t: "triad", w: 0 },
     { t: "blaster", w: 0 },
@@ -324,6 +335,10 @@ export function createSpawnEnemy({ player, state, enemies, spawnScale }) {
       e.triAngle = randf(0, TAU);
       e.triDir = Math.random() < 0.5 ? -1 : 1;
       e.triShotTimer = randf(0, 0.8);
+    }
+    if (type === "spitter_pale") {
+      e.kiteDist = randf(160, 280);
+      e.kiteOrbitDir = Math.random() < 0.5 ? -1 : 1;
     }
     if (makeElite && eliteMod) applyElite(e, eliteMod, eliteReward);
 
