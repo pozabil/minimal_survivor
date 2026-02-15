@@ -13,9 +13,7 @@ export function createStep({
   player,
   entities,
   profiler,
-  update,
-  realtimeUpdate,
-  render,
+  sceneManager,
 }){
   function measureMs(fn){
     const start = performance.now();
@@ -50,11 +48,11 @@ export function createStep({
     const dt = dtBase * slowScale;
 
     // update
-    let updateMs = 0; if (!state.paused && !state.dead){ updateMs = measureMs(() => update(dt)); }
-    // realtimeUpdate
-    let rUpdateMs = 0; if (!state.paused && !state.dead){ rUpdateMs = measureMs(() => realtimeUpdate(dtRaw)); }
+    let updateMs = 0; if (!state.paused && !state.dead){ updateMs = measureMs(() => sceneManager.update(dt)); }
+    // rUpdate
+    let rUpdateMs = 0; if (!state.paused && !state.dead){ rUpdateMs = measureMs(() => sceneManager.rUpdate(dtRaw)); }
     // render
-    const renderMs = measureMs(render);
+    const renderMs = measureMs(() => sceneManager.render());
     // profiler
     if (profiler.isEnabled){
       let profilerMs = 0;

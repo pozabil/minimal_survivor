@@ -6,6 +6,8 @@ import { initState } from "./core/init.js";
 import { createPlayerFunctions } from "./core/player.js";
 import { createDeathHelpers } from "./core/death_helpers.js";
 import { startLoop } from "./core/loop.js";
+import { createSceneManager } from "./core/scene_manager.js";
+import { registerScenes } from "./core/scenes.js";
 import { createStep } from "./flow/step.js";
 import { createUpdateMovement } from "./systems/movement.js";
 import { createSpatialGrid } from "./systems/spatial_grid.js";
@@ -222,8 +224,6 @@ import { createProfilerUI } from "./ui/profiler.js";
       handlePlayerDeath("(он все таки смог)");
     });
 
-    const step = createStep({ state, player, entities, profiler, update, realtimeUpdate, render });
-
     const updateDogs = createUpdateDogs({ player, dogs, pF, gridQueryCircle, recordDamage, killEnemy });
     const updatePatriarchDoll = createUpdatePatriarchDoll({
       pF, state, player, enemies, spawnLightningStrike, recordDamage, spawnBurst, killEnemy,
@@ -295,7 +295,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     // UPDATE
 
     // REALTIME UPDATE
-    function realtimeUpdate(dtRaw){
+    function rUpdate(dtRaw){
       updateUI(dtRaw);
     }
     // REALTIME UPDATE
@@ -332,7 +332,15 @@ import { createProfilerUI } from "./ui/profiler.js";
     // RENDER
 
     // START
+    const sceneManager = createSceneManager();
+    const pipeline = { update, rUpdate, render }
+    const main = {}
+    const extra = {}
+    registerScenes(sceneManager, pipeline, main, extra);
     menus.openMainMenu();
+    sceneManager.setScene("freeGame");
+
+    const step = createStep({ state, player, entities, profiler, sceneManager });
     startLoop(step);
 
   } catch (err) {
