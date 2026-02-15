@@ -2,10 +2,11 @@ import { batchCircleDraw, batchCirclePush } from "../../systems/render.js";
 import { COLORS } from "../colors.js";
 
 export function renderOrbitals({ ctx, player, clones, state, camX, camY, pF, batch }) {
+  const orbSize = pF.getOrbitalSize();
+
   if (player.orbitals > 0) {
     const positions = state.orbitalPositions;
     if (positions) {
-      const orbSize = pF.getOrbitalSize();
       for (let i = 0; i < positions.length; i += 2) {
         const sx = positions[i] - camX;
         const sy = positions[i + 1] - camY;
@@ -15,7 +16,6 @@ export function renderOrbitals({ ctx, player, clones, state, camX, camY, pF, bat
     }
   }
   if (player.orbitals > 0 && clones.length) {
-    const orbSize = pF.getOrbitalSize();
     for (const sc of clones) {
       const positions = sc.orbitalPositions;
       if (!positions) continue;

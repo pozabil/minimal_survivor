@@ -1,6 +1,13 @@
 import { ENEMY_MAX_R } from "../../content/enemies.js";
+import {
+  ORBITAL_SPEED_UP_MAX_LEVEL,
+  ORBITAL_SPIRAL_MAX_RADIUS_RATIO,
+  ORBITAL_SPIRAL_MIN_RADIUS_RATIO,
+  ORBITAL_SPIRAL_PHASE_SPEED_BASE,
+  ORBITAL_SPIRAL_PHASE_SPEED_MIN,
+} from "../../content/uniques.js";
 import { ORBITAL_KNOCKBACK_CHANCE, ORBITAL_KNOCKBACK_FORCE } from "../../content/upgrades.js";
-import { TAU } from "../../core/constants.js";
+import { HALF_PI, TAU } from "../../core/constants.js";
 import { circleHit } from "../../utils/collision.js";
 import { len2 } from "../../utils/math.js";
 
@@ -30,16 +37,40 @@ export function createOrbitalsSystem({
       orbitalsState.orbitalPositions = null;
       return;
     }
-    const count = Math.max(1, player.orbitals);
+    const count = player.orbitals;
     orbitalsState.orbitalAngle = ((orbitalsState.orbitalAngle || 0) + player.orbitalSpeed * dt) % TAU;
-    const orbSize = pF.getOrbitalSize();
     const baseAngle = orbitalsState.orbitalAngle || 0;
     const stepA = TAU / count;
     const positions = ensureOrbitalPositions(orbitalsState, count);
+    const hasSpiralGloves = pF.hasUnique("trigonometric_gloves");
+    const orbSize = pF.getOrbitalSize();
+    const baseRadius = player.orbitalRadius;
+    let spiralBaseRadius = 0;
+    let spiralSpan = 0;
+    let spiralPhase = 0;
+    let invCount = 0;
+    if (hasSpiralGloves) {
+      invCount = 1 / count;
+      spiralBaseRadius = baseRadius * ORBITAL_SPIRAL_MIN_RADIUS_RATIO;
+      spiralSpan = baseRadius * (ORBITAL_SPIRAL_MAX_RADIUS_RATIO - ORBITAL_SPIRAL_MIN_RADIUS_RATIO);
+      spiralPhase = orbitalsState.orbitalSpiralPhase || 0;
+      const speedUpLevel = pF.getLevel("orbitalSpeedUp");
+      const t = Math.min(1, Math.max(0, speedUpLevel / ORBITAL_SPEED_UP_MAX_LEVEL));
+      const phaseSpeed =
+        ORBITAL_SPIRAL_PHASE_SPEED_BASE +
+        (ORBITAL_SPIRAL_PHASE_SPEED_MIN - ORBITAL_SPIRAL_PHASE_SPEED_BASE) * t;
+      spiralPhase = (spiralPhase + (dt * player.orbitalSpeed * phaseSpeed) / TAU) % 1;
+      orbitalsState.orbitalSpiralPhase = spiralPhase;
+    }
 
     for (let k = 0; k < count; k++) {
       const a = baseAngle + k * stepA;
-      const radius = player.orbitalRadius;
+      let radius = baseRadius;
+      if (hasSpiralGloves) {
+        const localPhase = (spiralPhase + k * invCount) % 1;
+        const wave = Math.sin(localPhase * HALF_PI);
+        radius = spiralBaseRadius + wave * spiralSpan;
+      }
       const ox = source.x + Math.cos(a) * radius;
       const oy = source.y + Math.sin(a) * radius;
       const pi = k * 2;

@@ -3,7 +3,7 @@ import { fmtNum } from "../utils/format.js";
 
 export const ORBITAL_BASE_DISTANCE = 48;
 export const ORBITAL_BASE_SIZE = 7.5;
-export const ORBITAL_SIZE_EXP = 0.85;
+export const ORBITAL_SIZE_EXP = 0.3;
 export const ORBITAL_KNOCKBACK_CHANCE = 0.12;
 export const ORBITAL_KNOCKBACK_FORCE = 120;
 export const AURA_WAVE_COOLDOWN_BASE = 2.6;
@@ -68,7 +68,7 @@ export function createUpgrades({ player, state, pF }) {
     xpGain:   { title:"Опыт",          max: 8,  desc:(lv)=>`+10% XP (ур. ${lv+1}/8)`, apply:()=>{ player.xpGainMult *= 1.10; } },
     rerollCap:{ title:"Лимит reroll",  max: 4,  desc:(lv)=>`+2 max rerolls (ур. ${lv+1}/4)`, apply:()=>{ player.rerollCap += 2; } },
 
-    orbitalSpeedUp:{ title:"Орбиталки: скорость", max: 10, desc:(lv)=>`+18% orbital speed (ур. ${lv+1}/10)`, apply:()=>{ player.orbitalSpeed *= 1.18; } },
+    orbitalSpeedUp:{ title:"Орбиталки: скорость", max: 6, desc:(lv)=>`+18% orbital speed (ур. ${lv+1}/6)`, apply:()=>{ player.orbitalSpeed *= 1.18; } },
     auraSlow: { title:"Аура: замедление", max: 8, desc:(lv)=>`+7.5% slow в ауре (ур. ${lv+1}/8)`, apply:()=>{ player.auraSlow = clamp((player.auraSlow||0) + 0.075, 0, 0.60); } },
 
     speed:    { title:"Скорость",       max: 10, desc:(lv)=>`+10% move speed (ур. ${lv+1}/10)`, apply:()=>{ player.speed *= 1.10; } },

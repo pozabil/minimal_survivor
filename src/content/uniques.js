@@ -26,6 +26,11 @@ export const PATRIARCH_DOLL_COOLDOWN = 3;
 export const PATRIARCH_DOLL_DAMAGE_MULT = 3;
 export const PATRIARCH_DOLL_TARGETS_MIN = 8;
 export const PATRIARCH_DOLL_TARGETS_MAX = 16;
+export const ORBITAL_SPIRAL_MIN_RADIUS_RATIO = 0.6;
+export const ORBITAL_SPIRAL_MAX_RADIUS_RATIO = 2.4;
+export const ORBITAL_SPIRAL_PHASE_SPEED_BASE = 1.5 * Math.PI;
+export const ORBITAL_SPIRAL_PHASE_SPEED_MIN = 0.5 * Math.PI;
+export const ORBITAL_SPEED_UP_MAX_LEVEL = 6;
 
 export function createUniques({ player, state, totem, spawnDog }) {
   return {
@@ -123,6 +128,12 @@ export function createUniques({ player, state, totem, spawnDog }) {
       title:"Трубка мира",
       rarity:"common",
       desc:"Духи древних сопровождают вас, вы чувствуете себя лучше. Немного увеличивает регенирацию и скорость передвижения в зоне тотема.",
+      apply(){},
+    },
+    trigonometric_gloves: {
+      title:"Тригонометрические перчатки",
+      rarity:"common",
+      desc:"Орбиталки двигаются по спирали.",
       apply(){},
     },
   };
