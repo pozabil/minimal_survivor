@@ -10,6 +10,7 @@ export function createMenus({
   updateBuildUI,
   applyOptionsToUI,
   handleSelectHero,
+  handleSelectLevel,
 }) {
   const {
     mainMenuOverlay,
@@ -59,7 +60,7 @@ export function createMenus({
     updatePauseBtnVisibility();
   }
 
-  function openStart() {
+  function openLevel(levelId) {
     state.paused = true;
     mainMenuOverlay.style.display = "none";
     startOverlay.style.display = "grid";
@@ -73,6 +74,7 @@ export function createMenus({
         handleSelectHero(c);
         startOverlay.style.display = "none";
         state.paused = false;
+        handleSelectLevel(levelId);
         updatePauseBtnVisibility();
       });
       charsWrap.appendChild(div);
@@ -195,7 +197,7 @@ export function createMenus({
     location.reload();
   }
 
-  btnFreePlay.addEventListener("click", ()=>openStart());
+  btnFreePlay.addEventListener("click", ()=>openLevel("freeGame"));
   btnMenuRecords.addEventListener("click", ()=>showRecords());
   btnMenuSettings.addEventListener("click", ()=>showSettings());
   btnSettings.addEventListener("click", ()=>showSettings());

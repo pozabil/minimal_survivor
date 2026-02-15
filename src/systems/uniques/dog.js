@@ -11,6 +11,11 @@ import { clamp, len2 } from "../../utils/math.js";
 import { circleHit } from "../../utils/collision.js";
 import { COLORS } from "../../render/colors.js";
 
+export function maybeAddStartingDog({ hero, pF }) {
+  const chance = hero ? (hero.dogStartChance || 0) : 0;
+  if (chance > 0 && Math.random() < chance) pF.addUniqueItem("dog");
+}
+
 export function createUpdateDogs({
   player,
   dogs,

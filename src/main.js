@@ -1,7 +1,6 @@
 import { initCanvas } from "./core/canvas.js";
 import { createUpgrades } from "./content/upgrades.js";
 import { createUniques } from "./content/uniques.js";
-import { getPlayerClass } from "./content/players.js";
 import { initState } from "./core/init.js";
 import { createPlayerFunctions } from "./core/player.js";
 import { createDeathHelpers } from "./core/death_helpers.js";
@@ -15,7 +14,7 @@ import { createTargeting } from "./systems/targeting.js";
 import { createInputSystem } from "./systems/input.js";
 import { createUpdateCamera } from "./systems/camera.js";
 import { createRicochetHelpers, createShootingSystem, createDamageTracker, createPlayerDamageApplier } from "./systems/combat.js";
-import { createUpdateDogs } from "./systems/uniques/dog.js";
+import { createUpdateDogs, maybeAddStartingDog } from "./systems/uniques/dog.js";
 import { createDashSystem } from "./systems/uniques/dash.js";
 import { createMaxShirtSystem } from "./systems/uniques/max_shirt.js";
 import { createTryConsumeSpareTire } from "./systems/uniques/spare_tire.js";
@@ -150,20 +149,9 @@ import { createProfilerUI } from "./ui/profiler.js";
       state, ui, player, pF, UPGRADES, UNIQUES, overlays, updateBuildUI, forceUpdateRerollsUI,
     });
 
-    // SELECT HERO
-    function maybeAddStartingDog(heroId){
-      const hero = getPlayerClass(heroId);
-      const chance = hero ? (hero.dogStartChance || 0) : 0;
-      if (chance > 0 && Math.random() < chance) pF.addUniqueItem("dog");
-    }
-
-    function handleSelectHero(hero){
-      hero.apply(player);
-      maybeAddStartingDog(hero.id);
-    }
-    // SELECT HERO
-
-    const menus = createMenus({ state, player, ui, overlays, updateBuildUI, applyOptionsToUI, handleSelectHero });
+    const menus = createMenus({
+      state, player, ui, overlays, updateBuildUI, applyOptionsToUI, handleSelectHero, handleSelectLevel,
+    });
     bindMiscUI({ overlays, player, state });
 
     const input = createInputSystem({ canvas, joy, knob, isTouch, menus, pF, pickChoice, doReroll, overlays });
@@ -334,11 +322,21 @@ import { createProfilerUI } from "./ui/profiler.js";
     // START
     const sceneManager = createSceneManager();
     const pipeline = { update, rUpdate, render }
-    const main = {}
+    const main = { menus }
     const extra = {}
     registerScenes(sceneManager, pipeline, main, extra);
-    menus.openMainMenu();
-    sceneManager.setScene("freeGame");
+    sceneManager.setScene("mainMenu");
+
+    // SELECT HANDLERS
+    function handleSelectHero(hero){
+      hero.apply(player);
+      maybeAddStartingDog({ hero, pF });
+    }
+
+    function handleSelectLevel(levelId){
+      sceneManager.setScene(levelId);
+    }
+    // SELECT HANDLERS
 
     const step = createStep({ state, player, entities, profiler, sceneManager });
     startLoop(step);
