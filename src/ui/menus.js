@@ -9,8 +9,8 @@ export function createMenus({
   overlays,
   updateBuildUI,
   applyOptionsToUI,
-  handleSelectHero,
-  handleSelectLevel,
+  startRun,
+  handleResetGame,
 }) {
   const {
     mainMenuOverlay,
@@ -41,6 +41,13 @@ export function createMenus({
     btnResume,
   } = overlays;
 
+  let recordsReturnToPause = false;
+  let recordsReturnToMenu = false;
+  let settingsReturnToPause = false;
+  let settingsReturnToMenu = false;
+  let restartReturnToPause = false;
+  let restartReturnToPlay = false;
+
   const isPauseToggleBlocked = () =>
     (pickerOverlay.style.display === "grid") ||
     (startOverlay.style.display === "grid") ||
@@ -54,15 +61,46 @@ export function createMenus({
     btnPause.style.display = isPauseToggleBlocked() ? "none" : "block";
   };
 
-  function openMainMenu() {
+  function resetTransientFlags() {
+    recordsReturnToPause = false;
+    recordsReturnToMenu = false;
+    settingsReturnToPause = false;
+    settingsReturnToMenu = false;
+    restartReturnToPause = false;
+    restartReturnToPlay = false;
+  }
+
+  function hideAllOverlays() {
+    mainMenuOverlay.style.display = "none";
+    pauseMenu.style.display = "none";
+    startOverlay.style.display = "none";
+    pickerOverlay.style.display = "none";
+    gameoverOverlay.style.display = "none";
+    recordsOverlay.style.display = "none";
+    settingsOverlay.style.display = "none";
+    restartConfirmOverlay.style.display = "none";
+  }
+
+  function enterMainMenuUi() {
+    resetTransientFlags();
+    hideAllOverlays();
     state.paused = true;
     mainMenuOverlay.style.display = "grid";
     updatePauseBtnVisibility();
   }
 
+  function enterGameplayUi() {
+    resetTransientFlags();
+    hideAllOverlays();
+    startOverlay.style.display = "none";
+    state.paused = false;
+    updatePauseBtnVisibility();
+  }
+
   function openLevel(levelId) {
+    resetTransientFlags();
+    hideAllOverlays();
     state.paused = true;
-    mainMenuOverlay.style.display = "none";
     startOverlay.style.display = "grid";
     updatePauseBtnVisibility();
     charsWrap.innerHTML = "";
@@ -71,22 +109,11 @@ export function createMenus({
       div.className = "choice";
       div.innerHTML = `<div class="t">${c.name}</div><div class="d">${c.desc}</div><div class="d" style="margin-top:8px; opacity:.75">${c.perk}</div>`;
       div.addEventListener("click", () => {
-        handleSelectHero(c);
-        startOverlay.style.display = "none";
-        state.paused = false;
-        handleSelectLevel(levelId);
-        updatePauseBtnVisibility();
+        startRun(levelId, c);
       });
       charsWrap.appendChild(div);
     });
   }
-
-  let recordsReturnToPause = false;
-  let recordsReturnToMenu = false;
-  let settingsReturnToPause = false;
-  let settingsReturnToMenu = false;
-  let restartReturnToPause = false;
-  let restartReturnToPlay = false;
 
   function renderRecords() {
     const records = loadRecords();
@@ -194,7 +221,7 @@ export function createMenus({
       showRestartConfirm();
       return;
     }
-    location.reload();
+    handleResetGame();
   }
 
   btnFreePlay.addEventListener("click", ()=>openLevel("freeGame"));
@@ -226,7 +253,7 @@ export function createMenus({
   });
 
   btnRestart2.addEventListener("click", ()=>resetGame());
-  btnRestartYes.addEventListener("click", ()=>location.reload());
+  btnRestartYes.addEventListener("click", ()=>handleResetGame());
   btnRestartNo.addEventListener("click", hideRestartConfirm);
   restartBtn.addEventListener("click", ()=>resetGame());
 
@@ -235,7 +262,9 @@ export function createMenus({
   btnRecordsClose.addEventListener("click", ()=>hideRecords());
 
   return {
-    openMainMenu,
+    enterMainMenuUi,
+    enterGameplayUi,
+    resetTransientFlags,
     hideRecords,
     hideSettings,
     hideRestartConfirm,

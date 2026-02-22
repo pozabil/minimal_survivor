@@ -1,11 +1,13 @@
 import { initCanvas } from "./core/canvas.js";
 import { createUpgrades } from "./content/upgrades.js";
 import { createUniques } from "./content/uniques.js";
+import { getPlayerClass } from "./content/players.js";
 import { initState } from "./core/init.js";
 import { createPlayerFunctions } from "./core/player.js";
 import { createDeathHelpers } from "./core/death_helpers.js";
 import { startLoop } from "./core/loop.js";
 import { createSceneManager } from "./core/scene_manager.js";
+import { createResetState } from "./core/reset_state.js";
 import { registerScenes } from "./core/scenes.js";
 import { createStep } from "./flow/step.js";
 import { createUpdateMovement } from "./systems/movement.js";
@@ -99,6 +101,7 @@ import { createProfilerUI } from "./ui/profiler.js";
     const SPAWN_SCALE = 1 / GAME_SCALE;
     const MAX_DPR = 2
     let cameraScale = GAME_SCALE;
+    function resetCameraScale() { cameraScale = GAME_SCALE; }
 
     const { ctx, getDpr } = initCanvas(canvas, GAME_SCALE, MAX_DPR);
 
@@ -132,7 +135,7 @@ import { createProfilerUI } from "./ui/profiler.js";
       },
     });
 
-    const { recordDamage, getDps } = createDamageTracker({ state, player, options, spawnDamageFloat, spawnHealFloat});
+    const { recordDamage, getDps, reset: resetDamageTracker } = createDamageTracker({ state, player, options, spawnDamageFloat, spawnHealFloat});
     const applyDamageToPlayer = createPlayerDamageApplier({ state, player, options, spawnDamageFloat });
     const spawnDog = createSpawnDog({ player, dogs });
     const UNIQUES = createUniques({ player, state, totem, spawnDog });
@@ -150,11 +153,21 @@ import { createProfilerUI } from "./ui/profiler.js";
     });
 
     const menus = createMenus({
-      state, player, ui, overlays, updateBuildUI, applyOptionsToUI, handleSelectHero, handleSelectLevel,
+      state, player, ui, overlays, updateBuildUI, applyOptionsToUI, startRun, handleResetGame,
     });
     bindMiscUI({ overlays, player, state });
 
     const input = createInputSystem({ canvas, joy, knob, isTouch, menus, pF, pickChoice, doReroll, overlays });
+
+    const resetState = createResetState({
+      player,
+      state,
+      ui,
+      entities,
+      spawn,
+      effects,
+      onReset: [resetDamageTracker, input.reset, resetCameraScale, menus.resetTransientFlags],
+    });
     const { keys, joyVec } = input;
 
     const updateMovement = createUpdateMovement({ keys, isTouch, joyVec, player, state, turrets });
@@ -328,6 +341,12 @@ import { createProfilerUI } from "./ui/profiler.js";
     sceneManager.setScene("mainMenu");
 
     // SELECT HANDLERS
+    function startRun(levelId, hero) {
+      resetState();
+      handleSelectHero(hero);
+      handleSelectLevel(levelId);
+    }
+
     function handleSelectHero(hero){
       hero.apply(player);
       maybeAddStartingDog({ hero, pF });
@@ -335,6 +354,13 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     function handleSelectLevel(levelId){
       sceneManager.setScene(levelId);
+    }
+
+    function handleResetGame() {
+      const levelId = sceneManager.getCurrentSceneId();
+      const heroId = player.heroId;
+      const hero = getPlayerClass(heroId) || getPlayerClass("scout");
+      startRun(levelId, hero);
     }
     // SELECT HANDLERS
 

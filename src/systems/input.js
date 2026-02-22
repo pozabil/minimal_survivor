@@ -181,9 +181,20 @@ export function createInputSystem({
     actionHandler = nextActionHandler;
   }
 
+  function reset() {
+    keys.clear();
+    lastTapTime = 0;
+    lastTapX = 0;
+    lastTapY = 0;
+    joyCenter.x = 0;
+    joyCenter.y = 0;
+    joyReset();
+  }
+
   return {
     keys,
     joyVec,
     setActionHandler,
+    reset,
   };
 }

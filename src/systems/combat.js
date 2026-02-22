@@ -139,7 +139,11 @@ export function createDamageTracker({
     return Math.round(sum / DPS_WINDOW_SEC);
   }
 
-  return { recordDamage, getDps };
+  function reset() {
+    dmgHead = 0;
+  }
+
+  return { recordDamage, getDps, reset };
 }
 
 // Player damage (incoming damage)

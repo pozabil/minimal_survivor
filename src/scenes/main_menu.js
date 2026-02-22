@@ -3,7 +3,7 @@ export const mainMenu = {
     const { menus } = main;
 
     sceneManager.register("mainMenu", {
-      enter() { menus.openMainMenu(); },
+      enter() { menus.enterMainMenuUi(); },
       update() {},
       rUpdate() {},
       render() {},
