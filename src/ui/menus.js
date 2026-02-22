@@ -9,8 +9,6 @@ export function createMenus({
   overlays,
   updateBuildUI,
   applyOptionsToUI,
-  startRun,
-  handleResetGame,
 }) {
   const {
     mainMenuOverlay,
@@ -47,6 +45,11 @@ export function createMenus({
   let settingsReturnToMenu = false;
   let restartReturnToPause = false;
   let restartReturnToPlay = false;
+  let runHandlers = { startRun() {}, handleResetGame() {} };
+
+  function setRunHandlers(nextRunHandlers) {
+    runHandlers = nextRunHandlers;
+  }
 
   const isPauseToggleBlocked = () =>
     (pickerOverlay.style.display === "grid") ||
@@ -109,7 +112,7 @@ export function createMenus({
       div.className = "choice";
       div.innerHTML = `<div class="t">${c.name}</div><div class="d">${c.desc}</div><div class="d" style="margin-top:8px; opacity:.75">${c.perk}</div>`;
       div.addEventListener("click", () => {
-        startRun(levelId, c);
+        runHandlers.startRun(levelId, c);
       });
       charsWrap.appendChild(div);
     });
@@ -221,7 +224,7 @@ export function createMenus({
       showRestartConfirm();
       return;
     }
-    handleResetGame();
+    runHandlers.handleResetGame();
   }
 
   btnFreePlay.addEventListener("click", ()=>openLevel("freeGame"));
@@ -253,7 +256,7 @@ export function createMenus({
   });
 
   btnRestart2.addEventListener("click", ()=>resetGame());
-  btnRestartYes.addEventListener("click", ()=>handleResetGame());
+  btnRestartYes.addEventListener("click", ()=>runHandlers.handleResetGame());
   btnRestartNo.addEventListener("click", hideRestartConfirm);
   restartBtn.addEventListener("click", ()=>resetGame());
 
@@ -262,6 +265,7 @@ export function createMenus({
   btnRecordsClose.addEventListener("click", ()=>hideRecords());
 
   return {
+    setRunHandlers,
     enterMainMenuUi,
     enterGameplayUi,
     resetTransientFlags,

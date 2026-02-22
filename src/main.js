@@ -7,6 +7,7 @@ import { createPlayerFunctions } from "./core/player.js";
 import { createDeathHelpers } from "./core/death_helpers.js";
 import { startLoop } from "./core/loop.js";
 import { createSceneManager } from "./core/scene_manager.js";
+import { createRunHandlers } from "./core/run_handlers.js";
 import { createResetState } from "./core/reset_state.js";
 import { registerScenes } from "./core/scenes.js";
 import { createStep } from "./flow/step.js";
@@ -103,6 +104,8 @@ import { createProfilerUI } from "./ui/profiler.js";
     let cameraScale = GAME_SCALE;
     function resetCameraScale() { cameraScale = GAME_SCALE; }
 
+    const sceneManager = createSceneManager();
+
     const { ctx, getDpr } = initCanvas(canvas, GAME_SCALE, MAX_DPR);
 
     const batch = createRenderBatch();
@@ -152,8 +155,10 @@ import { createProfilerUI } from "./ui/profiler.js";
       state, ui, player, pF, UPGRADES, UNIQUES, overlays, updateBuildUI, forceUpdateRerollsUI,
     });
 
-    const menus = createMenus({
-      state, player, ui, overlays, updateBuildUI, applyOptionsToUI, startRun, handleResetGame,
+    const menus = createMenus({ state, player, ui,
+      overlays,
+      updateBuildUI,
+      applyOptionsToUI,
     });
     bindMiscUI({ overlays, player, state });
 
@@ -168,6 +173,10 @@ import { createProfilerUI } from "./ui/profiler.js";
       effects,
       onReset: [resetDamageTracker, input.reset, resetCameraScale, menus.resetTransientFlags],
     });
+
+    const runHandlers = createRunHandlers({ resetState, player, pF, sceneManager, maybeAddStartingDog, getPlayerClass });
+    menus.setRunHandlers(runHandlers);
+
     const { keys, joyVec } = input;
 
     const updateMovement = createUpdateMovement({ keys, isTouch, joyVec, player, state, turrets });
@@ -333,36 +342,11 @@ import { createProfilerUI } from "./ui/profiler.js";
     // RENDER
 
     // START
-    const sceneManager = createSceneManager();
     const pipeline = { update, rUpdate, render }
     const main = { menus }
     const extra = {}
     registerScenes(sceneManager, pipeline, main, extra);
     sceneManager.setScene("mainMenu");
-
-    // SELECT HANDLERS
-    function startRun(levelId, hero) {
-      resetState();
-      handleSelectHero(hero);
-      handleSelectLevel(levelId);
-    }
-
-    function handleSelectHero(hero){
-      hero.apply(player);
-      maybeAddStartingDog({ hero, pF });
-    }
-
-    function handleSelectLevel(levelId){
-      sceneManager.setScene(levelId);
-    }
-
-    function handleResetGame() {
-      const levelId = sceneManager.getCurrentSceneId();
-      const heroId = player.heroId;
-      const hero = getPlayerClass(heroId) || getPlayerClass("scout");
-      startRun(levelId, hero);
-    }
-    // SELECT HANDLERS
 
     const step = createStep({ state, player, entities, profiler, sceneManager });
     startLoop(step);
