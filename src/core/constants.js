@@ -10,13 +10,22 @@ export const JOY_MARGIN = 10;
 export const STORAGE_NS = {
   options: "options.",
   records: "records.",
+  progression: "progression.",
 };
 
 export const OPTION_KEYS = {
   showDamageNumbers: "showDamageNumbers",
   showProfiler: "showProfiler",
 };
-export const RECORD_KEYS = { level: "maxlevel", time: "maxtime", kills: "maxkills", dps: "maxdps" };
+export const RECORD_KEYS = {
+  level: "maxlevel",
+  time: "maxtime",
+  kills: "maxkills",
+  dps: "maxdps",
+};
+export const PROGRESSION_KEYS = {
+  completedLevels: "completedLevels",
+};
 
 export const HUD_UPDATE_TIME_MS = 1000 / 15;
 export const HUD_UPDATE_TIME = HUD_UPDATE_TIME_MS / 1000;

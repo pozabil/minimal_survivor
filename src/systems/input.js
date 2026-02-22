@@ -14,6 +14,7 @@ export function createInputSystem({
 }) {
   const {
     pickerOverlay,
+    levelSelectOverlay,
     startOverlay,
     mainMenuOverlay,
     gameoverOverlay,
@@ -37,6 +38,7 @@ export function createInputSystem({
 
   const overlaysBlockInput = () =>
     (pickerOverlay.style.display === "grid") ||
+    (levelSelectOverlay.style.display === "grid") ||
     (startOverlay.style.display === "grid") ||
     (mainMenuOverlay.style.display === "grid") ||
     (gameoverOverlay.style.display === "grid") ||
@@ -96,6 +98,7 @@ export function createInputSystem({
       }
       if (
         pickerOverlay.style.display === "grid" ||
+        levelSelectOverlay.style.display === "grid" ||
         startOverlay.style.display === "grid" ||
         mainMenuOverlay.style.display === "grid" ||
         gameoverOverlay.style.display === "grid" ||
@@ -115,6 +118,7 @@ export function createInputSystem({
     if (e.code === "Space") {
       if (
         pickerOverlay.style.display === "grid" ||
+        levelSelectOverlay.style.display === "grid" ||
         startOverlay.style.display === "grid" ||
         mainMenuOverlay.style.display === "grid" ||
         gameoverOverlay.style.display === "grid" ||

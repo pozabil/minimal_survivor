@@ -343,7 +343,7 @@ import { createProfilerUI } from "./ui/profiler.js";
 
     // START
     const pipeline = { update, rUpdate, render }
-    const main = { menus }
+    const main = { menus, state }
     const extra = {}
     registerScenes(sceneManager, pipeline, main, extra);
     sceneManager.setScene("mainMenu");

@@ -1,9 +1,14 @@
 export function initOverlays() {
   const elements = {
     mainMenuOverlay: document.getElementById("mainMenu"),
+    menuSubtitle: document.getElementById("menuSubtitle"),
+    btnMenuProgress: document.getElementById("btnMenuProgress"),
     btnFreePlay: document.getElementById("btnFreePlay"),
     btnMenuRecords: document.getElementById("btnMenuRecords"),
     btnMenuSettings: document.getElementById("btnMenuSettings"),
+    levelSelectOverlay: document.getElementById("levelSelect"),
+    levelsWrap: document.getElementById("levels"),
+    btnLevelsBack: document.getElementById("btnLevelsBack"),
     startOverlay: document.getElementById("start"),
     charsWrap: document.getElementById("chars"),
     pickerOverlay: document.getElementById("picker"),

@@ -147,13 +147,23 @@
 <div class="overlay" id="mainMenu">
   <div class="panel menuPanel">
     <div class="menuTitle">Minimal Survivor</div>
-    <div class="menuSubtitle">Главное меню</div>
+    <div class="menuSubtitle" id="menuSubtitle">Главное меню</div>
     <div class="menuButtons">
-      <button class="btn" id="btnMenuProgress" disabled>Прохождение</button>
+      <button class="btn" id="btnMenuProgress">Прохождение</button>
       <button class="btn primary" id="btnFreePlay">Свободная игра</button>
       <button class="btn" id="btnMenuRecords">Рекорды</button>
       <button class="btn" id="btnMenuSettings">Настройки</button>
       <button class="btn" id="btnMenuInventory" disabled>Инвентарь</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="levelSelect">
+  <div class="panel">
+    <h2>Выбери уровень</h2>
+    <div class="choices" id="levels"></div>
+    <div class="toolbar">
+      <button class="btn" id="btnLevelsBack">Назад</button>
     </div>
   </div>
 </div>

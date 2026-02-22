@@ -1,5 +1,6 @@
 import { PLAYER_CLASSES } from "../content/players.js";
-import { loadRecords } from "../systems/storage.js";
+import { PROGRESSION_LEVELS } from "../content/progression_levels.js";
+import { loadProgression, loadRecords } from "../systems/storage.js";
 import { fmtTime } from "../utils/format.js";
 
 export function createMenus({
@@ -12,9 +13,14 @@ export function createMenus({
 }) {
   const {
     mainMenuOverlay,
+    menuSubtitle,
+    btnMenuProgress,
     btnFreePlay,
     btnMenuRecords,
     btnMenuSettings,
+    levelSelectOverlay,
+    levelsWrap,
+    btnLevelsBack,
     startOverlay,
     pickerOverlay,
     gameoverOverlay,
@@ -38,6 +44,7 @@ export function createMenus({
     recordsListEl,
     btnResume,
   } = overlays;
+  const baseMenuSubtitle = menuSubtitle ? menuSubtitle.textContent : "Главное меню";
 
   let recordsReturnToPause = false;
   let recordsReturnToMenu = false;
@@ -53,6 +60,7 @@ export function createMenus({
 
   const isPauseToggleBlocked = () =>
     (pickerOverlay.style.display === "grid") ||
+    (levelSelectOverlay.style.display === "grid") ||
     (startOverlay.style.display === "grid") ||
     (mainMenuOverlay.style.display === "grid") ||
     (gameoverOverlay.style.display === "grid") ||
@@ -75,6 +83,7 @@ export function createMenus({
 
   function hideAllOverlays() {
     mainMenuOverlay.style.display = "none";
+    levelSelectOverlay.style.display = "none";
     pauseMenu.style.display = "none";
     startOverlay.style.display = "none";
     pickerOverlay.style.display = "none";
@@ -89,6 +98,7 @@ export function createMenus({
     hideAllOverlays();
     state.paused = true;
     mainMenuOverlay.style.display = "grid";
+    setMainMenuNotice();
     updatePauseBtnVisibility();
   }
 
@@ -116,6 +126,40 @@ export function createMenus({
       });
       charsWrap.appendChild(div);
     });
+  }
+
+  function openProgressionLevels() {
+    resetTransientFlags();
+    hideAllOverlays();
+    state.paused = true;
+    levelSelectOverlay.style.display = "grid";
+    updatePauseBtnVisibility();
+    levelsWrap.innerHTML = "";
+
+    const completedLevels = new Set(loadProgression().completedLevels);
+    PROGRESSION_LEVELS.forEach((level, index) => {
+      const prev = PROGRESSION_LEVELS[index - 1];
+      const unlocked = index === 0 || completedLevels.has(prev.id);
+      const completed = completedLevels.has(level.id);
+
+      const div = document.createElement("div");
+      div.className = `choice${unlocked ? "" : " disabled"}`;
+      const stateText = completed ? "Пройден" : (unlocked ? "Открыт" : "Закрыт");
+      div.innerHTML = `
+        <div class="t">${level.name}</div>
+        <div class="d">${level.objectiveText}</div>
+        <div class="d" style="margin-top:8px; opacity:.75">Статус: ${stateText}</div>
+      `;
+      if (unlocked) {
+        div.addEventListener("click", () => openLevel(level.id));
+      }
+      levelsWrap.appendChild(div);
+    });
+  }
+
+  function setMainMenuNotice(text = "") {
+    if (!menuSubtitle) return;
+    menuSubtitle.textContent = text || baseMenuSubtitle;
   }
 
   function renderRecords() {
@@ -228,8 +272,10 @@ export function createMenus({
   }
 
   btnFreePlay.addEventListener("click", ()=>openLevel("freeGame"));
+  btnMenuProgress.addEventListener("click", ()=>openProgressionLevels());
   btnMenuRecords.addEventListener("click", ()=>showRecords());
   btnMenuSettings.addEventListener("click", ()=>showSettings());
+  btnLevelsBack.addEventListener("click", ()=>enterMainMenuUi());
   btnSettings.addEventListener("click", ()=>showSettings());
   btnSettingsClose.addEventListener("click", hideSettings);
 
@@ -268,6 +314,7 @@ export function createMenus({
     setRunHandlers,
     enterMainMenuUi,
     enterGameplayUi,
+    setMainMenuNotice,
     resetTransientFlags,
     hideRecords,
     hideSettings,
