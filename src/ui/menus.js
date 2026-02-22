@@ -1,5 +1,5 @@
 import { PLAYER_CLASSES } from "../content/players.js";
-import { PROGRESSION_LEVELS } from "../content/progression_levels.js";
+import { LEVELS } from "../content/levels.js";
 import { loadProgression, loadRecords } from "../systems/storage.js";
 import { fmtTime } from "../utils/format.js";
 
@@ -137,8 +137,8 @@ export function createMenus({
     levelsWrap.innerHTML = "";
 
     const completedLevels = new Set(loadProgression().completedLevels);
-    PROGRESSION_LEVELS.forEach((level, index) => {
-      const prev = PROGRESSION_LEVELS[index - 1];
+    LEVELS.forEach((level, index) => {
+      const prev = LEVELS[index - 1];
       const unlocked = index === 0 || completedLevels.has(prev.id);
       const completed = completedLevels.has(level.id);
 

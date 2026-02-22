@@ -174,7 +174,7 @@ import { createProfilerUI } from "./ui/profiler.js";
       onReset: [resetDamageTracker, input.reset, resetCameraScale, menus.resetTransientFlags],
     });
 
-    const runHandlers = createRunHandlers({ resetState, player, pF, sceneManager, maybeAddStartingDog, getPlayerClass });
+    const runHandlers = createRunHandlers({ resetState, state, player, pF, sceneManager, maybeAddStartingDog, getPlayerClass });
     menus.setRunHandlers(runHandlers);
 
     const { keys, joyVec } = input;

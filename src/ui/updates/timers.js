@@ -9,21 +9,33 @@ export function createTimersUI({ hud }) {
     elChestBar,
     elChestText,
   } = hud;
+  const totemWrap = elTotemBar.closest(".barWrap");
+  const bossWrap = elBossBar.closest(".barWrap");
 
   function updateTimers({ totem, state, spawn, chests, pF }) {
-    const totemLeft = totem.active ? totem.life : state.totemTimer;
-    const totemMax = totem.active
-      ? (totem.lifeMax || pF.getTotemLife())
-      : (state.totemTimerMax || pF.getTotemInterval());
-    const totemPct = clamp(totemLeft / Math.max(1, totemMax), 0, 1);
-    elTotemBar.style.width = `${totemPct*100}%`;
-    elTotemText.textContent = `${Math.max(0, Math.ceil(totemLeft))}s`;
+    if (state.allowTotemSpawns !== false) {
+      totemWrap.style.display = "";
+      const totemLeft = totem.active ? totem.life : state.totemTimer;
+      const totemMax = totem.active
+        ? (totem.lifeMax || pF.getTotemLife())
+        : (state.totemTimerMax || pF.getTotemInterval());
+      const totemPct = clamp(totemLeft / Math.max(1, totemMax), 0, 1);
+      elTotemBar.style.width = `${totemPct*100}%`;
+      elTotemText.textContent = `${Math.max(0, Math.ceil(totemLeft))}s`;
+    } else {
+      totemWrap.style.display = "none";
+    }
 
-    const bossLeft = Math.max(0, spawn.nextBossAt - state.t);
-    const bossMax = Math.max(1, spawn.bossEvery || 1);
-    const bossPct = clamp(bossLeft / bossMax, 0, 1);
-    elBossBar.style.width = `${bossPct*100}%`;
-    elBossText.textContent = `${Math.max(0, Math.ceil(bossLeft))}s`;
+    if (state.allowBossSpawns !== false) {
+      bossWrap.style.display = "";
+      const bossLeft = Math.max(0, spawn.nextBossAt - state.t);
+      const bossMax = Math.max(1, spawn.bossEvery || 1);
+      const bossPct = clamp(bossLeft / bossMax, 0, 1);
+      elBossBar.style.width = `${bossPct*100}%`;
+      elBossText.textContent = `${Math.max(0, Math.ceil(bossLeft))}s`;
+    } else {
+      bossWrap.style.display = "none";
+    }
 
     if (state.chestAlive){
       elChestBar.style.width = "100%";

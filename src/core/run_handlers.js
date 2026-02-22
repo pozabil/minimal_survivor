@@ -1,5 +1,8 @@
+import { getProgressionLevel } from "../content/levels.js";
+
 export function createRunHandlers({
   resetState,
+  state,
   player,
   pF,
   sceneManager,
@@ -8,7 +11,6 @@ export function createRunHandlers({
 }) {
   function handleSelectHero(hero) {
     hero.apply(player);
-    maybeAddStartingDog({ hero, pF });
   }
 
   function handleSelectLevel(levelId) {
@@ -17,7 +19,11 @@ export function createRunHandlers({
 
   function startRun(levelId, hero) {
     resetState();
+    const level = getProgressionLevel(levelId);
+    state.allowBossSpawns = level ? (level.allowBossSpawns !== false) : true;
+    state.allowTotemSpawns = level ? (level.allowTotemSpawns !== false) : true;
     handleSelectHero(hero);
+    if (levelId === "freeGame") maybeAddStartingDog({ hero, pF });
     handleSelectLevel(levelId);
   }
 

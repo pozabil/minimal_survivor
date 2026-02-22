@@ -1,15 +1,15 @@
-import { getProgressionLevel } from "../content/progression_levels.js";
+import { getProgressionLevel } from "../content/levels.js";
 import { markLevelCompleted } from "../systems/storage.js";
 
-const LEVEL_ID = "level1";
+const LEVEL_ID = "laa";
 
-export const level1 = {
+export const laa = {
   register(sceneManager, pipeline, main) {
     const { update, rUpdate, render } = pipeline;
     const { menus, state } = main;
     const level = getProgressionLevel(LEVEL_ID);
-    const completeAtSeconds = 60;
-    const levelName = level ? level.name : "Уровень 1";
+    const completeAtSeconds = level.completeAtSeconds;
+    const levelName = level.name;
 
     let done = false;
 

@@ -531,10 +531,17 @@ export function updateSpawning({
   pF,
 }) {
   const lvl = player.lvl;
-  const bossReduce = Math.floor((lvl - 1) / 5);
-  spawn.bossEvery = Math.max(60, 120 - bossReduce * 5);
-  spawn.maxBosses = (lvl >= 20) ? (2 + Math.floor((lvl - 20) / 15)) : 1;
-  if (spawn.nextBossAt > state.t + spawn.bossEvery) {
+  const allowBossSpawns = state.allowBossSpawns !== false;
+  if (allowBossSpawns) {
+    const bossReduce = Math.floor((lvl - 1) / 5);
+    spawn.bossEvery = Math.max(60, 120 - bossReduce * 5);
+    spawn.maxBosses = (lvl >= 20) ? (2 + Math.floor((lvl - 20) / 15)) : 1;
+    if (spawn.nextBossAt > state.t + spawn.bossEvery) {
+      spawn.nextBossAt = state.t + spawn.bossEvery;
+    }
+  } else {
+    spawn.bossEvery = 120;
+    spawn.maxBosses = 0;
     spawn.nextBossAt = state.t + spawn.bossEvery;
   }
 
@@ -552,7 +559,7 @@ export function updateSpawning({
   spawn.interval = clamp(interval, 0.20, 0.85);
   spawn.packChance = clamp(0.10 + (lvl - 1) * 0.01, 0.10, 0.35);
 
-  if (state.t >= spawn.nextBossAt && spawn.bossActive < spawn.maxBosses) {
+  if (allowBossSpawns && state.t >= spawn.nextBossAt && spawn.bossActive < spawn.maxBosses) {
     spawn.nextBossAt += spawn.bossEvery;
     spawnBoss();
   }
@@ -571,14 +578,24 @@ export function updateSpawning({
   }
 
   // totem schedule (cooldown does not tick while active)
-  if (!totem.active) {
-    state.totemTimer -= dt;
-    if (state.totemTimer <= 0) {
-      spawnTotem();
-      const interval = pF.getTotemInterval();
-      state.totemTimer = interval;
-      state.totemTimerMax = interval;
+  const allowTotemSpawns = state.allowTotemSpawns !== false;
+  if (allowTotemSpawns) {
+    if (!totem.active) {
+      state.totemTimer -= dt;
+      if (state.totemTimer <= 0) {
+        spawnTotem();
+        const interval = pF.getTotemInterval();
+        state.totemTimer = interval;
+        state.totemTimerMax = interval;
+      }
     }
+  } else {
+    totem.active = false;
+    totem.life = 0;
+    totem.grace = 0;
+    totem.inZone = false;
+    state.totemTimer = 1;
+    state.totemTimerMax = 1;
   }
 
   // spawns

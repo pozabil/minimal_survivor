@@ -1,9 +1,9 @@
 import { mainMenu } from "../scenes/main_menu.js";
 import { freeGame } from "../scenes/free_game.js";
-import { level1 } from "../scenes/level_1.js";
+import { laa } from "../scenes/laa.js";
 
 export function registerScenes(sceneManager, pipeline, main, extra) {
   mainMenu.register(sceneManager, main);
   freeGame.register(sceneManager, pipeline, main);
-  level1.register(sceneManager, pipeline, main, extra);
+  laa.register(sceneManager, pipeline, main, extra);
 }

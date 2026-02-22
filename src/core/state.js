@@ -5,6 +5,8 @@ export function createState() {
     t: 0,
     paused: true,
     dead: false,
+    allowBossSpawns: true,
+    allowTotemSpawns: true,
     deathReason: "",
     kills: 0,
     dmgDone: 0,
