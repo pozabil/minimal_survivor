@@ -12,3 +12,9 @@ export const LEVELS = [
 export function getProgressionLevel(levelId) {
   return LEVELS.find((level) => level.id === levelId) || null;
 }
+
+export function getNextProgressionLevel(levelId) {
+  const idx = LEVELS.findIndex((level) => level.id === levelId);
+  if (idx < 0 || idx + 1 >= LEVELS.length) return null;
+  return LEVELS[idx + 1];
+}

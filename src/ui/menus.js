@@ -24,6 +24,12 @@ export function createMenus({
     startOverlay,
     pickerOverlay,
     gameoverOverlay,
+    levelCompleteOverlay,
+    levelCompleteTitle,
+    levelCompleteSummary,
+    levelCompleteStats,
+    btnLevelCompleteMenu,
+    btnLevelCompleteNext,
     recordsOverlay,
     btnRecords,
     btnRecordsOver,
@@ -52,6 +58,8 @@ export function createMenus({
   let settingsReturnToMenu = false;
   let restartReturnToPause = false;
   let restartReturnToPlay = false;
+  let levelCompleteOnMainMenu = null;
+  let levelCompleteOnNext = null;
   let runHandlers = { startRun() {}, handleResetGame() {} };
 
   function setRunHandlers(nextRunHandlers) {
@@ -64,6 +72,7 @@ export function createMenus({
     (startOverlay.style.display === "grid") ||
     (mainMenuOverlay.style.display === "grid") ||
     (gameoverOverlay.style.display === "grid") ||
+    (levelCompleteOverlay.style.display === "grid") ||
     (recordsOverlay.style.display === "grid") ||
     (settingsOverlay.style.display === "grid") ||
     (restartConfirmOverlay.style.display === "grid");
@@ -81,6 +90,11 @@ export function createMenus({
     restartReturnToPlay = false;
   }
 
+  function resetLevelCompleteState() {
+    levelCompleteOnMainMenu = null;
+    levelCompleteOnNext = null;
+  }
+
   function hideAllOverlays() {
     mainMenuOverlay.style.display = "none";
     levelSelectOverlay.style.display = "none";
@@ -88,9 +102,11 @@ export function createMenus({
     startOverlay.style.display = "none";
     pickerOverlay.style.display = "none";
     gameoverOverlay.style.display = "none";
+    levelCompleteOverlay.style.display = "none";
     recordsOverlay.style.display = "none";
     settingsOverlay.style.display = "none";
     restartConfirmOverlay.style.display = "none";
+    resetLevelCompleteState();
   }
 
   function enterMainMenuUi() {
@@ -258,6 +274,8 @@ export function createMenus({
     state.paused = true;
     pickerOverlay.style.display = "none";
     pauseMenu.style.display = "none";
+    levelCompleteOverlay.style.display = "none";
+    resetLevelCompleteState();
     gameoverOverlay.style.display = "grid";
     summaryEl.textContent = `Time: ${fmtTime(state.t)} · Hero: ${player.heroName} · Level: ${player.lvl} · Kills: ${state.kills} · Damage: ${Math.round(state.dmgDone)}${state.deathReason ? ` · Cause: ${state.deathReason}` : ""}`;
     updatePauseBtnVisibility();
@@ -269,6 +287,45 @@ export function createMenus({
       return;
     }
     runHandlers.handleResetGame();
+  }
+
+  function renderLevelCompleteStats(stats) {
+    const timeText = fmtTime(Math.max(0, stats.time || 0));
+    const heroText = stats.heroName || "--";
+    const levelText = Math.max(1, stats.heroLevel || 1);
+    const killsText = Math.max(0, Math.floor(stats.kills || 0));
+    const damageText = Math.max(0, Math.round(stats.damage || 0));
+    const dpsText = Math.max(0, Math.round(stats.maxDps || 0));
+    levelCompleteStats.innerHTML = `
+      <div class="item"><div class="k">Время</div><div class="v">${timeText}</div></div>
+      <div class="item"><div class="k">Герой</div><div class="v">${heroText}</div></div>
+      <div class="item"><div class="k">Уровень героя</div><div class="v">${levelText}</div></div>
+      <div class="item"><div class="k">Убийства</div><div class="v">${killsText}</div></div>
+      <div class="item"><div class="k">Нанесено урона</div><div class="v">${damageText}</div></div>
+      <div class="item"><div class="k">Пик DPS (2s)</div><div class="v">${dpsText}</div></div>
+    `;
+  }
+
+  function showLevelComplete({ levelName, nextLevelName, stats, onMainMenu, onNext }) {
+    resetTransientFlags();
+    hideAllOverlays();
+    state.paused = true;
+    levelCompleteOnMainMenu = typeof onMainMenu === "function" ? onMainMenu : null;
+    levelCompleteOnNext = typeof onNext === "function" ? onNext : null;
+
+    const hasNextLevel = !!nextLevelName && !!levelCompleteOnNext;
+
+    levelCompleteTitle.textContent = `${levelName} пройден`;
+    levelCompleteSummary.textContent = hasNextLevel
+      ? `Готово. Можешь перейти на следующий уровень: ${nextLevelName}`
+      : "Это последний доступный уровень. Можно вернуться в главное меню.";
+    renderLevelCompleteStats(stats || {});
+
+    btnLevelCompleteNext.disabled = !hasNextLevel;
+    btnLevelCompleteNext.textContent = hasNextLevel ? `Следующий уровень: ${nextLevelName}` : "Следующий уровень недоступен";
+
+    levelCompleteOverlay.style.display = "grid";
+    updatePauseBtnVisibility();
   }
 
   btnFreePlay.addEventListener("click", ()=>openLevel("freeGame"));
@@ -305,6 +362,13 @@ export function createMenus({
   btnRestartYes.addEventListener("click", ()=>runHandlers.handleResetGame());
   btnRestartNo.addEventListener("click", hideRestartConfirm);
   restartBtn.addEventListener("click", ()=>resetGame());
+  btnLevelCompleteMenu.addEventListener("click", ()=>{
+    if (levelCompleteOnMainMenu) levelCompleteOnMainMenu();
+  });
+  btnLevelCompleteNext.addEventListener("click", ()=>{
+    if (!levelCompleteOnNext) return;
+    levelCompleteOnNext();
+  });
 
   btnRecords.addEventListener("click", ()=>showRecords());
   btnRecordsOver.addEventListener("click", ()=>showRecords());
@@ -321,5 +385,6 @@ export function createMenus({
     hideRestartConfirm,
     togglePauseMenu,
     gameOver,
+    showLevelComplete,
   };
 }

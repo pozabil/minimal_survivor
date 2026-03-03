@@ -1,4 +1,4 @@
-import { getProgressionLevel } from "../content/levels.js";
+import { getNextProgressionLevel, getProgressionLevel } from "../content/levels.js";
 import { markLevelCompleted } from "../systems/storage.js";
 
 const LEVEL_ID = "laa";
@@ -6,10 +6,11 @@ const LEVEL_ID = "laa";
 export const laa = {
   register(sceneManager, pipeline, main) {
     const { update, rUpdate, render } = pipeline;
-    const { menus, state } = main;
+    const { menus, state, player, runHandlers } = main;
     const level = getProgressionLevel(LEVEL_ID);
     const completeAtSeconds = level.completeAtSeconds;
     const levelName = level.name;
+    const nextLevel = getNextProgressionLevel(LEVEL_ID);
 
     let done = false;
 
@@ -17,8 +18,26 @@ export const laa = {
       if (done) return;
       done = true;
       markLevelCompleted(LEVEL_ID);
-      sceneManager.setScene("mainMenu");
-      menus.setMainMenuNotice(`${levelName} пройден`);
+      menus.showLevelComplete({
+        levelName,
+        nextLevelName: nextLevel ? nextLevel.name : "",
+        stats: {
+          time: state.t,
+          heroName: player.heroName,
+          heroLevel: player.lvl,
+          kills: state.kills,
+          damage: state.dmgDone,
+          maxDps: state.maxDps,
+        },
+        onMainMenu() {
+          sceneManager.setScene("mainMenu");
+          menus.setMainMenuNotice(`${levelName} пройден`);
+        },
+        onNext() {
+          if (!nextLevel) return;
+          runHandlers.startRunWithCurrentHero(nextLevel.id);
+        },
+      });
     }
 
     sceneManager.register(LEVEL_ID, {

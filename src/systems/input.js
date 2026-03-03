@@ -18,6 +18,7 @@ export function createInputSystem({
     startOverlay,
     mainMenuOverlay,
     gameoverOverlay,
+    levelCompleteOverlay,
     pauseMenu,
     recordsOverlay,
     settingsOverlay,
@@ -42,6 +43,7 @@ export function createInputSystem({
     (startOverlay.style.display === "grid") ||
     (mainMenuOverlay.style.display === "grid") ||
     (gameoverOverlay.style.display === "grid") ||
+    (levelCompleteOverlay.style.display === "grid") ||
     (pauseMenu.style.display === "grid") ||
     (recordsOverlay.style.display === "grid") ||
     (settingsOverlay.style.display === "grid") ||
@@ -102,6 +104,7 @@ export function createInputSystem({
         startOverlay.style.display === "grid" ||
         mainMenuOverlay.style.display === "grid" ||
         gameoverOverlay.style.display === "grid" ||
+        levelCompleteOverlay.style.display === "grid" ||
         restartConfirmOverlay.style.display === "grid"
       ) return;
       menus.togglePauseMenu();
@@ -122,6 +125,7 @@ export function createInputSystem({
         startOverlay.style.display === "grid" ||
         mainMenuOverlay.style.display === "grid" ||
         gameoverOverlay.style.display === "grid" ||
+        levelCompleteOverlay.style.display === "grid" ||
         pauseMenu.style.display === "grid" ||
         restartConfirmOverlay.style.display === "grid"
       ) return;

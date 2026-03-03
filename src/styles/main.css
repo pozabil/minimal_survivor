@@ -233,6 +233,12 @@ canvas { display:block; width:100vw; height:100vh; image-rendering: pixelated; t
 #levelSelect .choices{
   grid-template-columns:repeat(4,1fr);
 }
+.levelCompletePanel{
+  width:min(1020px, calc(100vw - 24px));
+}
+.levelCompleteStatsBox{
+  margin-top:8px;
+}
 .choices{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
 .choice{
   text-align:left; border-radius:14px; padding:12px;

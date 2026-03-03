@@ -27,6 +27,11 @@ export function createRunHandlers({
     handleSelectLevel(levelId);
   }
 
+  function startRunWithCurrentHero(levelId) {
+    const hero = getPlayerClass(player.heroId) || getPlayerClass("scout");
+    startRun(levelId, hero);
+  }
+
   function handleResetGame() {
     const levelId = sceneManager.getCurrentSceneId();
     const hero = getPlayerClass(player.heroId) || getPlayerClass("scout");
@@ -35,6 +40,7 @@ export function createRunHandlers({
 
   return {
     startRun,
+    startRunWithCurrentHero,
     handleSelectHero,
     handleSelectLevel,
     handleResetGame,
